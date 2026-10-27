@@ -21,7 +21,7 @@
     "assertedOn": "你在 {date} 標記為已套用 · 未經獨立核實",
     "retract": "撤回此標記",
     "retractHint": "撤回只是收回這項聲明；相關紀錄仍會保留在活動紀錄內。",
-    "markedToast": "已記錄：你表示此行動已套用。下次掃描會觀察結果。",
+    "markedToast": "已記錄：你表示此待辦已套用。下次掃描會觀察結果。",
     "retractedToast": "已撤回「已套用」標記。"
   },
   "verified": {
@@ -65,14 +65,14 @@
     "next": {
       "rescan": "為這個地點重新掃描。",
       "contact_support": "請聯絡 Fimmick，並提供以下參考編號。",
-      "open_action": "開啟行動，再次嘗試生成草稿。",
+      "open_action": "開啟待辦，再次嘗試生成草稿。",
       "reauthorise": "重新授權 Google 以恢復連接。",
       "ask_owner": "請工作台擁有人重新連接 Google。",
       "dead_lettered": "系統會在 24 小時內自動結束這次掃描，之後你可以重新掃描。",
       "none": "擁有人或負責此地點的經理可以處理。"
     },
     "button": {
-      "open_action": "開啟行動",
+      "open_action": "開啟待辦",
       "reauthorise": "重新授權",
       "contact_support": "聯絡 Fimmick"
     },

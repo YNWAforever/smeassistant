@@ -7,7 +7,7 @@ import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } fro
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(props: OwnerPageProps): Promise<Metadata> {
-  return ownerPageMetadata(props, { en: "Brand assets", zh: "品牌素材" });
+  return ownerPageMetadata(props, { en: "Photos and menus", zh: "相片同餐牌", zhTW: "照片與菜單" });
 }
 
 /** Assets with 60 s signed thumbnails; rights decisions are scoped per row (§3.9). */

@@ -33,7 +33,7 @@ export default async function BusinessRoute(props: OwnerPageProps) {
       title={t.business.title}
       lead={t.business.lead}
       lockedLabel={t.locked}
-      header={shop && <ShopProfileCard locale={page.locale} profile={shop.profile} photo={shop.photo} links={profileLinks} showStock={stockPhotosEnabled()} />}
+      header={shop && <ShopProfileCard locale={page.locale} workspaceId={page.ctx.workspace.id} profile={shop.profile} photo={shop.photo} links={profileLinks} showStock={stockPhotosEnabled()} />}
       links={[
         { key: "team", ...t.settings.team, icon: Users, href: withLocation(`${settings}/team`, page.locationSlug) },
         { key: "profile", ...t.business.profile, icon: Building2, href: `${base}/profile` },

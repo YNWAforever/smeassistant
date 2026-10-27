@@ -153,3 +153,10 @@
 .integration-head > span[data-source="google"] { background: var(--info-soft); color: var(--info-text); }
 .integration-head > span[data-source="instagram"] { background: var(--brand-soft); color: var(--brand-text); }
 .integration-head > span[data-source="website"] { background: var(--success-soft); color: var(--success-text); }
+
+/* To do: the select box sits in the card's top-right corner instead of a row of its own. */
+.bulk-select-item { position: relative; }
+.bulk-select-item > .bulk-select-toggle {
+  position: absolute; top: 0.5rem; right: 1rem; z-index: 1;
+  padding-block: 0; font-size: 0.8125rem; color: var(--muted-foreground);
+}

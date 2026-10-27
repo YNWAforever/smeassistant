@@ -159,7 +159,7 @@ export const onboardingEn: OnboardingCopy = {
 
 export const onboardingZhHK: OnboardingCopy = {
   title: "設定你的工作台",
-  intro: "證明你經營這門生意，核對幾項資料，便可看到第一項建議行動。",
+  intro: "證明你經營這門生意，核對幾項資料，便可看到第一項建議待辦。",
   claimBadge: "認領報告 {ref}",
   plan: { kept: "已保留所選方案", growth: "增長方案", multi: "多地點方案" },
   steps: { label: "設定步驟", signedIn: "已登入", verify: "驗證擁有權", basics: "商戶基本資料", stepOf: "第 {n} 步，共 {total} 步", done: "已完成" },
@@ -203,7 +203,7 @@ export const onboardingZhHK: OnboardingCopy = {
   },
   verified: { title: "擁有權已確認", body: "核對預填資料後，便可查看結果。" },
   basics: {
-    intro: "核對商戶資料後，我們會開啟掃描結果及第一項建議行動。",
+    intro: "核對商戶資料後，我們會開啟掃描結果及第一項建議待辦。",
     businessName: "商戶名稱",
     address: "地址（選填）",
     connectionsLater: "Instagram、Google 連接及品牌語氣，都可以稍後再設定。",
@@ -244,7 +244,7 @@ export const onboardingZhHK: OnboardingCopy = {
 
 export const onboardingZhTW: OnboardingCopy = {
   title: "設定您的工作台",
-  intro: "證明您經營這家店，核對幾項資料，就能看到第一項建議行動。",
+  intro: "證明您經營這家店，核對幾項資料，就能看到第一項建議待辦。",
   claimBadge: "認領報告 {ref}",
   plan: { kept: "已保留選擇的方案", growth: "成長方案", multi: "多據點方案" },
   steps: { label: "設定步驟", signedIn: "已登入", verify: "驗證擁有權", basics: "店家基本資料", stepOf: "第 {n} 步，共 {total} 步", done: "已完成" },
@@ -288,7 +288,7 @@ export const onboardingZhTW: OnboardingCopy = {
   },
   verified: { title: "擁有權已確認", body: "核對預先填好的資料後，就能查看結果。" },
   basics: {
-    intro: "核對店家資料後，我們會開啟掃描結果與第一項建議行動。",
+    intro: "核對店家資料後，我們會開啟掃描結果與第一項建議待辦。",
     businessName: "店家名稱",
     address: "地址（選填）",
     connectionsLater: "Instagram、Google 連線與品牌語氣，都可以之後再設定。",

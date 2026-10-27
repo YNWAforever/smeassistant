@@ -15,6 +15,8 @@ export type ProgressCopy = {
   badgesTitle: string
   badgeEarned: string
   badgeLocked: string
+  itemDone: string
+  itemTodo: string
   nextBadge: string
   badges: Record<BadgeKey, { name: string; how: string }>
   profile: { title: string; levelOf: string; levels: [string, string, string, string]; next: string; open: string }
@@ -34,6 +36,8 @@ export const progressCopy: Record<PrototypeLocale, ProgressCopy> = {
     badgesTitle: "Badges",
     badgeEarned: "Earned",
     badgeLocked: "Not yet",
+    itemDone: "Done",
+    itemTodo: "To do",
     nextBadge: "Next: {how}",
     badges: {
       first_confirm: { name: "First confirm", how: "confirm your first draft" },
@@ -57,6 +61,8 @@ export const progressCopy: Record<PrototypeLocale, ProgressCopy> = {
     badgesTitle: "徽章",
     badgeEarned: "已拎到",
     badgeLocked: "未拎到",
+    itemDone: "填咗",
+    itemTodo: "未填",
     nextBadge: "下一個：{how}",
     badges: {
       first_confirm: { name: "第一次確認", how: "確認第一份草稿" },
@@ -80,6 +86,8 @@ export const progressCopy: Record<PrototypeLocale, ProgressCopy> = {
     badgesTitle: "徽章",
     badgeEarned: "已取得",
     badgeLocked: "尚未取得",
+    itemDone: "已填",
+    itemTodo: "未填",
     nextBadge: "下一個：{how}",
     badges: {
       first_confirm: { name: "第一次確認", how: "確認第一份草稿" },

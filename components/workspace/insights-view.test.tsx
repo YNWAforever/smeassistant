@@ -148,6 +148,16 @@ describe("InsightsView", () => {
     expect(baseline?.textContent).not.toContain("62");
   });
 
+  it("calls only a first scan the starting point, not a later scan that cannot be compared", () => {
+    const later = { snapshotId: "s2", observedAt: "2026-09-25T00:00:00Z", score: 70, coverage: 0.5, comparable: false, incomparableReason: "NO_SHARED_MEASURED_MODULE" };
+    const base = model({ ledgerComparable: false, ledger: { resolved: [], regressed: [], decayed: [] } });
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(<InsightsView locale="zh-HK" workspaceSlug="kam-man-house" timezone="Asia/Hong_Kong" locations={[{ slug: location.slug, name: location.name }]}
+      model={{ ...base, series: [...base.series, later] }} />);
+    expect(root.querySelector(".insights-baseline")).toBeNull();
+    expect(root.querySelectorAll(".k-scan-bar[data-gap]")).toHaveLength(1);
+  });
+
   it("drops the starting-point card once a comparison exists", () => {
     expect(render("en").querySelector(".insights-baseline")).toBeNull();
   });

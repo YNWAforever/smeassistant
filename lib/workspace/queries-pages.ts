@@ -425,7 +425,7 @@ const NONE_SAVED = localized("None saved", "尚未儲存", "尚未儲存");
 const FROM_BRAND_SETTINGS = localized("From Brand settings", "來自品牌設定", "來自品牌設定");
 const FROM_WORKSPACE_RECORD = localized("From the workspace record", "來自工作台記錄", "來自工作台紀錄");
 const FROM_LATEST_SCAN = localized("From the latest scan", "來自最新掃描", "來自最新掃描");
-const FROM_ASSETS = localized("From Assets", "來自素材", "來自素材");
+const FROM_ASSETS = localized("From photos and menus", "來自相片同餐牌", "來自照片與菜單");
 const ASSET_RIGHTS_LABEL: Record<string, LocalizedText> = {
   approved: localized("Approved", "已確認", "已確認"),
   needs_review: localized("Needs review", "需要審閱", "需要審閱"),
@@ -476,8 +476,8 @@ async function buildBusinessContext(ctx: WorkspaceContext, row: ActionRow, actio
     if (provided.text_only === true) {
       rows.push({
         key: "asset_rights",
-        label: localized("Asset", "素材", "素材"),
-        value: localized("Text-only post; no asset attached", "純文字貼文，未附素材", "純文字貼文，未附素材"),
+        label: localized("Photo", "相片", "照片"),
+        value: localized("Text-only post; no asset attached", "純文字帖文，冇附相", "純文字貼文，未附照片"),
         origin: FROM_ASSETS,
       });
     } else {
@@ -485,10 +485,10 @@ async function buildBusinessContext(ctx: WorkspaceContext, row: ActionRow, actio
       const asset = assetId ? await assetRepository().get(ctx.workspace.id, assetId) : null;
       rows.push({
         key: "asset_rights",
-        label: localized("Asset rights", "素材版權", "素材版權"),
+        label: localized("Photo rights", "相片版權", "照片版權"),
         value: asset
           ? { en: `${asset.filename} · ${ASSET_RIGHTS_LABEL[asset.rights_status]?.en ?? asset.rights_status}`, "zh-HK": `${asset.filename} · ${ASSET_RIGHTS_LABEL[asset.rights_status]?.["zh-HK"] ?? asset.rights_status}`, "zh-TW": `${asset.filename} · ${ASSET_RIGHTS_LABEL[asset.rights_status]?.["zh-TW"] ?? asset.rights_status}` }
-          : localized("No asset selected yet", "尚未選擇素材", "尚未選擇素材"),
+          : localized("No asset selected yet", "未揀相", "尚未選擇照片"),
         origin: FROM_ASSETS,
       });
     }

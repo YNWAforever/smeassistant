@@ -24,7 +24,7 @@ describe("renderScanMail", () => {
     const mail = renderScanMail("rescan_complete", "zh-HK", BASE_INPUT);
     expect(mail.subject).toBe("重新掃描完成：Kam Man House");
     expect(mail.text).toBe(
-      "Kam Man House 的最新掃描已完成。開啟工作台查看更新後的證據及行動：https://app.example.com/en/owner/kam-man-house\n\n" +
+      "Kam Man House 的最新掃描已完成。開啟工作台查看更新後的證據及待辦：https://app.example.com/en/owner/kam-man-house\n\n" +
         "你收到此電郵，是因為你在此工作台開啟了重新掃描電郵。停止接收：https://app.example.com/api/mail/unsubscribe?t=abc",
     );
   });
@@ -33,7 +33,7 @@ describe("renderScanMail", () => {
     const mail = renderScanMail("rescan_complete", "zh-TW", BASE_INPUT);
     expect(mail.subject).toBe("重新掃描完成：Kam Man House");
     expect(mail.text).toBe(
-      "Kam Man House 的最新掃描已完成。開啟工作台查看更新後的證據與行動：https://app.example.com/en/owner/kam-man-house\n\n" +
+      "Kam Man House 的最新掃描已完成。開啟工作台查看更新後的證據與待辦：https://app.example.com/en/owner/kam-man-house\n\n" +
         "你收到這封電子郵件，是因為你在這個工作台開啟了重新掃描通知。停止接收：https://app.example.com/api/mail/unsubscribe?t=abc",
     );
   });

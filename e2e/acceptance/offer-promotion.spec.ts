@@ -52,7 +52,7 @@ test("an offer becomes two drafts, one is approved and exported, and an edited o
   await card.getByRole("button", { name: "建立草稿", exact: true }).click();
   const rows = card.locator(".evidence-list li");
   await expect(rows).toHaveCount(2);
-  await expect(card.getByText("草稿已備妥")).toHaveCount(2, { timeout: 90000 });
+  await expect(card.getByText("草稿已寫好")).toHaveCount(2, { timeout: 90000 });
   const instagram = rows.filter({ hasText: "Instagram" }).getByRole("link", { name: "開啟草稿" });
   const google = rows.filter({ hasText: "Google" }).getByRole("link", { name: "開啟草稿" });
   const instagramHref = (await instagram.getAttribute("href"))!;

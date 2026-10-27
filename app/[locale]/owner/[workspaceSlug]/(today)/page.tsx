@@ -37,10 +37,10 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
     }),
     loadGettingStarted(page.ctx, page.membership, page.locale),
   ]);
-  // Effort only: tasks done this month against what is still open, in this scope.
-  const today = await loadTodayProgress(page.ctx, { monthDone: brief.month.completed, open: brief.openActionCount ?? brief.openActions.length });
-  const base = `/${page.locale}/owner/${page.workspaceSlug}`;
   const locationId = page.locationSlug === "all" ? "all" : page.ctx.locations.find((l) => l.slug === page.locationSlug)?.id ?? "all";
+  // Effort only: tasks done this month against what is still open, in this scope.
+  const today = await loadTodayProgress(page.ctx, { monthDone: brief.month.completed, open: brief.openActionCount ?? brief.openActions.length, locationId });
+  const base = `/${page.locale}/owner/${page.workspaceSlug}`;
   const forbidden = page.query.forbidden === "1";
   return (
     <>
@@ -62,7 +62,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         role={page.membership.role}
         gettingStarted={gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
         progressPanel={today.progress && <TodayProgress locale={page.locale} progress={today.progress} moduleStates={brief.snapshot?.moduleStates ?? null} base={base} location={page.locationSlug} canAct={page.membership.role !== "viewer"} />}
-        photoStrip={today.progress && <ShopPhotoStrip locale={page.locale} photos={today.photos} base={base} canUpload={page.membership.role !== "viewer"} showStock={stockPhotosEnabled()} />}
+        photoStrip={today.progress && <ShopPhotoStrip locale={page.locale} workspaceId={page.ctx.workspace.id} photos={today.photos} base={base} canUpload={page.membership.role !== "viewer"} showStock={stockPhotosEnabled()} />}
         problems={problems && (
           <NeedsAttentionCard
             locale={page.locale}

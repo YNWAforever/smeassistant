@@ -12,7 +12,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const draw = (locale: "en" | "zh-HK" | "zh-TW" = "en", key = "scope") => <BulkActionSelection key={key} locale={locale} workspaceId={id(99)} timezone="Asia/Hong_Kong" items={items} cards={items.map(i => <p key={i.actionId}>{i.title}</p>)} members={[]} />;
 it.each(["en", "zh-HK", "zh-TW"] as const)("%s requires explicit selection and preview before confirmation", locale => {
   render(draw(locale));
-  const name = locale === "en" ? "Assign selected" : "分派已選行動";
+  const name = locale === "en" ? "Assign selected" : "分派已選待辦";
   // No bulk bar until something is selected.
   expect(screen.queryByRole("button", { name })).toBeNull();
   fireEvent.click(screen.getAllByRole("checkbox")[0]);

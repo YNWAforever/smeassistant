@@ -62,11 +62,13 @@ export function tabHref(base: string, filters: ActionFilters, view: string): str
   return qs ? `${base}/actions?${qs}` : `${base}/actions`
 }
 
-function ActionCard({ action, locale, base, timezone, location, previewHref }: { action: ActionOverview; locale: PrototypeLocale; base: string; timezone: string; location: string; previewHref?: string }) {
+function ActionCard({ action, locale, base, timezone, location, previewHref, canAct = true }: { action: ActionOverview; locale: PrototypeLocale; base: string; timezone: string; location: string; previewHref?: string; canAct?: boolean }) {
   const pc = copy[locale].workspaceActions.actionsList
   const href = withLocation(action.templateKey === "google-reconnect" ? `${base}/business/integrations` : `${base}/actions/${action.id}`, location)
   const phase = action.displayPhaseKey
-  const cta = phase === "draft_ready" || phase === "changes_requested" ? (copy[locale].ownerFocus.review) : phase === "requires_connection" ? pc.reviewDependency : action.missingInputs.length > 0 ? pc.reviewInputs : pc.openAction
+  // Same verbs as Today: say what happens next. A confirmed text waits to be copied.
+  const focus = copy[locale].ownerFocus
+  const cta = phase === "draft_ready" || phase === "changes_requested" ? focus.review : phase === "approved_export_ready" ? (canAct ? focus.export : focus.view) : phase === "requires_connection" ? pc.reviewDependency : action.missingInputs.length > 0 ? pc.reviewInputs : pc.openAction
   const assigneeName = action.assignee?.name || (action.assignee ? pc.assignedMemberUnavailable : pc.unassigned)
   return (
     <article className="action-card">
@@ -113,7 +115,7 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
     extra.set("open", action.id)
     return `${list}${list.includes("?") ? "&" : "?"}${extra}`
   }
-  const card = (action: ActionOverview) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} previewHref={previewHref(action)} />
+  const card = (action: ActionOverview) => <ActionCard key={action.id} action={action} locale={locale} base={base} timezone={timezone} location={location} previewHref={previewHref(action)} canAct={role !== "viewer"} />
   return (
     <ActionsQueueFrame
       locale={locale}

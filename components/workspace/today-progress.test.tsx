@@ -57,29 +57,29 @@ describe("TodayProgress", () => {
 
 describe("ShopPhotoStrip", () => {
   it("shows the shop's own photos when there are some", () => {
-    const root = render(<ShopPhotoStrip locale="en" photos={[{ id: "a", url: "https://blob.example/a.jpg", alt: "Noodles" }]} base="/en/owner/shop" canUpload />)
+    const root = render(<ShopPhotoStrip workspaceId="ws" locale="en" photos={[{ id: "a", url: "https://blob.example/a.jpg", alt: "Noodles" }]} base="/en/owner/shop" canUpload />)
     expect(root.querySelector("img")?.getAttribute("alt")).toBe("Noodles")
     expect(root.textContent).not.toContain("Pexels")
   })
 
   it("makes no outside request when sample photos are off", () => {
-    const root = render(<ShopPhotoStrip locale="en" photos={[]} base="/en/owner/shop" canUpload showStock={false} />)
+    const root = render(<ShopPhotoStrip workspaceId="ws" locale="en" photos={[]} base="/en/owner/shop" canUpload showStock={false} />)
     expect(root.innerHTML).not.toContain("pexels")
     expect(root.querySelector(".shop-photos-placeholder")).not.toBeNull()
   })
 
   it("labels the stand-in as a sample photo and hides upload from viewers", () => {
-    const root = render(<ShopPhotoStrip locale="zh-HK" photos={[]} base="/zh-HK/owner/shop" canUpload={false} />)
+    const root = render(<ShopPhotoStrip workspaceId="ws" locale="zh-HK" photos={[]} base="/zh-HK/owner/shop" canUpload={false} />)
     expect(root.textContent).toContain("示意圖")
     expect(root.querySelector(".shop-photos-add")).toBeNull()
-    expect(render(<ShopPhotoStrip locale="zh-HK" photos={[]} base="/zh-HK/owner/shop" canUpload />).querySelector(".shop-photos-add")?.getAttribute("href")).toBe("/zh-HK/owner/shop/business/assets")
+    expect(render(<ShopPhotoStrip workspaceId="ws" locale="zh-HK" photos={[]} base="/zh-HK/owner/shop" canUpload />).querySelector(".shop-photos-add")?.getAttribute("href")).toBe("/zh-HK/owner/shop/business/assets")
   })
 })
 
 describe("ShopProfileCard", () => {
   it("links only unfinished items it has a link for", () => {
     const profile = profileLevel({ brand: { voice: "warm", facts: {}, approved_claims: [] }, approvedPhotos: 0, googleConnected: false, instagramHandle: null })
-    const root = render(<ShopProfileCard locale="en" profile={profile} photo={null} links={{ voice: "/v", photo: "/p" }} />)
+    const root = render(<ShopProfileCard workspaceId="ws" locale="en" profile={profile} photo={null} links={{ voice: "/v", photo: "/p" }} />)
     expect(Array.from(root.querySelectorAll(".shop-profile-items a")).map((a) => a.getAttribute("href"))).toEqual(["/p"])
     expect(root.querySelector(".k-progress-ring")?.getAttribute("aria-label")).toBe("1 of 6 filled in")
   })

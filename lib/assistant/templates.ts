@@ -75,19 +75,19 @@ const NO_SNAPSHOT = localized(
 const RUN_SCAN = localized("Run a scan for {loc} from the Rescan page, then ask again.", "先在「重新掃描」頁為 {loc} 進行掃描，再重新提問。");
 const NO_ACTIONS = localized(
   "There are no open actions for {loc} right now, so there is nothing to prioritise. The latest scan ({date}) scored {score} with {cov} coverage.",
-  "{loc} 目前沒有未完成的行動，因此沒有可排序的項目。最新掃描（{date}）評分 {score}，覆蓋率 {cov}。",
+  "{loc} 目前沒有未完成的待辦，因此沒有可排序的項目。最新掃描（{date}）評分 {score}，覆蓋率 {cov}。",
 );
 const NOT_PROOF = localized("Priority is a recommendation; it does not prove rankings, revenue or bookings will improve.", "優先次序是建議，不代表已證明會提升排名、收入或預訂。");
-const CAUSATION = localized("This is an observed change over time, not proof that any action caused it.", "這是時間上的已觀察變化，不能證明由某項行動引致。");
+const CAUSATION = localized("This is an observed change over time, not proof that any action caused it.", "這是時間上的已觀察變化，不能證明由某項待辦引致。");
 const NO_LLM_NUMBERS = localized("Numbers come only from this workspace's scan snapshots and scan_diffs.", "數字只來自此工作區的掃描快照及 scan_diffs。");
 const READY = localized("the required inputs are ready", "所需資料已齊備");
 const MISSING = localized("it still needs: {inputs}", "仍需要：{inputs}");
 const PRIORITY_ANSWER = localized(
   "“{title}” is the top priority ({priority}) because {factors}. Evidence: {value} ({source}, {fact}). Estimated effort {effort} minutes; {inputs}.",
-  "「{title}」是首要行動（{priority}），原因：{factors}。證據：{value}（{source}，{fact}）。預計需時 {effort} 分鐘；{inputs}。",
+  "「{title}」是首要待辦（{priority}），原因：{factors}。證據：{value}（{source}，{fact}）。預計需時 {effort} 分鐘；{inputs}。",
 );
-const PRIORITY_NEXT_READY = localized("Open the action and generate a draft; the owner approves a specific version before anything is exported.", "開啟該行動並產生草稿；店主確認指定版本後才可匯出。");
-const PRIORITY_NEXT_INPUT = localized("Open the action and supply the missing inputs before generating a draft.", "開啟該行動，先補齊缺少的資料，再產生草稿。");
+const PRIORITY_NEXT_READY = localized("Open the action and generate a draft; the owner approves a specific version before anything is exported.", "開啟該待辦並產生草稿；店主確認指定版本後才可匯出。");
+const PRIORITY_NEXT_INPUT = localized("Open the action and supply the missing inputs before generating a draft.", "開啟該待辦，先補齊缺少的資料，再產生草稿。");
 const CHANGE_NO_DIFF = localized(
   "The latest scan ({date}) has no earlier scan to compare with, so the change is Unknown rather than zero. Score {score}, coverage {cov}.",
   "最新掃描（{date}）沒有較早的掃描可供比較，因此變化屬「未知」而非零。評分 {score}，覆蓋率 {cov}。",
@@ -126,12 +126,12 @@ const PLAN = localized(
   "如下次掃描沒有改善：本星期先完成「{title}」（{effort} 分鐘；證據 {value}）。確認後記錄版本及匯出時間。之後以相同評分版本（{version}）為 {loc} 重掃，只在 scan_diffs 標示可比較時才解讀變化。",
 );
 const PLAN_NEXT = localized("Approve a version this week; check delivery within 7 days; rescan in the next comparable window.", "本星期確認一個版本；7 日內檢查是否已送出；下一個可比較窗口重掃。");
-const PLAN_NO_ACTION = localized("There is no open action for {loc} to build a fallback plan from. {scan}", "{loc} 沒有未完成的行動可用作後備計劃。{scan}");
+const PLAN_NO_ACTION = localized("There is no open action for {loc} to build a fallback plan from. {scan}", "{loc} 沒有未完成的待辦可用作後備計劃。{scan}");
 const COMPARE_ONE = localized(
   "Only one open action exists for {loc}: “{title}” ({priority}). There is nothing to rank it against yet.",
-  "{loc} 只有一項未完成的行動：「{title}」（{priority}），暫時沒有其他項目可作比較。",
+  "{loc} 只有一項未完成的待辦：「{title}」（{priority}），暫時沒有其他項目可作比較。",
 );
-const COMPARE = localized("Ranked by priority score for {loc}: {list}. Priority reflects evidence confidence, urgency, readiness and effort; it changes as evidence, permissions and inputs change.", "{loc} 的行動按優先分數排序：{list}。優先次序反映證據可信度、急切程度、準備程度及所需時間，會隨證據、權限及資料改變。");
+const COMPARE = localized("Ranked by priority score for {loc}: {list}. Priority reflects evidence confidence, urgency, readiness and effort; it changes as evidence, permissions and inputs change.", "{loc} 的待辦按優先分數排序：{list}。優先次序反映證據可信度、急切程度、準備程度及所需時間，會隨證據、權限及資料改變。");
 const COMPARE_ITEM = localized("{n}. “{title}” — {priority}, {points} pts, top factor {factor}{missing}", "{n}. 「{title}」— {priority}，{points} 分，主要因素為{factor}{missing}");
 const COMPARE_MISSING = localized(" (waiting for inputs)", "（等待補充資料）");
 const COMPARE_NEXT = localized("Start with the first item; collect the missing inputs for the others rather than letting an agent guess them.", "先處理第一項；其餘項目先向店主收集缺少的資料，不交由 Agent 推測。");
@@ -147,12 +147,12 @@ const INSIGHTS_NEXT = localized("Keep scan id and observed time on every point; 
 const SEPARATE = localized("Snapshots from different dates must stay labelled separately.", "不同日期的快照必須分開標示。");
 const ASSET = localized(
   "This answer does not read asset rights. Only assets marked approved in Assets can back a social draft; anything still under review stays out of public content. {ig}",
-  "此回答不會讀取素材的使用權。只有在「素材」中標示為已確認的素材才可用於社交草稿；仍在審閱中的素材不可用於公開內容。{ig}",
+  "此回答不會讀取相片的使用權。只有在「相片」中標示為已確認的相片才可用於社交草稿；仍在審閱中的相片不可用於公開內容。{ig}",
 );
 const ASSET_IG = localized("Instagram evidence from {date}: {label} {value}.", "來自 {date} 的 Instagram 證據：{label} {value}。");
 const ASSET_IG_NONE = localized("Instagram was {status} in the latest scan, so there is no posting-gap number to cite.", "最新掃描中 Instagram 的狀態為「{status}」，因此沒有可引用的內容空檔數字。");
-const ASSET_NEXT = localized("Use an approved asset (or choose text-only) for the social draft; keep unreviewed uploads in Needs review.", "以已確認素材（或選擇純文字）建立社交草稿；未審閱的上載保留在「需要審閱」。");
-const ASSET_WARN = localized("Uploading an asset does not grant the right to publish it.", "上載素材不等於已獲授權發佈。");
+const ASSET_NEXT = localized("Use an approved asset (or choose text-only) for the social draft; keep unreviewed uploads in Needs review.", "以已確認相片（或選擇純文字）建立社交草稿；未審閱的上載保留在「需要審閱」。");
+const ASSET_WARN = localized("Uploading an asset does not grant the right to publish it.", "上載相片不等於已獲授權發佈。");
 const RESCAN = localized(
   "A rescan of {loc} counts as comparable only when: the same location and Google Business profile are scanned; the scoring version matches the latest scan ({version}); at least one source measured now ({names}) is measured again; and scan_diffs marks the pair comparable. The composite delta is still withheld when too few independent channels are measured.",
   "{loc} 的重掃只在以下條件全部符合時才算可比較：掃描同一地點及 Google 商家檔案；評分版本與最新掃描相同（{version}）；現時已量度的來源（{names}）至少有一個再次被量度；且 scan_diffs 標示為可比較。若已量度的獨立渠道太少，綜合變化仍會被保留。",
@@ -166,21 +166,21 @@ const MISSING_INPUTS = localized(
   "“{title}” still needs: {inputs}. The template cannot draft without these details, and nothing is guessed: until you add them they stay Unknown.",
   "「{title}」仍需要：{inputs}。缺少這些資料，範本無法產生草稿，亦不會作任何推測；補充之前，這些資料一律視為「未知」。",
 );
-const MISSING_INPUTS_NEXT = localized("Open the action and add these details, then generate a draft.", "開啟該行動並補充這些資料，然後再產生草稿。");
-const MISSING_INPUTS_ASK = localized("Ask an owner or manager to add these details to the action.", "請店主或經理在該行動中補充這些資料。");
+const MISSING_INPUTS_NEXT = localized("Open the action and add these details, then generate a draft.", "開啟該待辦並補充這些資料，然後再產生草稿。");
+const MISSING_INPUTS_ASK = localized("Ask an owner or manager to add these details to the action.", "請店主或經理在該待辦中補充這些資料。");
 const NOTHING_MISSING = localized("“{title}” has every detail it needs right now; nothing is missing.", "「{title}」目前已具備所需的全部資料，沒有缺少任何項目。");
-const NOTHING_MISSING_NEXT = localized("Open the action to continue.", "開啟該行動以繼續。");
-const NOTHING_MISSING_ASK = localized("Ask an owner or manager to open the action and continue.", "請店主或經理開啟該行動並繼續處理。");
-const NO_ACTION_MISSING = localized("No open action for {loc} is waiting for details right now; nothing is missing.", "{loc} 目前沒有等待補充資料的未完成行動，沒有缺少任何項目。");
+const NOTHING_MISSING_NEXT = localized("Open the action to continue.", "開啟該待辦以繼續。");
+const NOTHING_MISSING_ASK = localized("Ask an owner or manager to open the action and continue.", "請店主或經理開啟該待辦並繼續處理。");
+const NO_ACTION_MISSING = localized("No open action for {loc} is waiting for details right now; nothing is missing.", "{loc} 目前沒有等待補充資料的未完成待辦，沒有缺少任何項目。");
 // R5: when some rows were hidden by the member's location scope, the answer must
 // not claim a whole location is clear, so it speaks about their locations only.
 const NO_ACTION_MISSING_SCOPED = localized(
   "No open action in your locations is waiting for details right now; nothing is missing.",
-  "你負責的地點目前沒有等待補充資料的未完成行動，沒有缺少任何項目。",
-  "你負責的據點目前沒有等待補充資料的未完成行動，沒有缺少任何項目。",
+  "你負責的地點目前沒有等待補充資料的未完成待辦，沒有缺少任何項目。",
+  "你負責的據點目前沒有等待補充資料的未完成待辦，沒有缺少任何項目。",
 );
-const OPEN_ACTIONS_NEXT = localized("Open the actions list to choose what to do next.", "開啟行動清單，選擇下一步。");
-const OPEN_ACTIONS_ASK = localized("Ask an owner or manager to choose the next action.", "請店主或經理選擇下一項行動。");
+const OPEN_ACTIONS_NEXT = localized("Open the actions list to choose what to do next.", "開啟待辦清單，選擇下一步。");
+const OPEN_ACTIONS_ASK = localized("Ask an owner or manager to choose the next action.", "請店主或經理選擇下一項待辦。");
 const MISSING_WARN = localized("Missing details stay Unknown; the assistant never guesses them.", "缺少的資料一律視為「未知」；助手不會推測。");
 // Only the named version's own state is claimed: an earlier version of the
 // same action may well have been approved and exported already.
@@ -217,14 +217,14 @@ const NOTHING_WAITING_SCOPED = localized(
 );
 const GOOGLE_STATE = localized(
   "The {google} connection is {state}. Google evidence and the “{reconnect}” action depend on it.",
-  "{google} 的連接狀態：{state}。Google 證據及「{reconnect}」行動都依賴此連接。",
-  "{google} 的連線狀態：{state}。Google 證據及「{reconnect}」行動都依賴此連線。",
+  "{google} 的連接狀態：{state}。Google 證據及「{reconnect}」待辦都依賴此連接。",
+  "{google} 的連線狀態：{state}。Google 證據及「{reconnect}」待辦都依賴此連線。",
 );
 // T3-d: with no connection row at all there is no state to report.
 const GOOGLE_NONE = localized(
   "There is no {google} connection. Google evidence and the “{reconnect}” action depend on it.",
-  "目前沒有 {google} 的連接。Google 證據及「{reconnect}」行動都依賴此連接。",
-  "目前沒有 {google} 的連線。Google 證據及「{reconnect}」行動都依賴此連線。",
+  "目前沒有 {google} 的連接。Google 證據及「{reconnect}」待辦都依賴此連接。",
+  "目前沒有 {google} 的連線。Google 證據及「{reconnect}」待辦都依賴此連線。",
 );
 const GOOGLE_NEXT = localized(
   "Open Integrations in settings and reconnect Google.",
@@ -237,7 +237,7 @@ const GOOGLE_STATES: Record<Exclude<GoogleStatus, null | "active">, LocalizedTex
   error: localized("reporting an error", "出現錯誤"),
 };
 const WHERE_WARN = localized("Nothing is approved, sent or published from here.", "這裡不會確認、送出或發佈任何內容。");
-const THIS_ACTION = localized("this action", "此行動");
+const THIS_ACTION = localized("this action", "此待辦");
 const UNKNOWN_VERSION = localized("unknown", "不明");
 const NONE = localized("none", "無");
 const NO_FACTORS = localized("no priority factors were recorded", "沒有記錄優先因素");

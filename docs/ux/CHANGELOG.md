@@ -2,6 +2,16 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## One word for each thing (2026-10-27, second pass)
+
+- **待辦, not 行動:** every owner screen, Ask Kinnso answer and owner email now calls a task 待辦, matching the nav. The public site keeps its own wording.
+- **相片 / 照片, not 素材:** photos and menus are called that, in the asset picker, the task screen, Activity and Ask Kinnso.
+- **Task states in plain words:** 草稿已寫好, 需補資料, 寫稿中, 需先連接, 已確認 · 可複製.
+- **To do:**
+  - A confirmed task's button says "打開再複製", as on Today; viewers see "查看待辦".
+  - The select box sits in each card's corner instead of its own row, so the list is about 12% shorter on a phone.
+- **Shop profile checklist:** screen readers say 填咗 / 未填 for each item instead of the badge words.
+
 ## Workspace clean-up: less to read, clearer next step (2026-10-27)
 
 - **Task screen:**

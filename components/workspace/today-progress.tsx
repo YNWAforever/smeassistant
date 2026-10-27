@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { ArrowRight, Award, BadgeCheck, Copy, Flame, ImagePlus, ListChecks, Lock, Store, Trophy } from "lucide-react"
 
+import { AssetPreview } from "@/components/workspace/asset-preview"
 import { CoverageMeter, type CoverageSource } from "@/components/visual/coverage-meter"
 import { ProgressRing } from "@/components/visual/progress-ring"
 import { copy, type PrototypeLocale } from "@/lib/copy"
@@ -98,9 +99,14 @@ export function TodayProgress({ locale, progress, moduleStates, base, location, 
   )
 }
 
+function ShopPhotoImage({ photo, workspaceId, locale }: { photo: ShopPhoto; workspaceId: string; locale: PrototypeLocale }) {
+  return <AssetPreview asset={{ id: photo.id, kind: "image", storage_path: "", filename: photo.alt, alt_text: photo.alt, signedUrl: photo.url }} workspaceId={workspaceId} locale={locale} />
+}
+
 /** The shop's own confirmed photos; a credited sample photo and an upload link when there are none. */
-export function ShopPhotoStrip({ locale, photos, base, canUpload, stock = "cafe", showStock = true }: {
+export function ShopPhotoStrip({ locale, workspaceId, photos, base, canUpload, stock = "cafe", showStock = true }: {
   locale: PrototypeLocale
+  workspaceId: string
   photos: ShopPhoto[]
   base: string
   canUpload: boolean
@@ -115,9 +121,8 @@ export function ShopPhotoStrip({ locale, photos, base, canUpload, stock = "cafe"
       <section className="shop-photos" aria-label={t.title}>
         <div className="shop-photos-head"><h2>{t.title}</h2><Link href={assetsHref}>{t.manage}<ArrowRight aria-hidden="true" /></Link></div>
         <ul className="shop-photos-grid">
-          {/* Signed, short-lived private URLs: next/image would cache them past expiry. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {photos.map((photo) => <li key={photo.id}><img src={photo.url} alt={photo.alt} loading="lazy" decoding="async" /></li>)}
+          {/* Signed URLs last a minute; AssetPreview renews one that expired before the lazy image loaded. */}
+          {photos.map((photo) => <li key={photo.id}><ShopPhotoImage photo={photo} workspaceId={workspaceId} locale={locale} /></li>)}
         </ul>
       </section>
     )
@@ -145,8 +150,9 @@ export function ShopPhotoStrip({ locale, photos, base, canUpload, stock = "cafe"
  * Shop page header: the profile level as a ring, the six items as a checklist
  * with links, and a photo (the shop's own when it has one, else a credited sample).
  */
-export function ShopProfileCard({ locale, profile, photo, links, showStock = true }: {
+export function ShopProfileCard({ locale, workspaceId, profile, photo, links, showStock = true }: {
   locale: PrototypeLocale
+  workspaceId: string
   showStock?: boolean
   profile: Progress["profile"]
   photo: ShopPhoto | null
@@ -159,8 +165,7 @@ export function ShopProfileCard({ locale, profile, photo, links, showStock = tru
     <section className="shop-profile-card" aria-labelledby="shop-profile-title">
       <figure className="shop-profile-photo">
         {photo
-          // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={photo.url} alt={photo.alt} loading="lazy" decoding="async" />
+          ? <ShopPhotoImage photo={photo} workspaceId={workspaceId} locale={locale} />
           : showStock ? <>
             <div className="shop-photos-sample-image" style={{ backgroundImage: `url("${sample.src}")` }} aria-hidden="true" />
             <figcaption><a href={sample.href} target="_blank" rel="noreferrer">{fill(t.photos.stockCredit, { credit: sample.credit })}</a></figcaption>
@@ -179,7 +184,7 @@ export function ShopProfileCard({ locale, profile, photo, links, showStock = tru
         <ul className="shop-profile-items">
           {profile.items.map((item) => {
             const href = links[item.key]
-            const body = <><span className="shop-profile-check" data-done={item.done ? "" : undefined} aria-hidden="true">{item.done ? <BadgeCheck /> : null}</span><span>{t.profileItems[item.key]}</span><span className="sr-only">{item.done ? t.badgeEarned : t.badgeLocked}</span></>
+            const body = <><span className="shop-profile-check" data-done={item.done ? "" : undefined} aria-hidden="true">{item.done ? <BadgeCheck /> : null}</span><span>{t.profileItems[item.key]}</span><span className="sr-only">{item.done ? t.itemDone : t.itemTodo}</span></>
             return <li key={item.key} data-done={item.done ? "" : undefined}>{href && !item.done ? <Link href={href}>{body}<ArrowRight aria-hidden="true" /></Link> : <span className="shop-profile-row">{body}</span>}</li>
           })}
         </ul>

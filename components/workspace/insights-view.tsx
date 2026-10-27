@@ -113,7 +113,7 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
       ) : (
         <>
         {/* One scan, nothing to compare yet: show the starting point and the way forward instead of a lone sentence. */}
-        {!comparable && !model.ledgerComparable && <SectionCard className="insights-baseline">
+        {!comparable && !model.ledgerComparable && model.series.length <= 1 && <SectionCard className="insights-baseline">
           <p className="eyebrow">{pc.baselineEyebrow}</p>
           <h2>{fill(pc.baselineTitle, { date: formatDay(head.observedAt, locale, timezone) })}</h2>
           <p>{fill(pc.baselineBody, { coverage: scorePercent(head.coverage) ?? "—" })}</p>

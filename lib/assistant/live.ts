@@ -98,7 +98,7 @@ export const LIVE_BOUNDARY = localized(
 const AI_UNAVAILABLE = localized("AI drafting unavailable right now", "AI 草稿功能暫時無法使用");
 const NO_ACTION_FOR_DRAFT = localized(
   "No open action matches this request, so there is nothing to draft from. Create the action first.",
-  "沒有未完成的行動符合這項要求，因此沒有可用作草稿的基礎。請先建立行動。",
+  "沒有未完成的待辦符合這項要求，因此沒有可用作草稿的基礎。請先建立待辦。",
 );
 const DRAFT_ANSWER = localized(
   "A draft for “{title}” is ready for owner review. It uses only the brand facts and the evidence shown; nothing is saved until you create a new version.",

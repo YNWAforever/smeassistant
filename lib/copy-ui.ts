@@ -104,7 +104,7 @@ export const uiZhHK: UiCopy = {
     Observed: { label: "已觀察", description: "於所示時間直接在公開來源看到。" },
     Inference: { label: "推論", description: "根據證據作出的解讀，並非量度結果。" },
     Recommended: { label: "建議", description: "建議的下一步；你確認前不會發生任何事。" },
-    Attributed: { label: "可能相關", description: "行動之後出現的變化；只代表時間先後，不證明由行動造成。" },
+    Attributed: { label: "可能相關", description: "待辦之後出現的變化；只代表時間先後，不證明由待辦造成。" },
     Estimated: { label: "估算", description: "由樣本推算，可能與完整情況有出入。" },
     Unknown: { label: "未知", description: "無法從公開證據量度。" },
   },
@@ -153,7 +153,7 @@ export const uiZhHK: UiCopy = {
   },
   table: { empty: "沒有資料" },
   confirm: { cancel: "取消", confirm: "確認" },
-  command: { label: "搜尋及前往", placeholder: "輸入頁面或行動…", empty: "沒有相符結果", shortcut: "Ctrl K" },
+  command: { label: "搜尋及前往", placeholder: "輸入頁面或待辦…", empty: "沒有相符結果", shortcut: "Ctrl K" },
   visual: visualZhHK,
 }
 
@@ -162,7 +162,7 @@ export const uiZhTW: UiCopy = {
     Observed: { label: "已觀察", description: "於所示時間直接在公開來源看到。" },
     Inference: { label: "推論", description: "依據證據所做的解讀，並非量測結果。" },
     Recommended: { label: "建議", description: "建議的下一步；你確認前不會執行任何動作。" },
-    Attributed: { label: "可能相關", description: "行動之後出現的變化；僅代表時間先後，不證明由行動造成。" },
+    Attributed: { label: "可能相關", description: "待辦之後出現的變化；僅代表時間先後，不證明由待辦造成。" },
     Estimated: { label: "估算", description: "由樣本推算，可能與完整情況有落差。" },
     Unknown: { label: "未知", description: "無法從公開證據量測。" },
   },
@@ -211,7 +211,7 @@ export const uiZhTW: UiCopy = {
   },
   table: { empty: "沒有資料" },
   confirm: { cancel: "取消", confirm: "確認" },
-  command: { label: "搜尋並前往", placeholder: "輸入頁面或行動…", empty: "沒有符合的結果", shortcut: "Ctrl K" },
+  command: { label: "搜尋並前往", placeholder: "輸入頁面或待辦…", empty: "沒有符合的結果", shortcut: "Ctrl K" },
   visual: visualZhTW,
 }
 
