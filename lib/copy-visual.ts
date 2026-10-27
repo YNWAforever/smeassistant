@@ -111,7 +111,7 @@ export const visualEn: VisualCopy = {
   approvalFlow: {
     label: "How approval works",
     steps: { draft: "Draft", needsApproval: "Needs approval", approved: "Approved", delivered: "Delivered" },
-    lock: "You stay in control: nothing goes out until you approve.",
+    lock: "You stay in control: nothing goes out until you confirm.",
     current: "Now",
   },
   scan: { label: "Scan progress", progress: "{done} of {total} sources checked", complete: "All sources checked" },

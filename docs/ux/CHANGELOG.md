@@ -2,6 +2,14 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Taiwan wording, "uses" everywhere, quieter role notes (2026-10-27, fourth pass)
+
+- **Taiwan task names:** tasks had stored the Hong Kong wording for zh-TW, so Taiwan owners read 帖文, 餐牌, 相片 and 本地搜尋. Every task template now has its own zh-TW title, summary and outcome (貼文, 菜單, 照片, 在地搜尋), and the zh-TW dictionary uses the same words. A test blocks Hong Kong-only words and Cantonese particles in zh-TW task text. Existing tasks pick up the new names the next time they are re-derived after a scan.
+- **One way to say what counts:** the work-pack and offer notes, the Today footer, Ask Kinnso notes and the Google reply notes say "1 use" and "confirm, then copy or export", not "approved delivery", "交付額", "exact-version approval" or 批準.
+- **Checklist button:** 我已完成 in Chinese, matching "I've done it". Its record and toasts say 已完成 / "done" instead of 已套用 / "applied", and zh-TW uses 你, not 您.
+- **Role notes:** on owner-only pages (Team, Plan, Brand profile), the note no longer adds "Only the workspace owner can change roles and locations, in Settings › Team" under a body that already says it. The pointer to Team stays only on a shop outside your scope. A manager's note says "write and confirm drafts for your shops".
+- **Small words:** scan notices say "Scan again later, or check Google and Instagram" instead of "check the integrations page"; zh-TW uses 什麼, not 甚麼; the Team column is "Confirm"; the approval line says "nothing goes out until you confirm".
+
 ## Brand profile words, viewer nudges, New task on phones (2026-10-27, third pass)
 
 - **Brand profile:** the form now uses the words from the Shop checklist. Field labels:

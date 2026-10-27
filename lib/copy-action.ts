@@ -206,7 +206,7 @@ export const actionEn: ActionCopy = {
     unsaved: "Unsaved changes",
     export: "Export",
     exportRecorded: "Export recorded",
-    exportAfterApproval: "Available after exact-version approval",
+    exportAfterApproval: "Available once this version is confirmed",
     measurement: "Measurement",
   },
   toasts: {
@@ -525,7 +525,7 @@ export const actionZhHK: ActionCopy = {
     title: "此待辦由你完成，不經 Agent",
     action: "待辦",
     measurement: "量度",
-    note: "沒有可確認或匯出的版本，也不會扣除確認後交付額。",
+    note: "沒有可確認或匯出的版本，也不會計入已用次數。",
   },
   approval: {
     eyebrow: "確認",
@@ -575,7 +575,7 @@ export const actionZhHK: ActionCopy = {
   sticky: {
     unsaved: "未儲存",
     viewer: "檢視者只讀",
-    note: "確認唔會自動發佈；複製後要自己貼上",
+    note: "確認後都唔會自動發佈；複製後要自己貼上",
     save: "儲存",
     export: "匯出",
     approve: "確認",
@@ -723,7 +723,7 @@ export const actionZhTW: ActionCopy = {
     title: "此待辦由你完成，不經 Agent",
     action: "待辦",
     measurement: "量測",
-    note: "沒有可確認或匯出的版本，也不會扣除確認後交付額。",
+    note: "沒有可確認或匯出的版本，也不會計入已用次數。",
   },
   approval: {
     eyebrow: "確認決定",
@@ -773,7 +773,7 @@ export const actionZhTW: ActionCopy = {
   sticky: {
     unsaved: "未儲存",
     viewer: "檢視者只讀",
-    note: "確認不會自動發布；複製後請自行貼上",
+    note: "確認後也不會自動發布；複製後請自行貼上",
     save: "儲存",
     export: "匯出",
     approve: "確認",

@@ -74,7 +74,7 @@ describe("offers copy (P4.1)", () => {
   it("carries the exact English the owner is promised", () => {
     const t = copy.en.workspace.offers;
     expect(t.confirm.statement).toBe("These details are correct and may be used in drafts.");
-    expect(t.promotion.disclosure).toBe("Creates {n} drafts ({channels}). Nothing is counted until you approve and export a draft; each one you export counts as 1 delivery.");
+    expect(t.promotion.disclosure).toBe("Creates {n} drafts ({channels}). Nothing counts until you confirm a draft and copy or export it; each one counts as 1 use.");
     expect(t.promotion.usage).toBe(" This month: {used} of {allowance} used.");
     expect(t.stale.offer_changed).toBe("The offer changed after this draft was written. Generate a new draft from the current offer.");
     expect(t.stale.offer_expired).toBe("This offer has ended. Extend its dates and confirm it again to use it.");

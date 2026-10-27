@@ -215,7 +215,7 @@ test("bilingual completed-page reloads preserve exact version, approval, deliver
           await expect(audit).toBeVisible();
           await expect(audit.getByText(chinese ? "版本已確認" : "Version approved", { exact: true })).toHaveCount(1);
           await expect(audit.getByText(chinese ? "已記錄匯出" : "Export recorded", { exact: true })).toHaveCount(1);
-          await expect(audit.getByText(chinese ? "標記為已套用" : "Marked as applied", { exact: true })).toHaveCount(1);
+          await expect(audit.getByText(chinese ? "標記為已完成" : "Marked as done", { exact: true })).toHaveCount(1);
           await expect(audit.locator("p").filter({ hasText: chinese ? "版本已確認" : "Version approved" })).toContainText(chinese ? "第 2 版" : "Version 2");
           await expect(audit.locator("p").filter({ hasText: chinese ? "已記錄匯出" : "Export recorded" })).toContainText(chinese ? "第 2 版" : "Version 2");
           if (load === "reload") await page.screenshot({ path: testInfo.outputPath(`${locale}-mobile-completed.png`), fullPage: true });

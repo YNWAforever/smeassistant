@@ -34,3 +34,11 @@ it("after a refused page, says the user was brought back to Today", () => {
   render(<RoleNotice kind="forbidden" locale="en" />)
   expect(screen.getByRole("alert")).toHaveTextContent("brought you back to Today")
 })
+
+it("points to Team only for a shop outside the manager's scope", () => {
+  const { unmount } = render(<RoleNotice kind="outOfScope" locale="en" />)
+  expect(screen.getByRole("note")).toHaveTextContent(copy.en.shell.access.askOwner)
+  unmount()
+  render(<RoleNotice kind="teamManager" role="manager" locale="en" />)
+  expect(screen.getByRole("note").querySelector("small")).toBeNull()
+})
