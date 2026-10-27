@@ -2,6 +2,18 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Workspace audit follow-ups: problems, names and checklists (2026-10-27)
+
+Items left open from `artifacts/workspace-audit-redesign.md` (#110):
+- **When something breaks (P1-8):** failures say what happened and what to do in shop words ("未能讀取舖頭喺網上嘅資料", "再連一次 Google 就得"), not "收集公開證據失敗", "評分失敗" or "重新授權". The link reads "See all problems" instead of "See every problem in Activity". The staff failures page still shows the raw code beside each line.
+- **Fimmick's drafts (P2-3):** "Fix Pack" is gone from owner screens; they are "Fimmick 嘅稿" / "Fimmick 準備的稿" / "Fimmick drafts", as the To do menu already said.
+- **Role notices (P1-11):** "你可以睇 — 要寫稿、確認或者複製，請搵店主或經理" instead of a list of drafting, approving, delivering and billing rights. "Your role or location scope does not allow this" is now "You don't have permission for this. Ask the owner."
+- **Checklist tasks:** the steps heading shows once, the "shop details used for writing" panel is gone (nothing is written), every tick is the same size, and the note says plainly that the next scan checks the result. The English button reads "I've done it".
+- **To do:** the bulk-confirm banner reads "有 {n} 份稿可以確認 · 逐份睇再確認" (and fixes "1 drafts" in English); "Why this order" and "Search tasks" replace "Compare priorities" and "Search title and summary".
+- **Plain words elsewhere:** Plan ("Payments", "Used this month", "Plan changes", a one-line note on extra help), Team ("Shops" column), Brand profile ("Last saved", and the third never-say rule in plain words), Photos and menus ("All", "No photos or menus yet"), onboarding ("Your report", "Region"), and English task states ("Needs details", "Approved · ready to copy").
+- **Today:** with no photo to show, the photo card is a small tile instead of a large blank block (Today is 113 px shorter on a desktop, 225 px on a phone).
+- **Tests:** a stuck mock in the scan-start test no longer hangs the next test.
+
 ## One word for each thing (2026-10-27, second pass)
 
 - **待辦, not 行動:** every owner screen, Ask Kinnso answer and owner email now calls a task 待辦, matching the nav. The public site keeps its own wording.

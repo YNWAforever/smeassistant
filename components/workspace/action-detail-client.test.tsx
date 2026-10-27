@@ -1019,7 +1019,7 @@ describe("checklist templates have a completion path", () => {
   it("says completion is the owner's own confirmation, not an observation", () => {
     const text = render(CHECKLIST_TEMPLATES[0].key).textContent ?? "";
     expect(text).toContain(checklistCopy.note);
-    expect(checklistCopy.note).toContain("the next scan is what checks the result");
+    expect(checklistCopy.note).toContain("the next scan checks the result");
   });
 });
 

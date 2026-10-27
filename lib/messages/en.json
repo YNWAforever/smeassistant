@@ -1,12 +1,12 @@
 {
   "onboarding": {
     "title": "Set up and see what to do first",
-    "intro": "Confirm your business and access, then check the essentials to see your scan results and first recommended action.",
+    "intro": "Confirm your business and access, then check the essentials to see your scan results and first suggested task.",
     "verifyStep": "Business and access",
     "basicsStep": "Essentials and results",
     "viewReport": "View scan report",
     "ownershipReady": "Access is confirmed. Check the prefilled details, then open your results.",
-    "basicsIntro": "Check your business details. We will open the results from your scan, with the first recommended action.",
+    "basicsIntro": "Check your business details. We will open the results from your scan, with your first suggested task.",
     "businessName": "Business name",
     "address": "Address (optional)",
     "connectionsLater": "You can add Instagram, connect Google and adjust your brand settings later in Settings.",
@@ -16,7 +16,7 @@
     "resultUnavailable": "Could not open your results right now. Your entered details are still here. Please try again."
   },
   "applied": {
-    "markButton": "Mark as applied",
+    "markButton": "I've done it",
     "markHint": "We record what you tell us; the next scan is what checks it.",
     "assertedOn": "You marked this applied on {date} · not independently verified",
     "retract": "Withdraw this mark",
@@ -52,7 +52,7 @@
   },
   "problems": {
     "homeTitle": "Needs attention",
-    "homeMore": "See every problem in Activity",
+    "homeMore": "See all problems",
     "activityTitle": "Things to fix",
     "activityEmpty": "Nothing to fix right now.",
     "reference": "Reference {reference}",
@@ -63,13 +63,13 @@
       "google_connection": "The Google connection needs attention"
     },
     "next": {
-      "rescan": "Run a new scan for this location.",
-      "contact_support": "Contact Fimmick and quote the reference below.",
-      "open_action": "Open the action and try the draft again.",
-      "reauthorise": "Re-authorise Google to restore the connection.",
-      "ask_owner": "Ask the workspace owner to reconnect Google.",
-      "dead_lettered": "It closes automatically within 24 hours; you can then rescan.",
-      "none": "An owner, or a manager for this location, can act on this."
+      "rescan": "Scan this shop again.",
+      "contact_support": "Contact Fimmick and give them the reference number.",
+      "open_action": "Open the task and write the draft again.",
+      "reauthorise": "Connect Google again to fix this.",
+      "ask_owner": "Ask the owner to connect Google again.",
+      "dead_lettered": "It closes by itself within 24 hours; then you can scan again.",
+      "none": "The owner, or the manager of this shop, can fix this."
     },
     "button": {
       "open_action": "Reopen draft",
@@ -77,21 +77,21 @@
       "contact_support": "Contact Fimmick"
     },
     "reason": {
-      "ATTEMPTS_EXHAUSTED": "The scan stopped responding after three attempts.",
-      "COLLECTION_FAILED": "Collecting public evidence failed.",
-      "SCORING_FAILED": "Scoring the evidence failed.",
-      "PERSIST_FAILED": "Saving the results failed.",
-      "PROCESSOR_FAILED": "The scan could not be processed.",
-      "CLAIM_FAILED": "The scan could not be started.",
-      "consent_missing": "The scan had no recorded consent.",
-      "consent_policy_stale": "The consent was given under an older policy.",
-      "action_run_timeout": "Drafting ran out of time.",
-      "action_run_reaped": "Drafting stopped responding.",
-      "invalid_output": "The draft could not be read.",
-      "action_run_failed": "Drafting failed.",
-      "expired": "The Google authorisation expired.",
-      "error": "Google reported a connection error.",
-      "workspace_post_process_failed": "Updating the workspace after the scan failed.",
+      "ATTEMPTS_EXHAUSTED": "The scan got stuck after three tries.",
+      "COLLECTION_FAILED": "We couldn't read your shop's online info.",
+      "SCORING_FAILED": "We couldn't work out the results.",
+      "PERSIST_FAILED": "We couldn't save the results.",
+      "PROCESSOR_FAILED": "The scan couldn't run.",
+      "CLAIM_FAILED": "The scan couldn't start.",
+      "consent_missing": "We have no record of your OK to scan.",
+      "consent_policy_stale": "Your OK was given under older terms.",
+      "action_run_timeout": "Writing the draft took too long.",
+      "action_run_reaped": "Writing the draft got stuck.",
+      "invalid_output": "The draft came back unreadable.",
+      "action_run_failed": "Writing the draft didn't work.",
+      "expired": "The Google connection has expired.",
+      "error": "Google reported a problem with the connection.",
+      "workspace_post_process_failed": "Updating your tasks after the scan didn't work.",
       "generic": "Something went wrong."
     },
     "scanStuck": {

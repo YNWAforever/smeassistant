@@ -6,7 +6,7 @@ test("375px keyboard selection, preview, apply and Escape use the actual scoped 
   await page.setViewportSize({ width: 375, height: 812 });
   const base = `/en/owner/${merchant.slug}/actions`;
   await page.goto(base);
-  const search = page.getByRole("searchbox", { name: "Search title and summary" });
+  const search = page.getByRole("searchbox", { name: "Search tasks" });
   await search.fill("Reply to reviews"); await search.press("Enter");
   await expect(page).toHaveURL(/q=Reply/); await expect(page.locator(".action-card")).toHaveCount(1);
   const checkbox = page.getByRole("checkbox", { name: "Select Reply to reviews" });

@@ -160,3 +160,13 @@
   position: absolute; top: 0.5rem; right: 1rem; z-index: 1;
   padding-block: 0; font-size: 0.8125rem; color: var(--muted-foreground);
 }
+
+/* With no photo to show (sample photos off), the empty tile shrinks to an icon instead of a large blank block. */
+.shop-photos-empty:has(.shop-photos-placeholder) { grid-template-columns: 96px minmax(0, 1fr); }
+.shop-photos-sample:has(> .shop-photos-placeholder) { aspect-ratio: 1; }
+@media (max-width: 640px) {
+  .shop-photos-empty:has(.shop-photos-placeholder) { grid-template-columns: 72px minmax(0, 1fr); align-items: start; }
+}
+
+/* Checklist steps: every tick the same size, whatever the line length (a long line used to squeeze or grow it). */
+.draft-editor-card .brand-check-panel .evidence-list li > svg { flex: none; width: 18px; height: 18px; margin-top: 4px; }

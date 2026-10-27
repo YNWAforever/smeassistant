@@ -39,7 +39,8 @@ export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
       {/* P2.3 item 17: what the NEXT draft will be grounded in, shown
           before generation -- not only the guardrail badge that judges
           a draft after the fact. Collapsed by default to stay compact. */}
-      {businessContext.length > 0 && (
+      {/* A checklist is done in Google, not written here, so what a draft would use does not apply. */}
+      {!checklistSteps && businessContext.length > 0 && (
         <details className="brand-check-panel">
           <summary><strong>{ac.editor.businessDetails}</strong> <span>{ac.editor.businessDetailsHint}</span></summary>
           <dl className="asset-meta">
@@ -56,7 +57,7 @@ export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
   </>
   return (
     <SectionCard className="draft-editor-card">
-      <div className="section-card-heading"><div>{checklistSteps && <p className="eyebrow">{checklistSteps.where}</p>}<h2>{checklistSteps ? checklistCopy.heading : step === 0 ? ac.ownerSteps.edit : step === 1 ? ac.ownerSteps.confirm : ac.ownerSteps.send}</h2></div><details><summary>{copy[locale].ownerFocus.panels.version}</summary><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, locale)}</Badge>}</details></div>
+      <div className="section-card-heading"><div><h2>{checklistSteps ? checklistCopy.heading : step === 0 ? ac.ownerSteps.edit : step === 1 ? ac.ownerSteps.confirm : ac.ownerSteps.send}</h2></div><details><summary>{copy[locale].ownerFocus.panels.version}</summary><Badge variant="outline">{checklistSteps ? stateLabel(action.actionState, locale) : versionName}</Badge>{!checklistSteps && selectedVersion && <Badge variant="outline">{originLabel(selectedVersion.origin, locale)}</Badge>}</details></div>
       {social && approvedAssets.length > 0 && <div className="asset-reference"><span><FileImage /></span><div><strong>{approvedAssets[0].filename}</strong><small>{fill(ac.editor.approvedAsset, { n: approvedAssets.length })}</small></div><Badge variant="outline">{ac.editor.approved}</Badge></div>}
       {offer && (
         <div className="brand-check-panel" data-testid="offer-card">
@@ -75,7 +76,7 @@ export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
       {!draftFirst && context}
       {checklistSteps && (
         <div className="brand-check-panel">
-          <div className="brand-check-head"><Check /><div><strong>{checklistCopy.heading}</strong><span>{checklistSteps.where}</span></div><Badge variant="outline">{effortLabel(action.effortMinutes, locale)}</Badge></div>
+          <div className="brand-check-head"><Check /><div><strong>{checklistSteps.where}</strong></div><Badge variant="outline">{effortLabel(action.effortMinutes, locale)}</Badge></div>
           <ol className="evidence-list">{checklistSteps.steps.map((step) => <li key={step}><CheckCircle2 /> <span>{step}</span></li>)}</ol>
           <p className="limitation-note"><AlertTriangle /> {checklistCopy.note}</p>
         </div>
