@@ -14,7 +14,7 @@ import { sourceLabel } from "@/lib/workspace/source-label"
 import { actionVerificationView } from "@/lib/workspace/action-verification"
 import { EMPTY_OWNER_CHECK, ownerCheckNextStep } from "@/lib/workspace/owner-review-check"
 import { createEditorActions } from "@/components/workspace/action-detail/editor-actions"
-import type { ActionDetailClientProps, Busy, PreviewRole } from "@/components/workspace/action-detail/types"
+import type { ActionDetailClientProps, Busy } from "@/components/workspace/action-detail/types"
 
 /**
  * The action editor's state and everything derived from it, read during render.
@@ -61,8 +61,7 @@ function useEditorState({ locale, workspaceSlug, workspaceId, timezone, role, in
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true)
   const offline = !online
 
-  const [previewRole, setPreviewRole] = useState<PreviewRole>("owner")
-  const effectiveRole: PreviewRole = role === "owner" ? previewRole : role
+  const effectiveRole = role
   // A `?version=` link lands on that version; the render-time re-selection below only runs when the
   // version list changes, so it never undoes this initial choice.
   const [initialVersion] = useState(() => versions.find((v) => v.id === initialVersionId) ?? versions[0])
@@ -212,7 +211,6 @@ function useEditorState({ locale, workspaceSlug, workspaceId, timezone, role, in
     setAltText(next.alt_text ?? "")
     setConflict(false)
   }
-  const roleName = (r: PreviewRole) => ac.roles[r]
   const workflowState = runStateKey ?? null
   const workflowLabel = workflowState ? stateLabel(workflowState, locale) : ac.provenance.notRun
   const locationName = resolveText(action.location.name, locale) || locations.find((l) => l.slug === location)?.name || ""
@@ -240,11 +238,11 @@ function useEditorState({ locale, workspaceSlug, workspaceId, timezone, role, in
     editingVersionId, setEditingVersionId, confirmOpen, setConfirmOpen,
     faqQuestionByKey, guardrailBadge, guardrailFlags, hydrated, inputs, inputValues, inScope, isApprovedCurrent,
     lastRunError, locale, location, locationName, measurements, mutationPending, neededKeys, needsRunReconciliation, offer,
-    offersCopy, offersEnabled, offerStale, offline, ownerCheck, ownerCheckIdentity, pendingSelect, previewRole, provenance,
-    publishPanel, relatedAudit, reviewEvidence, role, roleName, router, runs, saveBeforeGenerationMessage, saveFailed,
+    offersCopy, offersEnabled, offerStale, offline, ownerCheck, ownerCheckIdentity, pendingSelect, provenance,
+    publishPanel, relatedAudit, reviewEvidence, role, router, runs, saveBeforeGenerationMessage, saveFailed,
     scanInputCopy, selectedReviews, selectedVersion, selectVersion, setAllowanceBlocked, setAltText, setBusy, setComment,
     setComparing, setConflict, setContent, setFactsNeeded, setInputValues, setLastRunError, setNeedsRunReconciliation,
-    setOfferRefusal, setPendingSelect, setPreviewRole, setSaveFailed, setSelectedReviews, setVersionId, showInputForm,
+    setOfferRefusal, setPendingSelect, setSaveFailed, setSelectedReviews, setVersionId, showInputForm,
     showVerification, social, timezone, verification, verificationCopy, verificationNext, verified, verifiedOn, versionId,
     versionLabel, versionName, versions, workflowLabel, workflowState, workspaceId, workspaceSlug
   }

@@ -181,3 +181,13 @@ describe("InsightsView without a comparable diff (guardrails 2 and 3)", () => {
     expect(first?.querySelector('[data-trend="up"]')).toBeNull();
   });
 });
+
+it.each([
+  ["paid owner", true, "再掃一次"],
+  ["lite owner", false, "下次掃完再睇"],
+  ["viewer", false, "下次掃完再睇"],
+  ["out-of-scope manager", false, "下次掃完再睇"],
+] as const)("one-scan Insights gives %s an honest next step", (_role, eligible, expected) => {
+  const one = model({ ledgerComparable: false, ledger: { resolved: [], regressed: [], decayed: [] }, trend: buildTrendModel(null) });
+  expect(insightsLeadSentence(one, "zh-HK", eligible)).toContain(expected);
+});

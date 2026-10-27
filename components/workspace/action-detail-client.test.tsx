@@ -28,7 +28,7 @@ async function confirmSavedVersion(name: string) {
   await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name })); });
 }
 
-const clientMocks = vi.hoisted(() => ({ markApplied: vi.fn(), retractApplied: vi.fn(), runAction: vi.fn(), approveVersion: vi.fn(), exportVersion: vi.fn() }));
+const clientMocks = vi.hoisted(() => ({ markApplied: vi.fn(), retractApplied: vi.fn(), runAction: vi.fn(), approveVersion: vi.fn(), exportVersion: vi.fn(), recordCopyFollowUp: vi.fn() }));
 const toastMocks = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), message: vi.fn() }));
 
 vi.mock("@/lib/workspace/client", async (importOriginal) => ({
@@ -38,6 +38,7 @@ vi.mock("@/lib/workspace/client", async (importOriginal) => ({
   runAction: clientMocks.runAction,
   approveVersion: clientMocks.approveVersion,
   exportVersion: clientMocks.exportVersion,
+  recordCopyFollowUp: clientMocks.recordCopyFollowUp,
 }));
 vi.mock("sonner", () => ({ toast: toastMocks }));
 const downloadMocks = vi.hoisted(() => ({ copyToClipboard: vi.fn(async () => true), downloadText: vi.fn() }));
@@ -170,6 +171,31 @@ const checklistCopy = copy.en.workspace.checklist;
 const appliedCopy = getMessages("en").applied;
 
 describe("focused draft review", () => {
+  it("keeps missing facts on Edit even when a saved draft exists, without a trip to Shop", () => {
+    const value = detail("ig-bio");
+    value.action.actionState = "needs_input";
+    value.action.missingInputs = ["brand_voice", "approved_claim", "opening_hours", "asset_or_text_only"];
+    value.versions = [versionRow({ id: "v1", version_no: 1, approval_state: "draft" })];
+    const root = verificationMarkup(value, [], "zh-HK");
+    for (const key of ["brand_voice", "approved_claim", "opening_hours", "asset_or_text_only"]) {
+      expect(root.querySelector(`#input-${key}`)).not.toBeNull();
+    }
+    expect(root.querySelector('[aria-current="step"]')?.textContent).toContain("改稿");
+    expect(root.querySelector(".approval-panel")).toBeNull();
+    expect(root.querySelector('form a[href$="/business/assets"]')).toBeNull();
+  });
+
+  it("keeps viewer on the same draft with a one-line note and an Ask owner primary", () => {
+    const value = detail("review-response");
+    value.versions = [versionRow({ id: "v1", version_no: 1, approval_state: "draft" })];
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(<ActionDetailClient locale="zh-HK" workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="viewer" inScope location="yik-yam" detail={value} auditRows={[]} locations={[]} approvedAssets={[]} />);
+    expect(root.querySelector("h1")).not.toBeNull();
+    expect(root.querySelector(".role-notice")?.textContent).toBe("你睇到，改要問店主。");
+    expect(root.querySelector(".approval-panel button")?.textContent).toBe("問店主改");
+    expect(root.querySelector(".approval-panel button")?.hasAttribute("disabled")).toBe(true);
+    expect(root.querySelector(".action-detail-header [role=combobox]")).toBeNull();
+  });
   it("offers version-bound owner checks after a review reply was applied, without claiming independent verification", () => {
     const value = detail("review-response");
     value.action.applied = true;
@@ -1749,6 +1775,7 @@ describe("copying an approved version", () => {
     toastMocks.success.mockReset();
     clientMocks.exportVersion.mockReset();
     downloadMocks.copyToClipboard.mockReset();
+    clientMocks.recordCopyFollowUp.mockReset().mockResolvedValue({ ok: true, data: { id: "1" } });
   });
   afterEach(cleanup);
 
@@ -1769,6 +1796,7 @@ describe("copying an approved version", () => {
     await act(async () => { fireEvent.click(screen.getAllByRole("button", { name: /^Copy text/ })[0]); });
     expect(toastMocks.error).toHaveBeenCalledWith("Clipboard unavailable; copy the text manually.");
     expect(JSON.stringify(toastMocks.success.mock.calls)).not.toContain("Approved text copied");
+    expect(clientMocks.recordCopyFollowUp).not.toHaveBeenCalled();
   });
 
   it("still confirms a successful repeat copy", async () => {
@@ -1778,5 +1806,6 @@ describe("copying an approved version", () => {
     await act(async () => { fireEvent.click(screen.getAllByRole("button", { name: /^Copy text/ })[0]); });
     expect(toastMocks.error).not.toHaveBeenCalled();
     expect(toastMocks.success).toHaveBeenCalledWith(expect.stringContaining("Approved text copied"));
+    expect(clientMocks.recordCopyFollowUp).toHaveBeenCalledWith("act-1", { versionId: "ver-1", decision: "pending", locale: "en" });
   });
 });

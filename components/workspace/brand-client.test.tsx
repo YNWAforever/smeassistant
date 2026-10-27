@@ -196,7 +196,8 @@ describe("Brand settings reliability", () => {
 
   it("explains viewer access and exposes no save control", () => {
     render(<BrandView locale="en" workspaceId={WORKSPACE} actorId="viewer-a" brand={profile()} role="viewer" />);
-    expect(screen.getByText(/only the owner can save/i)).toBeVisible();
+    expect(screen.getByRole("note")).toHaveTextContent("You can look; ask the owner to make changes.");
+    expect(screen.getByRole("button", { name: "Ask the owner to change it" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Choose voice" })).toBeDisabled();
     expect(screen.getByLabelText("Approved claims (one per line)")).toHaveAttribute("readonly");

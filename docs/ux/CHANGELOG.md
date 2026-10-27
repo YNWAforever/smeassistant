@@ -11,6 +11,10 @@ Each phase has a full report in `docs/ux/`.
   - A confirmed task's button says "打開再複製", as on Today; viewers see "查看待辦".
   - The select box sits in each card's corner instead of its own row, so the list is about 12% shorter on a phone.
 - **Shop profile checklist:** screen readers say 填咗 / 未填 for each item instead of the badge words.
+- **Review fixes:**
+  - Today's photos follow the selected shop (shared photos plus that shop's), and a photo whose one-minute link expired before it loaded fetches a fresh link instead of showing a broken image.
+  - Better? calls only a first scan the starting point.
+  - Page titles use Taiwan wording in zh-TW.
 
 ## Workspace clean-up: less to read, clearer next step (2026-10-27)
 

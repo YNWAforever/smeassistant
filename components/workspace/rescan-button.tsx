@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { LoaderCircle, RefreshCw } from "lucide-react"
@@ -11,17 +10,19 @@ import { Button } from "@/components/ui/button"
 import type { PrototypeLocale } from "@/lib/copy"
 import { t as translate } from "@/lib/i18n"
 import { rescanLocation, type ClientResult } from "@/lib/workspace/client"
+import { canRescan } from "@/lib/workspace/rescan-eligibility"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 
 /**
  * The prototype's "Rescan" outline button, bound to the Phase 6 rescan route
- * (CLAUDE.md §3.2.3, CONTRACT-6). Hidden for viewers; disabled with the tier
- * copy and a billing link on lite workspaces; needs one concrete location
+ * (CLAUDE.md §3.2.3, CONTRACT-6). Hidden without rescan eligibility;
+ * needs one concrete location
  * (an "all locations" scope has nothing to rescan). On success the browser
  * moves to the scanning page for the new job. The routes enforce the same
  * rules server-side; this is display convenience, not the boundary.
  */
-export function RescanButton({ locale, workspaceId, workspaceSlug, locationId, tier, role, consentPolicyVersion }: {
+export function RescanButton({ locale, workspaceId, locationId, tier, role, consentPolicyVersion, label }: {
+  label?: string
   locale: PrototypeLocale
   workspaceId: string
   workspaceSlug: string
@@ -39,10 +40,9 @@ export function RescanButton({ locale, workspaceId, workspaceSlug, locationId, t
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
-  if (role === "viewer") return null
+  if (!canRescan({ tier, role, locationId })) return null
   const t = COPY[locale]
   const paid = tier === "paid"
-  const billingHref = `/${locale}/owner/${workspaceSlug}/settings/plan`
 
   async function rescan() {
     if (!locationId || !paid || busy) return
@@ -54,14 +54,6 @@ export function RescanButton({ locale, workspaceId, workspaceSlug, locationId, t
     router.push(`/${locale}/scanning/${encodeURIComponent(result.data.jobId)}`)
   }
 
-  if (!paid) {
-    return (
-      <span className="rescan-gate">
-        <Button type="button" variant="outline" disabled aria-describedby="rescan-tier-note"><RefreshCw /> {t.label}</Button>
-        <small id="rescan-tier-note">{t.tier} <Link href={billingHref}>{t.billing}</Link></small>
-      </span>
-    )
-  }
   // The rescan writes a policy-versioned public-evidence consent record. It
   // used to write one without ever asking -- so the row asserted an agreement
   // the owner had never been shown. This dialog is where that agreement is
@@ -70,7 +62,7 @@ export function RescanButton({ locale, workspaceId, workspaceSlug, locationId, t
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button type="button" variant="outline" disabled={busy || !locationId} title={locationId ? undefined : t.chooseLocation}>
-          {busy ? <LoaderCircle className="animate-spin" /> : <RefreshCw />} {t.label}
+          {busy ? <LoaderCircle className="animate-spin" /> : <RefreshCw />} {label ?? t.label}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

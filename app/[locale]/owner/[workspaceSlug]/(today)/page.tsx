@@ -5,7 +5,7 @@ import { HomeBriefView } from "@/components/workspace/home-brief";
 import { NeedsAttentionCard } from "@/components/workspace/needs-attention-card";
 import { filterToLocation } from "@/lib/ops/owner-actions";
 import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
-import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
+import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { loadWorkspaceProblems } from "@/lib/workspace/problems";
 import { getHomeBrief } from "@/lib/workspace/queries-pages";
 import { loadGettingStarted } from "@/lib/workspace/getting-started";
@@ -60,6 +60,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         brief={brief}
         demo={page.ctx.workspace.isDemo}
         role={page.membership.role}
+        rescanInScope={inScopeFor(page.membership, brief.location?.id ?? null)}
         gettingStarted={gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
         progressPanel={today.progress && <TodayProgress locale={page.locale} progress={today.progress} moduleStates={brief.snapshot?.moduleStates ?? null} base={base} location={page.locationSlug} canAct={page.membership.role !== "viewer"} />}
         photoStrip={today.progress && <ShopPhotoStrip locale={page.locale} workspaceId={page.ctx.workspace.id} photos={today.photos} base={base} canUpload={page.membership.role !== "viewer"} showStock={stockPhotosEnabled()} />}

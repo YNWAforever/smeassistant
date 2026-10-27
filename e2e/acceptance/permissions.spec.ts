@@ -7,7 +7,9 @@ for (const role of ["viewer", "manager"] as const) test(`${role}: accepted evide
   await expect(page.locator(".action-detail-page")).toBeVisible();
   for (const context of [{ workspaceId: merchant.workspaceId, actionId: merchant.actionId }, { workspaceId: merchant.workspaceId }, { workspaceId: merchant.workspaceId, actionId: merchant.actionId, locationId: merchant.otherLocationId }]) {
     const draft = await page.request.post("/api/assistant/run", { data: { mode: "live", intentId: "draft_review_reply", surface: "action", locale: "en", context } });
-    expect(draft.status()).toBe(403);
+    const missingAction = role === "manager" && !("actionId" in context);
+    expect(draft.status()).toBe(missingAction ? 400 : 403);
+    if (missingAction) expect(await draft.json()).toEqual({ error: "actionId is required" });
   }
   expect((await page.request.post(`/api/actions/${merchant.actionId}/run`, { data: { locale: "en" } })).status()).toBe(403);
   const version = randomUUID();

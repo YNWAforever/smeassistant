@@ -204,3 +204,10 @@ it("keeps the selected goal's fact-type labels inside a closed explanation", () 
   expect(facts.closest("details")?.querySelector("summary")?.textContent).toBe("點解咁講");
   expect(root.querySelector(".page-intro")?.textContent ?? "").not.toContain("Agent");
 });
+
+it("keeps the viewer's creation page read-only with an Ask owner primary", () => {
+  const root = render({ role: "viewer", locale: "zh-HK" });
+  expect(root.querySelector(".create-review-layout button.w-full")?.textContent).toContain("問店主改");
+  expect(root.querySelector(".create-review-layout button.w-full")?.hasAttribute("disabled")).toBe(true);
+  expect(root.querySelector(".role-notice")?.textContent).toBe("你睇到，改要問店主。");
+});

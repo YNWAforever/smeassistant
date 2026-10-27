@@ -10,10 +10,10 @@ afterEach(cleanup)
 it("says what a viewer can do and who can change it, as a note", () => {
   render(<RoleNotice kind="viewer" locale="en" />)
   const note = screen.getByRole("note")
-  expect(note).toHaveTextContent("Viewer access")
-  expect(note).toHaveTextContent("need an owner or a manager")
-  expect(note).toHaveTextContent(copy.en.shell.access.askOwner)
-  expect(note).toHaveTextContent("Read only")
+  expect(note).toHaveTextContent("You can look; ask the owner to make changes.")
+  expect(note.querySelectorAll("span")).toHaveLength(1)
+  expect(note.querySelector("small")).toBeNull()
+  expect(note.querySelector("[data-slot=badge]")).toBeNull()
 })
 
 it("fills the role into owner-only notices and marks them Owner only", () => {

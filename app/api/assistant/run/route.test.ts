@@ -62,7 +62,7 @@ describe("POST /api/assistant/run", () => {
   it('returns controlled no-store 409 for the shared action run lock',async()=>{
     mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike('owner'));
     mocks.runLiveAssistant.mockRejectedValueOnce(new ActionRunInFlightError());
-    const res=await post({mode:'live',surface:'action',intentId:'draft_review_reply',locale:'en',context:{workspaceId:WORKSPACE_ID}});
+    const res=await post({mode:'live',surface:'action',intentId:'draft_review_reply',locale:'en',context:{workspaceId:WORKSPACE_ID,actionId:"33333333-3333-4333-8333-333333333333"}});
     expect(res.status).toBe(409);expect(res.headers.get('cache-control')).toBe('no-store');expect(await res.json()).toEqual({error:'run_in_progress'});
     expect(mocks.llmComplete).not.toHaveBeenCalled();expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
   });
@@ -173,7 +173,7 @@ it.each(["draft_review_reply", "friendlier_review_reply", "generate_social", "ge
 it("passes only trusted membership to the runner", async () => {
   const trusted = auth("manager", ["22222222-2222-4222-8222-222222222222"]);
   mocks.authorizeWorkspaceRequest.mockResolvedValue(trusted);
-  const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", membership: auth("owner").membership, context: { workspaceId: WORKSPACE_ID, role: "owner", locationScope: null } });
+  const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", membership: auth("owner").membership, context: { workspaceId: WORKSPACE_ID, actionId: "33333333-3333-4333-8333-333333333333", role: "owner", locationScope: null } });
   expect(res.status).toBe(200);
   expect(mocks.runLiveAssistant).toHaveBeenCalledWith(expect.objectContaining({ membership: trusted.membership }));
 });
@@ -189,7 +189,7 @@ it.each([["forbidden", 403], ["not_found", 404]] as const)("maps resolved contex
   const { AssistantAccessError } = await import("@/lib/assistant/live");
   mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("manager"));
   mocks.runLiveAssistant.mockRejectedValue(new AssistantAccessError(code));
-  const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", context: { workspaceId: WORKSPACE_ID } });
+  const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", context: { workspaceId: WORKSPACE_ID, actionId: "33333333-3333-4333-8333-333333333333" } });
   expect(res.status).toBe(status);
   expect(await res.json()).toEqual({ error: code });
   expect(res.headers.get("cache-control")).toBe("no-store");
@@ -213,7 +213,7 @@ describe("POST /api/assistant/run AI budget", () => {
   it("answers 429 ai_budget_reached when the live draft was refused, and records no run event", async () => {
     mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
     mocks.runLiveAssistant.mockRejectedValueOnce(new AiBudgetRefusal("ai_global"));
-    const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", context: { workspaceId: WORKSPACE_ID } });
+    const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", context: { workspaceId: WORKSPACE_ID, actionId: "33333333-3333-4333-8333-333333333333" } });
     expect(res.status).toBe(429);
     expect(await res.json()).toEqual({ error: "ai_budget_reached" });
     expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
@@ -222,7 +222,7 @@ describe("POST /api/assistant/run AI budget", () => {
   it("answers 503 ai_paused when the live draft was refused because AI is paused, and records no run event", async () => {
     mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
     mocks.runLiveAssistant.mockRejectedValueOnce(new AiBudgetRefusal("ai_paused"));
-    const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", context: { workspaceId: WORKSPACE_ID } });
+    const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", context: { workspaceId: WORKSPACE_ID, actionId: "33333333-3333-4333-8333-333333333333" } });
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ error: "ai_paused" });
     expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
@@ -233,7 +233,7 @@ describe("POST /api/assistant/run AI budget", () => {
     mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
     vi.stubEnv("AI_DRAFTS_PAUSED", "true");
     try {
-      const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", context: { workspaceId: WORKSPACE_ID } });
+      const res = await post({ mode: "live", surface: "action", intentId: "draft_review_reply", locale: "en", context: { workspaceId: WORKSPACE_ID, actionId: "33333333-3333-4333-8333-333333333333" } });
       expect(res.status).toBe(503);
       expect(await res.json()).toEqual({ error: "ai_paused" });
       expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
@@ -355,4 +355,22 @@ describe("POST /api/assistant/run: contextual assistant (P4.3)", () => {
     expect(await res.json()).toEqual({ error: "not_found" });
     expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
   });
+});
+
+it.each(["home", "actions", "insights", "assets", "create", "workspace"])("refuses every live draft intent on %s before auth, budgets or generation", async surface => {
+  for (const intentId of ["draft_review_reply", "friendlier_review_reply", "generate_social", "generate_faq", "generate_menu", "shorten_review_reply", "contact_review_reply"]) {
+    const response = await post({ mode: "live", surface, intentId, locale: "zh-HK", context: { workspaceId: WORKSPACE_ID, actionId: "33333333-3333-4333-8333-333333333333" } });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "intent_not_available_here" });
+  }
+  expect(mocks.runLiveAssistant).not.toHaveBeenCalled();
+  expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+});
+
+it("requires a concrete action for live generation, so action chrome cannot become another draft entry point", async () => {
+  mocks.authorizeWorkspaceRequest.mockImplementation(authorizeLike("owner"));
+  const response = await post({ mode: "live", surface: "action", intentId: "generate_faq", locale: "en", context: { workspaceId: WORKSPACE_ID } });
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({ error: "actionId is required" });
+  expect(mocks.runLiveAssistant).not.toHaveBeenCalled();
 });

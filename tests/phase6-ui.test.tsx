@@ -36,15 +36,13 @@ describe("RescanButton", () => {
   it("is hidden for viewers", () => {
     expect(renderToStaticMarkup(<RescanButton {...base} tier="paid" role="viewer" />)).toBe("");
   });
-  it("is disabled with the tier copy and billing link on lite", () => {
+  it("is absent on lite, so there is no unusable rescan or plan detour", () => {
     const html = renderToStaticMarkup(<RescanButton {...base} tier="lite" role="owner" />);
-    expect(html).toContain('disabled=""');
-    expect(html).toContain("part of the Growth plan");
-    expect(html).toContain('href="/en/owner/shop/settings/plan"');
+    expect(html).toBe("");
   });
-  it("is enabled for a paid owner with a location, disabled for the all-locations scope", () => {
+  it("is enabled for a paid member with a location, hidden for the all-locations scope", () => {
     expect(renderToStaticMarkup(<RescanButton {...base} tier="paid" role="manager" />)).not.toContain('disabled=""');
-    expect(renderToStaticMarkup(<RescanButton {...base} locationId={null} tier="paid" role="owner" />)).toContain('disabled=""');
+    expect(renderToStaticMarkup(<RescanButton {...base} locationId={null} tier="paid" role="owner" />)).toBe("");
   });
 });
 

@@ -72,8 +72,8 @@
       "none": "An owner, or a manager for this location, can act on this."
     },
     "button": {
-      "open_action": "Open action",
-      "reauthorise": "Re-authorise",
+      "open_action": "Reopen draft",
+      "reauthorise": "Reconnect Google",
       "contact_support": "Contact Fimmick"
     },
     "reason": {
