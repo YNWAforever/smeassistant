@@ -23,4 +23,6 @@ export type ShellWorkspace = {
   assistant?: { workspaceId: string; locationId?: string }
   /** P4.1: the Offers nav entry renders only when OFFER_PROMOTIONS_ENABLED is on (non-demo workspaces); absent means hidden. */
   offersEnabled?: boolean
+  /** Optional conversation shell; computed on the server, omitted while disabled. */
+  conversationEnabled?: boolean
 }

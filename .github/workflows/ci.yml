@@ -79,6 +79,9 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Conversation Stage 1 (offline real components)
+        run: pnpm e2e:conversation
+
       - name: End-to-end tests
         run: pnpm e2e
 

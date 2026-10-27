@@ -35,6 +35,8 @@ import { interpolate } from "@/lib/share"
 import { accountInitials, resolveLocationSlug, usagePercent } from "@/lib/workspace/shell"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import { ThemeMenu, WorkspaceTheme } from "@/components/theme/workspace-theme"
+import { ConversationSwitch } from "@/components/workspace/conversation-switch"
+import { conversationCopy } from "@/lib/copy-conversation"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { useFocusClearOfBars } from "@/hooks/use-focus-clear-of-bars"
 import type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
@@ -80,7 +82,8 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
   const current = destinationFor(pathname, base)
   const isNewAction = pathname === `${base}/actions/new`
   const isActionDetail = !isNewAction && pathname.startsWith(`${base}/actions/`)
-  const workspaceSection = isNewAction ? t.context.newAction : isActionDetail ? t.context.review : t.nav[current ?? "today"]
+  const isConversation = workspace.conversationEnabled && pathname === `${base}/conversation`
+  const workspaceSection = isConversation ? conversationCopy[locale].switchLabel : isNewAction ? t.context.newAction : isActionDetail ? t.context.review : t.nav[current ?? "today"]
   const assistantSurface: AssistantSurface = isNewAction
     ? "create"
     : isActionDetail
@@ -165,7 +168,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
           <LocaleSelect locale={locale} />
           {workspace.demo && <DemoBadge locale={locale} />}
         </header>
-        <main className="workspace-content" id="main-content" tabIndex={-1}>{children}</main>
+        <main className="workspace-content" id="main-content" tabIndex={-1}>{workspace.conversationEnabled && (pathname === base || isConversation) && <ConversationSwitch locale={locale} base={base} location={location} active={!!isConversation} />}{children}</main>
         <nav className="mobile-bottom-nav md:hidden" aria-label={t.nav.label}>
           {DESTINATIONS.map(({ key, icon: Icon, suffix }) => {
             const active = current === key

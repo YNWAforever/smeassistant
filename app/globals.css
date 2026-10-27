@@ -45,6 +45,7 @@
 @import "./styles/screens/workspace-base.css" layer(pages);
 @import "./styles/screens/action-detail.css" layer(pages);
 @import "./styles/screens/today.css" layer(pages);
+@import "./styles/screens/conversation.css" layer(pages);
 @import "./styles/screens/actions-insights.css" layer(pages);
 @import "./styles/screens/shell.css" layer(pages);
 @import "./styles/screens/business-settings.css" layer(pages);
