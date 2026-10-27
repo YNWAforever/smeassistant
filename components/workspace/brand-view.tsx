@@ -12,7 +12,7 @@ import type { BrandProfile } from "@/lib/workspace/brand"
 export function BrandView({ locale, workspaceId, actorId, role, brand, timezone }: { locale: PrototypeLocale; workspaceId: string; actorId: string; role: WorkspaceRole; brand: BrandProfile; timezone?: string }) {
   const owner = role === "owner"
   const banner = owner ? null : (
-    <RoleNotice kind="brand" role={role} locale={locale} />
+    <RoleNotice kind={role === "viewer" ? "viewer" : "brand"} role={role} locale={locale} />
   )
   return <BrandSettingsForm locale={locale} workspaceId={workspaceId} actorId={actorId} brand={brand} readOnly={!owner} banner={banner} timezone={timezone} />
 }

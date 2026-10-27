@@ -1,3 +1,5 @@
+import { canRescan as rescanEligible, rescanOwnerCopy } from "@/lib/workspace/rescan-eligibility"
+import { CopyFollowUpCard } from "@/components/workspace/copy-follow-up-card"
 import Link from "next/link"
 import type { ReactNode } from "react"
 import { ArrowRight, CalendarClock, Check, CheckCircle2, CircleAlert, CircleCheck, Clock3, FileClock, Globe2, ShieldCheck, Sparkles, TrendingDown } from "lucide-react"
@@ -38,7 +40,8 @@ export interface HomeBriefViewProps {
   consentPolicyVersion: string
   /** The signed-in member's real role; drives the Rescan button (hidden for viewers). Omitted = no rescan control. */
   role?: WorkspaceRole
-  /** NeedsAttentionCard, after the coach card so its <h2> never precedes this page's <h1>. */
+  rescanInScope?: boolean
+  /** NeedsAttentionCard, before the coach card so its <h2> never precedes this page's <h1>. */
   problems?: ReactNode
   /** The getting-started checklist, rendered after today's priority so it never pushes it below the fold. */
   gettingStarted?: ReactNode
@@ -51,13 +54,14 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
     ? `${href}?version=${encodeURIComponent(action.latestVersion.id)}` : href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems, gettingStarted }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems, gettingStarted, rescanInScope = true }: HomeBriefViewProps) {
   const t = copy[locale].home
   const focus = copy[locale].ownerFocus
   const pc = copy[locale].workspaceHome.home
   const base = `/${locale}/owner/${workspaceSlug}`
   const location = brief.locationSlug
   const { snapshot, changed, priority, proof, month } = brief
+  const copyFollowUp = brief.copyFollowUp?.workspaceId === workspaceId ? brief.copyFollowUp : null
   const followUp = brief.reviewFollowUp?.workspaceId === workspaceId ? brief.reviewFollowUp : null
   const reviewText = homeReviewCopy[locale]
   const versionLabel = (n: number) => reviewText.version.replace("{n}", String(n))
@@ -71,7 +75,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   const steps = [pc.steps.scout, pc.steps.priority, fill(pc.steps.drafts, { drafts: brief.drafts }), pc.steps.awaiting]
   const stepDone = [brief.agentStrip.scout, brief.agentStrip.priority, brief.drafts > 0, false]
   // Mirrors RescanButton: only a paid owner or manager has the control the empty state would point at.
-  const canRescan = tier === "paid" && (role === "owner" || role === "manager")
+  const canRescan = snapshot !== null && rescanEligible({ tier, role, locationId: brief.location?.id ?? null, inScope: rescanInScope })
   const changedBadge = changed.comparable ? pc.comparable : pc.notComparable
   const changedReason = changed.comparable ? null : comparisonReasonText(changed.reason, locale)
   // F-19: never promise ready work that does not exist. No linked business, or
@@ -81,18 +85,18 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   const hasLocations = locations.length > 0
   // An open action is real work whatever the snapshot state, so it always wins.
   const unscanned = !priority && (!hasLocations || (location !== "all" && !snapshot))
-  const pageTitle = priority || followUp ? t.title : unscanned ? t.noScanTitle : t.quietTitle
-  const pageSubtitle = priority || followUp ? t.subtitle : unscanned ? t.noScanSubtitle : t.quietSubtitle
+  const pageTitle = priority || copyFollowUp ? t.title : unscanned ? t.noScanTitle : t.quietTitle
+  const pageSubtitle = priority || copyFollowUp ? t.subtitle : unscanned ? t.noScanSubtitle : t.quietSubtitle
   const resultCopy = copy[locale].workspaceHome.insights
   const resolved = changed.comparable ? brief.ledger.resolved.length : 0
   const regressed = changed.comparable ? brief.ledger.regressed.length : 0
   const resultSentence = location === "all" ? resultCopy.allLead
-    : !snapshot ? resultCopy.missingFirst
+    : !snapshot ? (canRescan ? resultCopy.missingFirst : rescanOwnerCopy[locale].next)
     : resolved > 0 && regressed === 0 ? fill(resultCopy.betterResolved, { n: resolved })
     : regressed > 0 && resolved === 0 ? fill(resultCopy.worseRegressed, { n: regressed })
     : resolved > 0 && regressed > 0 ? fill(resultCopy.mixed, { resolved, regressed })
     : changed.comparable && changed.delta !== null ? changed.delta > 0 ? resultCopy.better : changed.delta < 0 ? resultCopy.worse : resultCopy.same
-    : changed.reason ? fill(resultCopy.missingBecause, { reason: comparisonReasonText(changed.reason, locale) }) : resultCopy.missingFirst
+    : changed.reason ? fill(resultCopy.missingBecause, { reason: comparisonReasonText(changed.reason, locale) }) : (canRescan ? resultCopy.missingFirst : rescanOwnerCopy[locale].next)
   const priorityCta = role === "viewer" ? focus.view
     : priority?.templateKey === "google-reconnect" ? focus.connect
     : priority?.missingInputs.length ? t.addFacts
@@ -103,30 +107,52 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   return (
     <div className="owner-home-page owner-daily-focus">
       <PageIntro
-        eyebrow={priority || followUp ? undefined : snapshot ? `${pc.snapshot} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : hasLocations && location === "all" ? pc.allLocationsNoCombined : pc.noSnapshotYet}
+        eyebrow={priority || copyFollowUp ? undefined : snapshot ? `${pc.snapshot} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : hasLocations && location === "all" ? pc.allLocationsNoCombined : pc.noSnapshotYet}
         title={pageTitle}
-        description={priority || followUp ? undefined : pageSubtitle}
+        description={priority || copyFollowUp ? undefined : pageSubtitle}
         actions={<LocationSelect locale={locale} value={location} locations={locations} />}
       />
 
       {!hasLocations && <div className="context-banner" role="status"><CircleAlert /><div><strong>{t.noLocationTitle}</strong><span>{t.noLocationBody}</span><Link href={`/${locale}/scan`}>{t.noLocationCta}</Link></div></div>}
 
+      {problems}
+
       <section className="owner-brief-grid" aria-label={pc.todaySOperatingBrief}>
-        {(priority || !followUp) && <article className="brief-priority-card">
+        {!copyFollowUp && <article className="brief-priority-card">
           {priority ? (
             <>
               <h2>{resolveText(priority.title, locale)}</h2>
               <p className="coach-sentence">{resolveText(priority.summary, locale)}</p>
               <div className="brief-priority-actions"><Button asChild size="lg"><Link href={actionHref(locale, workspaceSlug, priority, location)}>{priorityCta}<ArrowRight /></Link></Button></div>
             </>
-          ) : followUp ? null : (
+          ) : (
             <>
               <h2>{pc.noActionNeedsYour}</h2>
-              <p className="coach-sentence">{snapshot ? (canRescan ? `${t.emptyWeek} ${t.rescanNow}` : t.emptyWeek) : pc.actionsAreDerivedFrom}</p>
+              <p className="coach-sentence">{snapshot ? t.emptyWeek : pc.actionsAreDerivedFrom}</p>
             </>
           )}
         </article>}
-        {followUp && <article className="brief-priority-card" data-testid="home-review-followup" aria-label={reviewText.title}>
+        {copyFollowUp && <CopyFollowUpCard followUp={copyFollowUp} locale={locale} viewer={role === "viewer"} />}
+      </section>
+
+      {!priority && !copyFollowUp && (brief.openActionCount ?? brief.openActions.length) === 0 && gettingStarted}
+
+
+      <section className="owner-results-disclosure" aria-label={focus.results}>
+        <p>{resultSentence}</p>
+        {canRescan && role && <div className="owner-results-tools"><p>{rescanOwnerCopy[locale].prompt}</p><RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} consentPolicyVersion={consentPolicyVersion} /></div>}
+        <Link href={withLocation(`${base}/insights`, location)}>{focus.results}<ArrowRight /></Link>
+      </section>
+
+      <section className="owner-tasks-disclosure" aria-label={focus.otherTasks}>
+        <p>{focus.otherTasks} <Badge variant="outline">{brief.openActionCount ?? brief.openActions.length}</Badge></p>
+        <Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link>
+      </section>
+
+      {/* Scores and supporting records stay available without competing with the coach. */}
+      <details className="trust-disclosure owner-priority-evidence">
+        <summary><ShieldCheck /> {t.trust}</summary>
+        {followUp && <article className="owner-review-record" data-testid="home-review-followup" aria-label={reviewText.title}>
           <div className="card-label-row"><span><FileClock /> {reviewText.title}</span><Badge variant="outline">{reviewText.completed}</Badge></div>
           <h2>{resolveText(followUp.title, locale)}</h2>
           <p className="brief-action-meta">{versionLabel(followUp.versionNo)} · {reviewText.applied}</p>
@@ -143,25 +169,6 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
             </Link>
           </div>}
         </article>}
-      </section>
-
-      {!priority && !followUp && (brief.openActionCount ?? brief.openActions.length) === 0 && gettingStarted}
-
-      {problems}
-
-      <section className="owner-results-disclosure" aria-label={focus.results}>
-        <p>{resultSentence}</p>
-        <Link href={withLocation(`${base}/insights`, location)}>{focus.results}<ArrowRight /></Link>
-      </section>
-
-      <section className="owner-tasks-disclosure" aria-label={focus.otherTasks}>
-        <p>{focus.otherTasks} <Badge variant="outline">{brief.openActionCount ?? brief.openActions.length}</Badge></p>
-        <Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link>
-      </section>
-
-      {/* Scores and supporting records stay available without competing with the coach. */}
-      <details className="trust-disclosure owner-priority-evidence">
-        <summary><ShieldCheck /> {t.trust}</summary>
       {priority && <>
         <div className="brief-action-meta"><Badge className={priorityClass(priority.priority)}>{priorityLabel(priority.priority, locale)}</Badge><span><Clock3 /> {effortLabel(priority.effortMinutes, locale)} {pc.ownerTime}</span><span><FileClock /> {resolveText(priority.displayPhase, locale)}</span>{priority.latestVersion && <span>{versionLabel(priority.latestVersion.versionNo)}</span>}</div>
         <div className="why-now-box"><FactType type={priority.evidence.factType} /><div><strong>{t.whyNow}</strong><span>{resolveText(priority.evidence.detail, locale)}</span><small>{pc.observed} {formatDateTime(priority.evidence.observedAt, locale, timezone)} · {sourceLabel(priority.evidence.source, locale)}</small></div></div>
@@ -169,7 +176,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
       </>}
 
         {hasLocations && location === "all" && <div className="context-banner" role="status"><CircleAlert /><div><strong>{pc.contextChangedToAll}</strong><span>{pc.summaryDataIsLocation}</span></div></div>}
-        {role && <div className="owner-results-tools"><RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} consentPolicyVersion={consentPolicyVersion} /></div>}
+
         <div className="owner-results-grid">
 
         <article className="brief-score-card">

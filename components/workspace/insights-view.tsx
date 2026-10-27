@@ -1,3 +1,5 @@
+import { rescanOwnerCopy } from "@/lib/workspace/rescan-eligibility"
+import type { ReactNode } from "react"
 import Link from "next/link"
 import { ArrowRight, CheckCircle2, CircleDashed, ShieldCheck, TrendingDown } from "lucide-react"
 
@@ -18,6 +20,8 @@ export interface InsightsViewProps {
   timezone: string
   locations: Array<{ slug: string; name: string }>
   model: InsightsModel
+  rescanAllowed?: boolean
+  rescan?: ReactNode
 }
 
 /** Moved to lib/workspace/format.ts so Home renders the same words. */
@@ -45,11 +49,11 @@ function SeriesStrip({ model, locale, timezone }: { model: InsightsModel; locale
 }
 
 /** One sentence an owner can use: a felt change, or what is still missing. No score formula. */
-export function insightsLeadSentence(model: InsightsModel, locale: PrototypeLocale): string {
+export function insightsLeadSentence(model: InsightsModel, locale: PrototypeLocale, rescanAllowed = true): string {
   const pc = copy[locale].workspaceHome.insights
   if (model.locationSlug === "all") return pc.allLead
   const head = model.series.at(-1) ?? null
-  if (!head) return pc.missingFirst
+  if (!head) return rescanAllowed ? pc.missingFirst : rescanOwnerCopy[locale].comparison
   const resolved = model.ledgerComparable ? model.ledger.resolved.length : 0
   const regressed = model.ledgerComparable ? model.ledger.regressed.length : 0
   const delta = model.trend.showScores ? model.trend.delta : null
@@ -63,11 +67,11 @@ export function insightsLeadSentence(model: InsightsModel, locale: PrototypeLoca
     return pc.quietChange
   }
   const reason = model.trend.reasonCode
-  if (!reason || reason === "NO_DIFF") return pc.missingFirst
+  if (!reason || reason === "NO_DIFF") return rescanAllowed ? pc.missingFirst : rescanOwnerCopy[locale].comparison
   return fill(pc.missingBecause, { reason: comparisonReasonText(reason, locale) })
 }
 
-export function InsightsView({ locale, workspaceSlug, timezone, locations, model }: InsightsViewProps) {
+export function InsightsView({ locale, workspaceSlug, timezone, locations, model, rescan, rescanAllowed = false }: InsightsViewProps) {
   const pc = copy[locale].workspaceHome.insights
   const base = `/${locale}/owner/${workspaceSlug}`
   const isAll = model.locationSlug === "all"
@@ -75,10 +79,11 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
   const trend = model.trend
   const comparable = trend.showScores && trend.delta !== null
   const delta = comparable ? trend.delta : null
-  const sentence = insightsLeadSentence(model, locale)
+  const sentence = insightsLeadSentence(model, locale, rescanAllowed)
   return (
     <div className="insights-page">
       <PageIntro title={pc.leadTitle} description={isAll || head ? sentence : undefined} actions={<LocationSelect locale={locale} value={model.locationSlug} locations={locations} className="location-select" ariaLabel={pc.chooseInsightsLocation} />} />
+      {rescan}
       {isAll ? (
         <>
         <div className="location-proof-grid">

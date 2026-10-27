@@ -41,6 +41,7 @@ import {
   type DemoAssistantRunResponse,
   type DemoQuestionId,
 } from "@/lib/pocket-assistant/contracts"
+import { assistantIntentAllowed } from "@/lib/pocket-assistant/intent-policy"
 import { ASSISTANT_RUN_ENDPOINT, buildAssistantRequest } from "@/lib/pocket-assistant/request"
 import { aiBudgetRefusal } from "@/lib/budgets/messages"
 import { fill } from "@/lib/copy-ui"
@@ -56,8 +57,8 @@ export const surfaceQuestions: Record<AssistantSurface, DemoQuestionId[]> = {
   sample: ["explain_priority", "explain_change", "explain_limits", "fallback_plan", "draft_review_reply"],
   report: ["explain_priority", "explain_limits", "draft_review_reply"],
   home: ["explain_priority", "fallback_plan", "explain_insights"],
-  actions: ["compare_priorities", "explain_limits", "draft_review_reply"],
-  action: ["friendlier_review_reply", "explain_priority", "rescan_validation"],
+  actions: ["compare_priorities", "explain_limits"],
+  action: ["friendlier_review_reply", "explain_priority", "rescan_validation", "draft_review_reply"],
   create: ["draft_review_reply", "generate_social", "generate_faq", "generate_menu"],
   insights: ["explain_insights", "explain_limits", "rescan_validation"],
   assets: ["asset_next_step", "generate_social", "generate_menu"],
@@ -129,6 +130,7 @@ export function ContextualAssistant({
   trigger,
   onCreateVersion,
   reviewDraft = false,
+  allowGeneration = false,
   disabled = false,
   mode = "demo",
   context,
@@ -149,6 +151,8 @@ export function ContextualAssistant({
   onCreateVersion?: (run: DemoAssistantRunResponse) => Promise<AssistantVersionSaveResult>
   /** Only the review-response editor can offer the review-specific revisions. */
   reviewDraft?: boolean
+  /** Only the Action Edit step opts into drafts; shell launchers explain. */
+  allowGeneration?: boolean
   disabled?: boolean
   /** `live` answers from this workspace's evidence (requires `context`); default `demo` keeps the fixed sample (§3.8). */
   mode?: AssistantMode
@@ -182,11 +186,13 @@ export function ContextualAssistant({
   const [suggestions, setSuggestions] = useState<AssistantSuggestion[]>([])
   // The context object is rebuilt on every parent render; its ids are what matter.
   const contextKey = mode === "live" && context ? suggestionsQuery(context) : null
-  const shown = suggestions.slice(0, 3)
+  const allowed = (intent: AssistantIntentId) => assistantIntentAllowed(surface, intent, mode, allowGeneration)
+    && !(mode === "live" && surface === "action" && !reviewDraft && (intent === "friendlier_review_reply" || intent === "draft_review_reply"))
+  const shown = suggestions.filter(item => allowed(item.intentId)).slice(0, 3)
   const questions: AssistantIntentId[] = [
     ...(mode === "live" && reviewDraft && surface === "action" && context?.versionId ? ["shorten_review_reply" as const, "contact_review_reply" as const] : []),
     ...surfaceQuestions[surface].filter((questionId) => !shown.some((item) => item.intentId === questionId)),
-  ]
+  ].filter(allowed) as AssistantIntentId[]
   // Only the latest request may write the answer: a slower earlier one (an auto-ask,
   // or a previous click) must not overwrite the question the owner chose since.
   const latestAsk = useRef(0)
@@ -233,7 +239,7 @@ export function ContextualAssistant({
   }
 
   async function ask(questionId: AssistantIntentId, options: { key?: string; context?: AssistantContext; origin?: AssistantOrigin } = {}) {
-    if(needsReconciliation || savePending.current)return
+    if(!allowed(questionId) || needsReconciliation || savePending.current)return
     const seq = ++latestAsk.current
     const stale = () => seq !== latestAsk.current
     setSelected(options.key ?? questionId)

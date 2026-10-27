@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { AlertTriangle, LoaderCircle, MessageSquare, Save, WandSparkles } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -17,7 +16,7 @@ import type { ActionEditor } from "@/components/workspace/action-detail/use-acti
 /** The scanned reviews the next draft uses and the form for owner facts the agent asked for; it never guesses them. */
 export function DraftInputs({ ed }: { ed: ActionEditor }) {
   const {
-    ac, action, addOwnerReviewNote, approvedAssets, base, busy, canEdit, checklistCopy, checklistSteps, dirty,
+    ac, action, addOwnerReviewNote, approvedAssets, busy, canEdit, checklistCopy, checklistSteps, dirty,
     faqQuestionByKey, hydrated, inputs, inputValues, locale, neededKeys, reviewEvidence, scanInputCopy, selectedReviews,
     setInputValues, showInputForm, submitInputs, timezone, toggleReview
   } = ed
@@ -104,7 +103,7 @@ export function DraftInputs({ ed }: { ed: ActionEditor }) {
                 <SelectTrigger id={`input-${key}`} aria-label={inputs[key] ?? key}><SelectValue placeholder={ac.editor.assetPlaceholder} /></SelectTrigger>
                 <SelectContent><SelectItem value="text_only">{ac.editor.textOnly}</SelectItem>{approvedAssets.map((asset) => <SelectItem key={asset.id} value={asset.id}>{asset.filename}</SelectItem>)}</SelectContent>
               </Select>
-              {approvedAssets.length === 0 && <small>{ac.editor.noAssets} <Link href={`${base}/business/assets`}>{ac.editor.goToAssets}</Link></small>}
+              {approvedAssets.length === 0 && <small>{ac.editor.noAssets} {ac.editor.textOnly}</small>}
             </div>
           ) : (
             <div key={key} className="field-stack"><Label htmlFor={`input-${key}`}>{faqQuestionByKey.get(key) ? resolveText(faqQuestionByKey.get(key)!.question, locale) : (inputs[key] ?? key)}</Label>{key.startsWith("owner_fact") || key === "menu_items" || key === "reviews_without_response" ? <Textarea id={`input-${key}`} rows={3} value={inputValues[key] ?? faqQuestionByKey.get(key)?.prefill ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} /> : <Input id={`input-${key}`} value={inputValues[key] ?? ""} onChange={(event) => setInputValues((prev) => ({ ...prev, [key]: event.target.value }))} disabled={!canEdit} />}{faqQuestionByKey.get(key)?.prefill && <small>{ac.editor.prefilled}</small>}</div>

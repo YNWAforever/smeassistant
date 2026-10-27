@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { PageIntro, SectionCard } from "@/components/product-ui"
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
 import type { BrandLanguage, BrandProfile, BrandVoice } from "@/lib/workspace/brand"
 import { saveBrand, type ClientResult } from "@/lib/workspace/client"
 import { formatDateTime } from "@/lib/workspace/format"
@@ -166,7 +166,7 @@ function ScopedBrandSettingsForm({ locale, workspaceId, brand, readOnly, banner,
         eyebrow={t.eyebrow}
         title={t.title}
         description={t.description}
-        actions={readOnly ? null : <Button type="submit" disabled={busy || error?.conflict}>{busy ? <LoaderCircle className="animate-spin" /> : <Check />} {t.save}</Button>}
+        actions={readOnly ? <Button type="button" disabled>{copy[locale].shell.access.askOwnerAction}</Button> : <Button type="submit" disabled={busy || error?.conflict}>{busy ? <LoaderCircle className="animate-spin" /> : <Check />} {t.save}</Button>}
       />
       {banner}
       {error && <div role="alert" tabIndex={-1} ref={errorRef} className="permission-banner">

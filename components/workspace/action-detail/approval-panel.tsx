@@ -10,6 +10,7 @@ import { GbpPublishCard } from "@/components/workspace/gbp-publish-card"
 import { fill } from "@/lib/copy-ui"
 import { resolveText } from "@/lib/domain"
 import { formatDateTime, priorityLabel } from "@/lib/workspace/format"
+import { copy } from "@/lib/copy"
 import { editorStep } from "./owner-steps"
 import type { ActionEditor } from "./use-action-editor"
 
@@ -26,6 +27,7 @@ export function ConfirmVersionDialog({ ed }: { ed: ActionEditor }) {
 
 export function StepPrimary({ ed }: { ed: ActionEditor }) {
   const step = editorStep(ed)
+  if (ed.effectiveRole === "viewer") return <Button disabled>{copy[ed.locale].shell.access.askOwnerAction}</Button>
   if (step === 2) return <Button disabled={!ed.canDeliver} onClick={() => void ed.deliver("copy")}><Copy /> {ed.ac.delivery.copyText}</Button>
   if (step === 1) return <Button disabled={!ed.canApproveCurrent} onClick={() => ed.setConfirmOpen(true)}>{fill(ed.ac.approval.approve, { version: ed.versionName })}</Button>
   return ed.dirty

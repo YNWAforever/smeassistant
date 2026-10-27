@@ -98,6 +98,8 @@ export type ShellCopy = {
   access: {
     readOnly: string
     ownerOnly: string
+    askOwnerAction: string
+    viewerLine: string
     askOwner: string
     viewer: Item
     viewerAction: Item
@@ -230,6 +232,8 @@ export const shellEn: ShellCopy = {
   access: {
     readOnly: "Read only",
     ownerOnly: "Owner only",
+    askOwnerAction: "Ask the owner to change it",
+    viewerLine: "You can look; ask the owner to make changes.",
     askOwner: "Only the workspace owner can change roles and locations, in Settings › Team.",
     viewer: { title: "Viewer access", body: "You can see evidence, actions and results. Drafting, approving, delivering and billing need an owner or a manager." },
     viewerAction: { title: "Viewer access", body: "You can see the evidence and history. Editing, drafting, approving and exporting need an owner or a manager." },
@@ -362,6 +366,8 @@ export const shellZhHK: ShellCopy = {
   access: {
     readOnly: "只讀",
     ownerOnly: "只限店主",
+    askOwnerAction: "問店主改",
+    viewerLine: "你睇到，改要問店主。",
     askOwner: "只有工作台店主可在「設定 › 團隊」更改角色及地點。",
     viewer: { title: "檢視者權限", body: "你可查看證據、行動及成效；起草、審批、送出及帳單需要店主或經理。" },
     viewerAction: { title: "檢視者權限", body: "你可查看證據及紀錄；編輯、起草、審批及匯出需要店主或經理。" },
@@ -494,6 +500,8 @@ export const shellZhTW: ShellCopy = {
   access: {
     readOnly: "唯讀",
     ownerOnly: "僅限店家負責人",
+    askOwnerAction: "請店主修改",
+    viewerLine: "你可以看，要修改請找店主。",
     askOwner: "只有工作台負責人可以在「設定 › 團隊」變更角色與據點。",
     viewer: { title: "檢視者權限", body: "您可以檢視證據、行動與成效；起草、核准、送出與帳務需要負責人或經理。" },
     viewerAction: { title: "檢視者權限", body: "您可以檢視證據與紀錄；編輯、起草、核准與匯出需要負責人或經理。" },

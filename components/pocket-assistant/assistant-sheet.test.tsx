@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 
 import { ContextualAssistant, surfaceQuestions } from "@/components/pocket-assistant/assistant-sheet";
 import type { AssistantSurface } from "@/lib/pocket-assistant/contracts";
+import { copy } from "@/lib/copy";
 import { getMessages } from "@/lib/i18n";
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
@@ -20,7 +21,7 @@ afterEach(() => {
 });
 
 async function ask(locale: keyof typeof TRIGGER) {
-  render(<ContextualAssistant locale={locale} surface="actions" mode="live" context={{ workspaceId: WORKSPACE_ID }} />);
+  render(<ContextualAssistant locale={locale} surface="action" allowGeneration reviewDraft mode="live" context={{ workspaceId: WORKSPACE_ID, actionId: ACTION_ID }} />);
   fireEvent.click(screen.getByRole("button", { name: TRIGGER[locale] }));
   const question = await screen.findByRole("button", { name: QUESTION[locale] });
   await act(async () => {
@@ -101,7 +102,7 @@ const suggestionsOk = (list: unknown[]) => () => ({ ok: true, status: 200, json:
 type Props = Partial<React.ComponentProps<typeof ContextualAssistant>>;
 async function open(props: Props = {}) {
   const locale = props.locale ?? "en";
-  render(<ContextualAssistant locale={locale} surface="action" mode="live" context={CONTEXT} {...props} />);
+  render(<ContextualAssistant locale={locale} surface="action" mode="live" context={CONTEXT} allowGeneration reviewDraft {...props} />);
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: TRIGGER[locale] }));
   });
@@ -428,4 +429,25 @@ describe("targeted review revisions", () => {
     expect(screen.queryByRole("button", { name: "Shorten this reply" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Use a contact-only next step" })).toBeNull();
   });
+});
+
+it.each(["home", "actions", "insights", "assets", "create", "workspace"] as const)("keeps %s explain-only even with a generation autoAsk", async surface => {
+  const fetched = stubFetch(suggestionsOk([]));
+  await open({ surface, autoAsk: "generate_social" });
+  expect(fetched.runCalls()).toHaveLength(0);
+  for (const id of ["draft_review_reply", "friendlier_review_reply", "generate_social", "generate_faq", "generate_menu"] as const) {
+    expect(screen.queryByRole("button", { name: (copy.en.assistantSheet.liveQuestions as Partial<Record<typeof id, string>>)[id] ?? copy.en.assistantSheet.questions[id] })).toBeNull();
+  }
+});
+it("keeps the action chrome explain-only unless opened explicitly from Edit", async () => {
+  stubFetch(suggestionsOk([]));
+  await open({ reviewDraft: true, allowGeneration: false });
+  expect(screen.queryByRole("button", { name: "Shorten this reply" })).toBeNull();
+});
+
+it("does not advertise review generation from a non-review Action Edit step", async () => {
+  stubFetch(suggestionsOk([]));
+  await open({ reviewDraft: false });
+  expect(screen.queryByRole("button", { name: "Make it warmer without overpromising" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Draft one suitable review reply" })).toBeNull();
 });

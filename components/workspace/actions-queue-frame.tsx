@@ -50,7 +50,7 @@ export function ActionsQueueFrame({
         title={t.queue.title}
         description={t.queue.lead}
         actions={<>
-          {role !== "viewer" && <Button asChild><Link href={withLocation(`${base}/actions/new`, location)}><Plus aria-hidden="true" />{t.queue.newAction}</Link></Button>}
+          {role === "viewer" ? <Button disabled>{t.access.askOwnerAction}</Button> : <Button asChild><Link href={withLocation(`${base}/actions/new`, location)}><Plus aria-hidden="true" />{t.queue.newAction}</Link></Button>}
           {tools}
         </>}
       />

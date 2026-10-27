@@ -24,6 +24,6 @@ export function OwnerSteps({ locale, index }: { locale: PrototypeLocale; index: 
 }
 
 /** Local editing belongs to one immutable version; a newly saved version returns to Confirm. */
-export function editorStep(ed: { isApprovedCurrent: boolean; dirty: boolean; approval: string | null; selectedVersion: { id: string } | null; editingVersionId: string | null }): 0 | 1 | 2 {
-  return ownerStepIndex({ ...ed, hasVersion: ed.selectedVersion != null, editing: ed.selectedVersion != null && ed.editingVersionId === ed.selectedVersion.id })
+export function editorStep(ed: { isApprovedCurrent: boolean; dirty: boolean; approval: string | null; selectedVersion: { id: string } | null; editingVersionId: string | null; showInputForm?: boolean }): 0 | 1 | 2 {
+  return ownerStepIndex({ ...ed, hasVersion: ed.selectedVersion != null, editing: ed.showInputForm && !ed.isApprovedCurrent || ed.selectedVersion != null && ed.editingVersionId === ed.selectedVersion.id })
 }

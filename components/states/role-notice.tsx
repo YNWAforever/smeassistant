@@ -21,6 +21,9 @@ const OWNER_ONLY = new Set<RoleNoticeKind>(["brand", "billing", "teamViewer", "t
  */
 export function RoleNotice({ kind, locale, role, name }: { kind: RoleNoticeKind; locale: PrototypeLocale; role?: WorkspaceRole; name?: string }) {
   const t = copy[locale].shell.access
+  if (["viewer", "viewerAction", "viewerAssets", "createReadOnly"].includes(kind)) {
+    return <div className="role-notice" role="note" data-kind={kind}><Lock aria-hidden="true" /><span>{t.viewerLine}</span></div>
+  }
   const item = t[kind]
   const values = { role: role ? roleLabel(role, locale) : "", name: name ?? "" }
   const alert = kind === "forbidden" || kind === "notMember"

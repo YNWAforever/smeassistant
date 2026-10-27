@@ -187,7 +187,7 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
         <SectionCard className="usage-before-generation">
           <p className="eyebrow">{pc.usageAndDelivery}</p><h2>{pc.generationAndRevisionUse}</h2>
           <p>{pc.oneApprovedDeliveryIs}</p>
-          {stage === "idle" && <Button className="w-full" onClick={() => void startDraft()} disabled={!canCreate}><WandSparkles /> {pc.createTheActionAnd}</Button>}
+          {stage === "idle" && <Button className="w-full" onClick={() => void startDraft()} disabled={!canCreate}><WandSparkles /> {role === "viewer" ? copy[locale].shell.access.askOwnerAction : pc.createTheActionAnd}</Button>}
           {stage === "queued" && <div className="run-state-box run-running" role="status"><LoaderCircle className="animate-spin" /><div><strong>{pc.creatingTheActionAnd}</strong><span>{pc.validatingSourceEvidenceGuardrails}</span></div></div>}
           {stage === "failed" && <div className="run-state-box run-failed" role="alert"><XCircle /><div><strong>{pc.theActionCouldNot}</strong><span>{pc.existingWorkIsPreserved}{failure ? ` · ${failure}` : ""}</span></div><Button variant="outline" onClick={() => void startDraft()}>{copy[locale].workspace.packs.retry}</Button></div>}
           <small>{fill(pc.scope, { scope: location === "all" ? pc.scopeAll : locations.find((l) => l.slug === location)?.name ?? location })}{existing ? ` · ${pc.scopeEvidenceLed}` : ""}</small>

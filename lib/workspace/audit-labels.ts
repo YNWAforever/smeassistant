@@ -28,6 +28,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string; zhTW?:
   "version.changes_requested": { en: "Changes requested", zh: "已要求修改" },
   "version.rejected": { en: "Version rejected", zh: "版本已拒絕" },
   "delivery.exported": { en: "Export recorded", zh: "已記錄匯出" },
+  "action.copy_follow_up_recorded": { en: "Copy follow-up recorded", zh: "已記錄複製後回覆" },
   "delivery.copied": { en: "Copy recorded", zh: "已記錄複製" },
   "workspace.claimed": { en: "Workspace claimed", zh: "工作台已認領" },
   "member.invited": { en: "Member invited", zh: "已邀請成員" },
