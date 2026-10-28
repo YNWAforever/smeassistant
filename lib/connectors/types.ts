@@ -5,4 +5,9 @@ export interface ConnectorContext {
   source: ConnectorProvider; status: ConnectorStatus; observedAt: string | null; scope: string;
   items: ContextItem[]; reason?: string;
   budget?: { workspaceRemainingUsd: number; accountRemainingUsd: number; reservedUsd: number };
+  /** Present only on the market-filtered Stage 3 read; legacy worldwide context is not a baseline. */
+  analytics?: {
+    startDate: string; endDate: string; country: "hkg" | "twn"; searchType: "web";
+    dimensions: "query"; dataState: "final"; aggregation: "byPage"; pageFilter: string; rowLimit: 25; reportedDays: number;
+  };
 }

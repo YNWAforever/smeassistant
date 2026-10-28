@@ -9,7 +9,7 @@ type Row = Record<string, unknown>;
 const column = { table_name: "workspaces", column_name: "timezone", ordinal_position: 1, data_type: "text", udt_name: "text", is_nullable: "NO", column_default: null };
 const check = { table_name: "workspaces", name: "workspaces_timezone_check", type: "c", definition: "CHECK ((timezone <> ''::text))" };
 const legacy = { tables: [{ name: "workspaces", rls: true }], columns: [column], constraints: [check], indexes: [], triggers: [], functions: [], enums: [] };
-const resourceTables=["conversation_document_versions","conversation_research_accounts","conversation_research_ledger"];
+const resourceTables=["conversation_document_versions","conversation_research_accounts","conversation_research_ledger","conversation_search_briefs"];
 const notNull = { table_name: "workspaces", column_name: "timezone", convalidated: true, conenforced: true, key_count: 1 };
 const revisionColumn=(table_name:string,column_name:string,data_type:string,udt_name:string,is_nullable:string,column_default:string|null)=>({table_name,column_name,data_type,udt_name,is_nullable,column_default});
 const revisionColumns=[revisionColumn('brand_profiles','current_revision_id','uuid','uuid','YES',null),revisionColumn('brand_revisions','id','uuid','uuid','NO','gen_random_uuid()'),revisionColumn('brand_revisions','workspace_id','uuid','uuid','NO',null),revisionColumn('brand_revisions','profile','jsonb','jsonb','NO',null),revisionColumn('brand_revisions','actor_id','uuid','uuid','YES',null),revisionColumn('brand_revisions','created_at','timestamp with time zone','timestamptz','NO','now()'),revisionColumn('brand_revisions','source','text','text','NO',null)];

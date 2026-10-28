@@ -11,7 +11,7 @@ describe.runIf(process.env.NEON_INTEGRATION==='1')('T21 immutable brand revision
   const migrations=await loadMigrations();await applyMigrations(owner,migrations.slice(0,15));
   const oldWorkspace=(await owner.query('INSERT INTO workspaces DEFAULT VALUES RETURNING id')).rows[0].id;
   await owner.query("INSERT INTO brand_profiles(workspace_id,facts) VALUES($1,'{\"known\":\"current only\"}')",[oldWorkspace]);
-  expect(await applyMigrations(owner)).toEqual(['0016_brand_revisions.sql','0017_brand_profile_revision_capture.sql','0018_content_version_retry_boundaries.sql','0019_conversation_resources.sql']);
+  expect(await applyMigrations(owner)).toEqual(['0016_brand_revisions.sql','0017_brand_profile_revision_capture.sql','0018_content_version_retry_boundaries.sql','0019_conversation_resources.sql','0020_conversation_search.sql']);
   expect((await owner.query('SELECT source,actor_id,profile FROM brand_revisions WHERE workspace_id=$1',[oldWorkspace])).rows).toMatchObject([{source:'baseline',actor_id:null,profile:{facts:{known:'current only'}}}]);
   await owner.query("CREATE ROLE brand_runtime LOGIN PASSWORD 'fixture-only' IN ROLE sme_app_runtime");
   const url=new URL(fixture.databaseUrl);url.username='brand_runtime';url.password='fixture-only';runtime=new Pool({connectionString:url.href});

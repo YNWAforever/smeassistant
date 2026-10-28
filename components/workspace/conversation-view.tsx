@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ConversationDocuments, ConversationConnectors } from "./conversation-resources";
+import { ConversationSearch } from "./conversation-search";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -133,6 +134,7 @@ function ScopedConversation({ locale, workspaceSlug, workspaceName, location, lo
           {!selected && <section className="conversation-templates" aria-label={t.templates}><h2>{t.templates}</h2><p>{t.templateHint}</p><div>{ENTRY_TEMPLATES.map(template => { const title = copy[locale].workspace.templates[template.key].title; return <button type="button" key={template.key} aria-label={`${t.useTemplate} ${title}`} onClick={() => { setComposer(title); setSaved(false); composerRef.current?.focus(); }}>{title}</button>; })}</div></section>}
         </>}
         <p className="limitation-note">{t.boundary}</p>
+        {resources && <ConversationSearch locale={locale} workspaceId={scope.workspaceId} locationId={scope.locationId} workspaceSlug={workspaceSlug} locationSlug={location} canManage={resources.canManage} />}
         {resources && <ConversationDocuments key={selectedId ?? "new"} locale={locale} workspaceId={scope.workspaceId} locationId={scope.locationId} canManage={resources.canManage} citedIds={selected?.documentVersionIds ?? []} canCite={Boolean(selected) && local.status !== "corrupt"} onCite={citeDocument} />}
         <section className="conversation-continue"><h2>{t.continueWork}</h2>{actions.length === 0 ? <p>{t.noActions}</p> : <ul>{actions.slice(0, 6).map(action => <li key={action.id}><Link href={actionHref(action)}>{action.title}</Link>{action.versionId && <Link href={actionHref(action, true)}>{t.openVersion}</Link>}</li>)}</ul>}<Link href={`${base}/actions?${locationQuery}`}>{t.allActions}</Link></section>
       </section>

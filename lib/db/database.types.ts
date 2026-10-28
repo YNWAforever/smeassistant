@@ -19,6 +19,7 @@ export type DatabaseRows = {
   "conversation_document_versions": typeof schema.conversationDocumentVersions.$inferSelect;
   "conversation_research_accounts": typeof schema.conversationResearchAccounts.$inferSelect;
   "conversation_research_ledger": typeof schema.conversationResearchLedger.$inferSelect;
+  "conversation_search_briefs": typeof schema.conversationSearchBriefs.$inferSelect;
   "deliveries": typeof schema.deliveries.$inferSelect;
   "erasure_events": typeof schema.erasureEvents.$inferSelect;
   "leads": typeof schema.leads.$inferSelect;
@@ -68,6 +69,7 @@ export type DatabaseInserts = {
   "conversation_document_versions": typeof schema.conversationDocumentVersions.$inferInsert;
   "conversation_research_accounts": typeof schema.conversationResearchAccounts.$inferInsert;
   "conversation_research_ledger": typeof schema.conversationResearchLedger.$inferInsert;
+  "conversation_search_briefs": typeof schema.conversationSearchBriefs.$inferInsert;
   "deliveries": typeof schema.deliveries.$inferInsert;
   "erasure_events": typeof schema.erasureEvents.$inferInsert;
   "leads": typeof schema.leads.$inferInsert;

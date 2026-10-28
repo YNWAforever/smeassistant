@@ -4,6 +4,9 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test as base, expect, type Page } from "@playwright/test";
 import { conversationCopy } from "../../lib/copy-conversation";
+import { searchCopy } from "../../lib/copy-search-gap";
+import { buildSearchBriefs, observeSearch, type SearchRecord } from "../../lib/workspace/search-gap";
+import { gapFixture, gscFixture } from "../fixtures/conversation-search";
 
 const root = process.cwd();
 const require = createRequire(import.meta.url);
@@ -40,11 +43,40 @@ const test = base.extend<{ app: { origin: string; writes: string[] } }>({
   app: async ({ page }, runFixture) => {
     const writes: string[] = [];
     const documents=new Map<string,Array<{id:string;documentId:string;assetId:string;version:number;title:string;createdAt:string;text:string;truncated:boolean;sha256:string}>>();
+    const searchRecords = new Map<string, SearchRecord[]>(), observeReads = new Map<string, number>();
     const server = createServer(async (req, res) => {
       const requestUrl=new URL(req.url??"/","http://fixture.test");
       const documentRoute=/^\/api\/workspaces\/([^/]+)\/conversation\/documents$/.exec(requestUrl.pathname);
       const connectorRoute=/^\/api\/workspaces\/([^/]+)\/conversation\/connectors$/.exec(requestUrl.pathname);
+      const searchRoute=/^\/api\/workspaces\/([^/]+)\/conversation\/search$/.exec(requestUrl.pathname);
       const json=(body:unknown,status=200)=>{res.writeHead(status,{"content-type":"application/json","cache-control":"no-store"});res.end(JSON.stringify(body));};
+      if (searchRoute) {
+        if (req.method === "GET") { json({ records: searchRecords.get(`${searchRoute[1]}:${requestUrl.searchParams.get("location_id")}`) ?? [] }); return; }
+        if (req.method === "POST") {
+          const chunks: Buffer[] = []; for await (const chunk of req) chunks.push(Buffer.from(chunk));
+          const body = JSON.parse(Buffer.concat(chunks).toString()), key = `${searchRoute[1]}:${body.location_id}`, rows = searchRecords.get(key) ?? [];
+          if (body.location_id === "all") { json({ error: "invalid_location" }, 400); return; }
+          if (body.operation === "read") {
+            // Explicit synthetic GSC evidence; real providers are blocked by this harness.
+            const gap = gapFixture(body.location_id === "east" ? gscFixture({ items: [{ title: "lunch NYC", metrics: { impressions: 500, clicks: 0 } }] }) : gscFixture());
+            const record: SearchRecord = rows[0] ?? { id: crypto.randomUUID(), workspaceId: searchRoute[1], locationId: body.location_id, gap, brief: buildSearchBriefs(gap), createdAt: "2026-10-28T00:00:00Z", approvedAt: null, actionId: null };
+            searchRecords.set(key, [record]); json({ record }, 201); return;
+          }
+          const record = rows.find(row => row.id === body.id); if (!record) { json({ error: "not_found" }, 404); return; }
+          if (body.operation === "approve") {
+            if (body.confirmed !== true || !record.brief) { json({ error: "approval_required" }, 409); return; }
+            record.approvedAt ??= "2026-10-28T12:00:00Z"; record.actionId ??= ACTION; json({ record }); return;
+          }
+          if (body.operation === "observe") {
+            if (!record.approvedAt) { json({ error: "approval_required" }, 409); return; }
+            const count = observeReads.get(record.id) ?? 0; observeReads.set(record.id, count + 1);
+            const source = gscFixture();
+            if (count > 0) { source.observedAt = "2026-11-29T12:00:00Z"; source.analytics = { ...source.analytics!, startDate: "2026-10-29", endDate: "2026-11-25" }; source.items = [{ title: "午餐餐牌", metrics: { impressions: 100, clicks: 3 } }]; }
+            json({ observation: observeSearch(record, gapFixture(source)), source }); return;
+          }
+          json({ error: "invalid_request" }, 400); return;
+        }
+      }
       if(documentRoute){
         if(req.method==="GET"){
           const rows=documents.get(`${documentRoute[1]}:${requestUrl.searchParams.get("location_id")}`)??[];
@@ -247,4 +279,58 @@ test("Stage 2 availability refresh releases a temporary account block without a 
   await expect(connector).toContainText("Ready to read on request. No source data has been fetched on this screen.");
   await expect(page).toHaveURL(url);
   expect(methods).toEqual(["GET","GET"]);
+});
+
+test("Stage 3 synthetic gap → brief → explicit confirm → observe retains the approved snapshot and delivery count", async ({ page, app }) => {
+  const url = `${app.origin}/en/owner/test-shop/conversation?location=central`;
+  await page.goto(url); await save(page, "Private note must not enter the search brief");
+  const panel = page.getByRole("region", { name: searchCopy.en.title, exact: true });
+  await panel.getByRole("button", { name: searchCopy.en.read, exact: true }).click();
+  await expect(panel.getByText("午餐餐牌 · Impressions: 80 · Clicks: 0", { exact: true })).toBeVisible();
+  await expect(panel.getByRole("link", { name: searchCopy.en.openAction })).toHaveCount(0);
+  await panel.getByRole("button", { name: searchCopy.en.createBrief, exact: true }).click();
+  const approve = panel.getByRole("button", { name: searchCopy.en.approve, exact: true });
+  await expect(approve).toBeDisabled();
+  await expect(panel.locator(".search-brief")).not.toContainText("Private note");
+  await panel.getByRole("checkbox", { name: searchCopy.en.confirmLabel }).check(); await approve.click();
+  await expect(panel.getByText(searchCopy.en.approved, { exact: true })).toBeVisible();
+  await expect(panel.getByRole("link", { name: searchCopy.en.openAction })).toHaveAttribute("href", `/en/owner/test-shop/actions/${ACTION}?location=central`);
+  const savedBrief = await panel.locator(".search-brief h3").textContent();
+  await save(page, "Later chat cannot overwrite the confirmed brief");
+  await expect(panel.locator(".search-brief h3")).toHaveText(savedBrief!);
+  await panel.getByRole("button", { name: searchCopy.en.observe, exact: true }).click();
+  await expect(panel.getByText(searchCopy.en.observations.later_window_required, { exact: true })).toBeVisible();
+  await expect(panel.getByRole("table")).toHaveCount(0);
+  // The second synthetic observation advances the fixture by a full post-confirmation window.
+  await panel.getByRole("button", { name: searchCopy.en.observe, exact: true }).click();
+  await expect(panel.getByRole("table")).toBeVisible();
+  await expect(panel.getByRole("row", { name: "午餐餐牌 0 3 80 100", exact: true })).toBeVisible();
+  await expect(page.locator(".usage-mini strong")).toHaveText("2 / 3");
+  const recordId = await panel.locator("select").inputValue();
+  await page.reload(); await panel.getByLabel(searchCopy.en.records, { exact: true }).selectOption(recordId);
+  await expect(panel.getByText(searchCopy.en.approved, { exact: true })).toBeVisible();
+  await expect(panel.getByRole("button", { name: searchCopy.en.approve, exact: true })).toHaveCount(0);
+  await panel.getByRole("button", { name: searchCopy.en.refresh, exact: true }).click();
+  await expect(panel.locator("select")).toHaveValue(recordId);
+  await expect(panel.locator("select option")).toHaveCount(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("conversation-stage-3.png"), fullPage: true });
+});
+
+test("Stage 3 English-only HK fixture remains partial in every locale and all never picks a shop", async ({ page, app }) => {
+  for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
+    const t = searchCopy[locale];
+    await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation?location=east`);
+    const panel = page.getByRole("region", { name: t.title, exact: true });
+    await panel.getByRole("button", { name: t.read, exact: true }).click();
+    await expect(panel.getByText(t.reasons.language_limited, { exact: true })).toBeVisible();
+    await expect(panel.getByRole("button", { name: t.createBrief, exact: true })).toHaveCount(0);
+    await expect(panel.getByRole("link", { name: t.openAction })).toHaveCount(0);
+  }
+  await page.goto(`${app.origin}/en/owner/test-shop/conversation?location=all`);
+  const panel = page.getByRole("region", { name: searchCopy.en.title, exact: true });
+  await expect(panel.getByText(searchCopy.en.selectLocation, { exact: true })).toBeVisible();
+  await expect(panel.getByRole("button")).toHaveCount(0);
+  await page.goto(`${app.origin}/en/owner/test-shop?location=central&flag=off`);
+  await expect(page.getByRole("region", { name: searchCopy.en.title, exact: true })).toHaveCount(0);
 });
