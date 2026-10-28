@@ -22,6 +22,8 @@ An explicit Read context request uses the selected location’s server-stored we
 
 Results show source scope and read time on the current screen. There is no background sync or persisted context cache, and refresh does not pretend an earlier result was synced. No GSC write/publish request exists.
 
+Refresh availability rechecks the existing status GET without contacting Google or a paid provider. Owners can recover after another request releases its account reservation without reloading the page. Provider actions stay disabled while availability is loading; a failed status read can be retried with the same control.
+
 ## Paid research: default OFF
 
 Both adapters require the conversation gate, their exact provider flag, credentials, positive finite budgets, a stable nonsecret billing-account ID, verified pricing acknowledgement and a conservative per-call price ceiling. Missing/invalid configuration is disabled before budget or provider work.

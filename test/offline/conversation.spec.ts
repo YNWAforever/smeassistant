@@ -230,3 +230,21 @@ test("Stage 2 documents cite immutable versions across refresh; source context s
   await page.goto(threadUrl.replace("location=central","location=east"));await expect(page.locator(".conversation-citations")).toHaveCount(0);await expect(page.locator(".conversation-document-list")).toHaveCount(0);
   await expect(page.getByText(conversationCopy.en.missing,{exact:true})).toBeVisible();
 });
+
+test("Stage 2 availability refresh releases a temporary account block without a paid request",async({page,app})=>{
+  const methods:string[]=[];
+  await page.route("**/conversation/connectors?*",async route=>{
+    methods.push(route.request().method());
+    const blocked=methods.length===1;
+    await route.fulfill({json:{connectors:[{source:"firecrawl",status:blocked?"blocked":"empty",reason:blocked?"account_reconciliation_pending":"research_available",scope:"https://synthetic.example.test/",items:[],observedAt:null}]}});
+  });
+  const url=`${app.origin}/en/owner/test-shop/conversation?location=central`;
+  await page.goto(url);
+  const connector=page.locator(".conversation-connector");
+  await expect(connector.getByRole("button",{name:"Read context",exact:true})).toBeDisabled();
+  await page.getByRole("button",{name:"Refresh availability",exact:true}).click();
+  await expect(connector.getByRole("button",{name:"Read context",exact:true})).toBeEnabled();
+  await expect(connector).toContainText("Ready to read on request. No source data has been fetched on this screen.");
+  await expect(page).toHaveURL(url);
+  expect(methods).toEqual(["GET","GET"]);
+});
