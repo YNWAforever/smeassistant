@@ -13,6 +13,18 @@
     --brand: #b74716;
     --brand-soft: #fff0e3;
     --brand-text: #a63d10;
+    /* Root aliases resolve before inheritance; rebind them to this light surface. */
+    --background: var(--canvas);
+    --foreground: var(--ink);
+    --primary: var(--ink);
+    --primary-foreground: var(--paper);
+    --accent: var(--brand-soft);
+    --accent-foreground: var(--ink);
+    --muted-foreground: var(--ink-3);
+    --input: var(--line);
+    --soft: var(--ink-2);
+    --focus: var(--brand);
+    --ring: var(--focus);
     --ed-bg: #fffbf6;
     --ed-ink: #272d29;
     --ed-ink-2: #535c56;
@@ -27,6 +39,7 @@
     margin-inline: auto;
     background: var(--canvas);
     color: var(--ink);
+    color-scheme: light;
     border-inline: 1px solid var(--border);
   }
   .workspace-root:has(.workspace-shell--conversation) { background: #f0efeb; }

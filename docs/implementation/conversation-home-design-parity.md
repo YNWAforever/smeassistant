@@ -33,6 +33,7 @@ Screenshots are explicitly labelled **OFFLINE SYNTHETIC**. They render the real 
 - A subsequent four-test desktop/mobile visual pass covered the final sidebar treatment, Today/default routing, template filters, attachments, recent navigation, and return from a thread to templates.
 - Full lint, workspace typecheck, production build, route JavaScript budgets, and secret boundary passed. Conversation first-load JS: 239 KB / 300 KB. Final label/style refinements also passed targeted lint and root typecheck.
 - CI workflow configuration is unchanged. Remote CI status and the final full tip SHA are recorded in the PR and `/workspace/cli-logs/sme-design-parity.last.txt`.
+- PR-diff review found that a dark appearance preference left root color aliases on the cream home: the enabled composer CTA measured 1.32:1 contrast, other controls 1.13:1, and privacy/source limitations 1.58–1.63:1. The conversation palette now rebinds those aliases and uses a light native-control scheme within its own shell. Desktop/mobile regression checks require at least 4.5:1 for those controls and honesty copy, and verify that flag-off Today retains the chosen global dark theme. The focused 63-test unit run, all 26 offline conversation e2e tests, full lint (existing warnings only), and workspace typecheck passed. This remains offline synthetic evidence, not hosted Preview acceptance.
 
 The local Corepack shim required `COREPACK_HOME=/tmp/sme-design-parity-corepack` because its system cache was not writable. No tracked dependency or lockfile changed.
 

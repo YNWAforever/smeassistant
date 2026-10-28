@@ -131,6 +131,59 @@ async function save(page: Page, text: string) {
   await expect(page.locator(".conversation-note").filter({ hasText: text })).toBeVisible();
 }
 
+test("dark preference keeps cream-home controls and honesty copy readable", async ({ page, app }) => {
+  await page.goto(`${app.origin}/en/owner/test-shop/conversation?location=central`);
+  await page.locator(".theme-button").click();
+  await page.getByRole("menuitemradio", { name: "Dark", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByLabel("Your note", { exact: true }).fill("Readability check");
+  await openTool(page, "search");
+  await openTool(page, "documents");
+  const targets = [
+    ".conversation-composer [type=submit]",
+    ".conversation-threads [data-slot=button]",
+    ".workspace-topbar [data-slot=select-trigger]",
+    ".conversation-boundaries .limitation-note",
+    "#conversation-search .limitation-note",
+    "#conversation-documents .limitation-note",
+  ];
+  for (const selector of targets) {
+    const contrasts = await page.locator(selector).evaluateAll(nodes => {
+      const context = document.createElement("canvas").getContext("2d")!;
+      const luminance = (color: string) => {
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        const rgb = Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3).map(value => {
+          const srgb = value / 255;
+          return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+        });
+        return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+      };
+      return nodes.map(node => {
+        let surface: Element | null = node;
+        while (surface && getComputedStyle(surface).backgroundColor === "rgba(0, 0, 0, 0)") surface = surface.parentElement;
+        const foreground = luminance(getComputedStyle(node).color);
+        const background = luminance(getComputedStyle(surface!).backgroundColor);
+        return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+      });
+    });
+    expect(contrasts.length, selector).toBeGreaterThan(0);
+    for (const contrast of contrasts) expect.soft(contrast, selector).toBeGreaterThanOrEqual(4.5);
+  }
+  await page.screenshot({ path: test.info().outputPath("conversation-dark-preference.png"), fullPage: true });
+  // Model a client navigation: the chosen global theme must survive the local palette.
+  await page.evaluate(() => {
+    const next = new URL(location.href);
+    next.pathname = next.pathname.replace(/\/conversation$/, "");
+    next.searchParams.set("flag", "off");
+    history.pushState(null, "", next);
+    dispatchEvent(new Event("fixture:refresh"));
+  });
+  await expect(page.locator(".workspace-shell--conversation, .conversation-switch")).toHaveCount(0);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(await page.locator(".workspace-shell").evaluate(node => getComputedStyle(node).colorScheme)).toBe("dark");
+});
+
 test("Today remains default and the optional switch works in every locale; existing Ask Kinnso opens", async ({ page, app }) => {
   for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
     const home = `${app.origin}/${locale}/owner/test-shop?location=east`;
