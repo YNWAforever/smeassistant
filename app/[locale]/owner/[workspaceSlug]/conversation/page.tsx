@@ -20,6 +20,8 @@ export default async function ConversationRoute(props: OwnerPageProps) {
     locale={page.locale} workspaceSlug={page.workspaceSlug} workspaceName={page.ctx.workspace.name}
     location={page.locationSlug} locationName={location?.name ?? ""}
     scope={{ userId: page.membership.userId, workspaceId: page.ctx.workspace.id, locationId: location?.id ?? "all" }}
+    connectionOutcome={page.query.connector === "gsc" ? page.query.connected : undefined}
+    resources={{ canManage: page.membership.role === "owner" }}
     initialThreadId={page.query.thread}
     actions={result.actions.map(action => ({ id: action.id, title: action.title[page.locale] ?? action.title.en, ...(action.latestVersion ? { versionId: action.latestVersion.id } : {}) }))}
   />;

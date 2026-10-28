@@ -477,7 +477,7 @@ export const oauthConnections = pgTable("oauth_connections", {
  updatedAt: timestamp("updated_at", {withTimezone:true, mode:"string"}).notNull().default(sql.raw("now()")),
 }, t => [
  primaryKey({name:"oauth_connections_pkey",columns:[t.id]}),
- check("oauth_connections_provider_check", sql.raw("(provider = ANY (ARRAY['instagram'::text, 'google_gbp'::text, 'ga4'::text]))")),
+ check("oauth_connections_provider_check", sql.raw("(provider = ANY (ARRAY['instagram'::text, 'google_gbp'::text, 'ga4'::text, 'google_gsc'::text]))")),
  check("oauth_connections_status_check", sql.raw("(status = ANY (ARRAY['active'::text, 'expired'::text, 'revoked'::text, 'error'::text]))")),
  foreignKey({name:"oauth_connections_workspace_id_fkey",columns:[t.workspaceId],foreignColumns:[((): AnyPgColumn => workspaces.id)()]}).onDelete("cascade"),
  uniqueIndex("oauth_connections_active_provider_key").using("btree", sql.raw("workspace_id, provider")).where(sql.raw("(status = 'active'::text)")),

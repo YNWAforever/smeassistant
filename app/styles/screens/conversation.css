@@ -27,3 +27,19 @@
   @media (max-width: 1100px) { .conversation-layout { grid-template-columns: minmax(10rem, 1fr) minmax(0, 3fr); } .conversation-context { grid-column: 1 / -1; } }
   @media (max-width: 767px) { .conversation-layout { grid-template-columns: minmax(0, 1fr); gap: 1rem; } .conversation-threads { order: 1; } .conversation-context { order: 2; } .conversation-templates > div { grid-template-columns: minmax(0, 1fr); } .conversation-section-heading { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; } }
 }
+
+@layer pages.screens {
+  .conversation-resources { margin-block-start: 1.5rem; border-block-start: 1px solid var(--border); padding-block-start: 1rem; min-width: 0; }
+  .conversation-resources h2, .conversation-resources h3 { font-size: 1rem; margin-block: .75rem; }
+  .conversation-document-upload { display: grid; gap: .5rem; margin-block: 1rem; }
+  .conversation-document-upload input, .conversation-document-upload select, .conversation-connector input { width: 100%; max-width: 100%; min-width: 0; }
+  .conversation-resources pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; max-height: 20rem; overflow: auto; padding: .75rem; background: var(--muted); border-radius: .5rem; }
+  .conversation-document-list, .conversation-citations ul { padding-inline-start: 1.25rem; }
+  .conversation-document-list li { margin-block: .75rem; }
+  .conversation-resources summary, .conversation-resources dd, .conversation-resources a { overflow-wrap: anywhere; }
+  .conversation-resources summary { cursor: pointer; }
+  .conversation-connector { padding-block: .75rem; border-block-end: 1px solid var(--border); }
+  .conversation-connector button { margin-block: .25rem; white-space: normal; }
+  .conversation-connector dl { font-size: .85rem; margin-block: .5rem; }
+  .conversation-connector dd { margin: 0 0 .5rem; }
+}

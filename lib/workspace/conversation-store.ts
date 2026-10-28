@@ -6,6 +6,8 @@ export interface LocalThread {
   notes: string[];
   /** References only. Action contents and approved versions remain in their existing store. */
   actionIds: string[];
+  /** Immutable server version IDs only; local notes never grant access to documents. */
+  documentVersionIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -32,6 +34,7 @@ function validThreads(value: unknown): value is LocalThread[] {
     ids.add(t.id);
     return Array.isArray(t.notes) && t.notes.length > 0 && t.notes.length <= CONVERSATION_LIMITS.notes && t.notes.every(note => shortText(note, CONVERSATION_LIMITS.noteLength))
       && Array.isArray(t.actionIds) && t.actionIds.length <= CONVERSATION_LIMITS.actionIds && t.actionIds.every(id => shortText(id, 100)) && new Set(t.actionIds).size === t.actionIds.length
+      && (t.documentVersionIds === undefined || (Array.isArray(t.documentVersionIds) && t.documentVersionIds.length <= 20 && t.documentVersionIds.every(id => shortText(id,100)) && new Set(t.documentVersionIds).size === t.documentVersionIds.length))
       && typeof t.createdAt === "string" && Number.isFinite(Date.parse(t.createdAt)) && typeof t.updatedAt === "string" && Number.isFinite(Date.parse(t.updatedAt));
   });
 }

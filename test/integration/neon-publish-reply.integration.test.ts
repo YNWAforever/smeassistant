@@ -147,7 +147,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon GBP reply publishing"
   it("0014 applies after 0013 and a second applyMigrations returns []", async () => {
     const through0014 = (await loadMigrations()).filter(m => m.name <= "0014_publish_reply.sql");
     expect(await applyMigrations(owner, through0014)).toEqual(["0014_publish_reply.sql"]);
-    expect(await applyMigrations(owner)).toEqual(["0015_action_list_indexes.sql","0016_brand_revisions.sql","0017_brand_profile_revision_capture.sql","0018_content_version_retry_boundaries.sql"]);
+    expect(await applyMigrations(owner)).toEqual(["0015_action_list_indexes.sql","0016_brand_revisions.sql","0017_brand_profile_revision_capture.sql","0018_content_version_retry_boundaries.sql","0019_conversation_resources.sql"]);
     expect(await applyMigrations(owner)).toEqual([]);
   });
 

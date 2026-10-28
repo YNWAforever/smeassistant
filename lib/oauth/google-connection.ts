@@ -12,6 +12,8 @@ const STATE_TTL_MS = 10 * 60 * 1000;
 const DEVELOPMENT_STATE_SECRET = "sme-scanner-development-secret";
 const MIN_PRODUCTION_SECRET_BYTES = 32;
 export const GBP_SCOPE_REQUIRED = GBP_SCOPE;
+export const GSC_SCOPE_REQUIRED = "https://www.googleapis.com/auth/webmasters.readonly";
+export type GoogleConnectionProvider = "google_gbp" | "google_gsc";
 
 export interface GoogleTokenSet {
   accessToken: string;
@@ -21,6 +23,8 @@ export interface GoogleTokenSet {
 }
 
 export interface OAuthStatePayload {
+  provider?: GoogleConnectionProvider;
+  returnLocation?: string;
   workspaceId: string;
   nonce: string;
   issuedAt: number;
@@ -138,9 +142,11 @@ export function signState(
   workspaceId: string,
   nonce: string = randomBytes(16).toString("base64url"),
   locale?: string,
+  provider?: GoogleConnectionProvider,
+  returnLocation?: string,
 ): string {
   const body = Buffer.from(
-    JSON.stringify({ workspaceId, nonce, issuedAt: Date.now(), ...(locale ? { locale } : {}) }),
+    JSON.stringify({ workspaceId, nonce, issuedAt: Date.now(), ...(locale ? { locale } : {}), ...(provider ? { provider } : {}), ...(returnLocation ? { returnLocation } : {}) }),
     "utf8",
   ).toString("base64url");
   return `${body}.${sign(body)}`;
@@ -171,6 +177,8 @@ export function verifyState(raw: string, now: number = Date.now()): OAuthStatePa
     const parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as OAuthStatePayload;
     if (!parsed?.workspaceId || !parsed?.nonce || typeof parsed.issuedAt !== "number") return null;
     if (parsed.locale !== undefined && typeof parsed.locale !== "string") return null;
+    if (parsed.provider !== undefined && !["google_gbp", "google_gsc"].includes(parsed.provider)) return null;
+    if (parsed.returnLocation !== undefined && (typeof parsed.returnLocation !== "string" || !/^[a-z0-9-]{1,64}$/.test(parsed.returnLocation))) return null;
     if (now - parsed.issuedAt > STATE_TTL_MS || parsed.issuedAt > now + 60_000) return null;
     return parsed;
   } catch {
@@ -327,18 +335,18 @@ export function verifyClaimState(raw: string, now: number = Date.now()): ClaimSt
  * Google requires the token-exchange redirect_uri to byte-match the one used
  * at authorization, so the two flows cannot share a redirect target.
  */
-export function buildConsentUrl(state: string, redirectUri?: string): string {
+export function buildConsentUrl(state: string, redirectUri?: string, provider: GoogleConnectionProvider = "google_gbp"): string {
   const url = new URL(AUTH_URL);
   url.searchParams.set("client_id", process.env.GOOGLE_OAUTH_CLIENT_ID?.trim() ?? "");
   url.searchParams.set("redirect_uri", (redirectUri ?? process.env.GOOGLE_OAUTH_REDIRECT_URI)?.trim() ?? "");
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", GBP_SCOPE);
+  url.searchParams.set("scope", provider === "google_gsc" ? GSC_SCOPE_REQUIRED : GBP_SCOPE);
   // offline + consent together are what produce a refresh token. Without
   // prompt=consent Google omits it on any repeat authorisation, and the
   // connection silently becomes single-use — working today, dead next month.
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
-  url.searchParams.set("include_granted_scopes", "true");
+  url.searchParams.set("include_granted_scopes", provider === "google_gsc" ? "false" : "true");
   url.searchParams.set("state", state);
   return url.toString();
 }
@@ -355,7 +363,7 @@ function toTokenSet(payload: Record<string, unknown>): GoogleTokenSet | null {
   };
 }
 
-async function postToken(body: URLSearchParams): Promise<GoogleTokenSet | null> {
+async function postToken(body: URLSearchParams, throwOnTransient = false): Promise<GoogleTokenSet | null> {
   try {
     const resp = await fetch(TOKEN_URL, {
       method: "POST",
@@ -367,11 +375,22 @@ async function postToken(body: URLSearchParams): Promise<GoogleTokenSet | null> 
       // Google's body echoes the client_secret on some misconfigurations, so it
       // is never logged.
       console.error(`[google-oauth] token endpoint returned ${resp.status}`);
+      if (throwOnTransient) {
+        // invalid_grant is the token endpoint's explicit rejection of this refresh credential.
+        if (resp.status === 400) {
+          const payload = await resp.json().catch(() => null) as {error?:unknown}|null;
+          if (payload?.error === "invalid_grant") return null;
+        }
+        throw new Error("google_token_unavailable");
+      }
       return null;
     }
-    return toTokenSet((await resp.json()) as Record<string, unknown>);
+    const tokens = toTokenSet((await resp.json()) as Record<string, unknown>);
+    if (!tokens && throwOnTransient) throw new Error("google_token_unavailable");
+    return tokens;
   } catch (error) {
     console.error("[google-oauth] token request failed", error instanceof Error ? error.name : "unknown");
+    if (throwOnTransient) throw error;
     return null;
   }
 }
@@ -395,8 +414,11 @@ export async function exchangeCode(code: string, redirectUri?: string): Promise<
   );
 }
 
-export async function refreshAccessToken(refreshToken: string): Promise<GoogleTokenSet | null> {
-  if (!googleOAuthConfigured()) return null;
+export async function refreshAccessToken(refreshToken: string, options: { throwOnTransient?: boolean } = {}): Promise<GoogleTokenSet | null> {
+  if (!googleOAuthConfigured()) {
+    if (options.throwOnTransient) throw new Error("google_token_unavailable");
+    return null;
+  }
   return postToken(
     new URLSearchParams({
       refresh_token: refreshToken,
@@ -404,6 +426,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<GoogleTo
       client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!.trim(),
       grant_type: "refresh_token",
     }),
+    options.throwOnTransient,
   );
 }
 

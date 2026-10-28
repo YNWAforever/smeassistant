@@ -153,7 +153,7 @@ export async function readiness(
     ).rows;
     if (
       tables.some((name) => !found.some((row) => row.name === name)) ||
-      [...retainedFunctions,'save_brand_revision','guard_brand_revision_immutable','capture_brand_profile_revision','brand_snapshot_for_generation'].some(
+      [...retainedFunctions,'save_brand_revision','guard_brand_revision_immutable','capture_brand_profile_revision','brand_snapshot_for_generation','guard_conversation_document_version_insert','guard_conversation_document_version_immutable','guard_conversation_document_asset_provenance','guard_conversation_research_ledger','guard_conversation_research_account'].some(
         (name) => !functions.some((row) => row.name === name),
       )
     )
@@ -218,12 +218,15 @@ export async function readiness(
         JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
         CROSS JOIN (VALUES ('SELECT'),('INSERT'),('UPDATE'),('DELETE')) privileges(name)
         WHERE n.nspname='public' AND c.relname=ANY($2::text[])
-          AND (c.relname<>'brand_revisions' OR privileges.name IN ('SELECT','INSERT'))
+          AND (c.relname NOT IN ('brand_revisions','conversation_document_versions') OR privileges.name IN ('SELECT','INSERT'))
+          AND (c.relname NOT IN ('conversation_research_accounts','conversation_research_ledger') OR privileges.name<>'DELETE')
           AND NOT has_table_privilege(current_user,c.oid,privileges.name)
       ) AND NOT EXISTS (
         SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
-        WHERE n.nspname='public' AND c.relname='brand_revisions'
-          AND has_table_privilege(current_user,c.oid,'UPDATE,DELETE,TRUNCATE,TRIGGER')
+        WHERE n.nspname='public' AND (
+          (c.relname IN ('brand_revisions','conversation_document_versions') AND has_table_privilege(current_user,c.oid,'UPDATE,DELETE,TRUNCATE,TRIGGER'))
+          OR (c.relname IN ('conversation_research_accounts','conversation_research_ledger') AND has_table_privilege(current_user,c.oid,'DELETE,TRUNCATE,TRIGGER'))
+        )
       ) AS table_privileges
   `,
         [identity.migration_role, tables],

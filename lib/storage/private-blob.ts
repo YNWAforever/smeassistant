@@ -20,7 +20,7 @@ export function createPrivateBlobStorage(config = {
     async upload(namespace: PrivateNamespace, path: string, bytes: Uint8Array | ArrayBuffer | Blob, options: { contentType: string; overwrite: boolean }): Promise<void> {
       const pathname = privateObjectPath(namespace, path);
       const size = bytes instanceof Blob ? bytes.size : bytes.byteLength;
-      const allowed = namespace === "report-evidence" ? ["image/jpeg", "image/png", "image/webp"] : ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+      const allowed = namespace === "report-evidence" ? ["image/jpeg", "image/png", "image/webp"] : ["image/jpeg", "image/png", "image/webp", "application/pdf", "text/plain", "text/markdown", "text/csv"];
       if (!size || size > 5 * 1024 * 1024 || !allowed.includes(options.contentType)) throw new Error("private_blob_upload_invalid");
       const result = await put(pathname, bytes instanceof Uint8Array ? Buffer.from(bytes) : bytes, { ...config, access: "private", addRandomSuffix: false, allowOverwrite: options.overwrite, contentType: options.contentType, cacheControlMaxAge: 60 });
       if (result.pathname !== pathname || new URL(result.url).origin !== origin || decodeURIComponent(new URL(result.url).pathname) !== `/${pathname}`) throw new Error("private_blob_upload_path_invalid");

@@ -11,6 +11,9 @@ import type { LocationSummary } from "@/lib/workspace/queries";
  * member (service-role client, §3.9); this module does no auth of its own.
  */
 export const ASSET_BUCKET = "workspace-assets";
+/** Same private asset store; these immutable originals are accessible only via scoped extracts. */
+export const CONVERSATION_DOCUMENT_SEGMENT = "__conversation_document__";
+export function isConversationDocumentPath(path: string): boolean { return path.split("/")[2] === CONVERSATION_DOCUMENT_SEGMENT; }
 export const MAX_ASSET_BYTES = 5 * 1024 * 1024;
 export const SIGNED_URL_SECONDS = 60;
 
@@ -23,6 +26,9 @@ export const ALLOWED_ASSET_MIME: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
   "application/pdf": "pdf",
+  "text/plain": "txt",
+  "text/markdown": "md",
+  "text/csv": "csv",
 };
 
 export const ASSET_KINDS: AssetKind[] = ["image", "document", "menu"];
@@ -74,7 +80,7 @@ export async function listAssets(
   locations: Array<Pick<LocationSummary, "id" | "name">> = [],
   opts: { signedUrls?: boolean } = {},
 ): Promise<AssetItem[]> {
-  const rows = await assetRepository().list(workspaceId);
+  const rows = (await assetRepository().list(workspaceId)).filter(row => !isConversationDocumentPath(row.storage_path));
   const byLocation = new Map(locations.map(l => [l.id, l.name]));
   return Promise.all(rows.map(async row => ({ ...row,
     signedUrl: opts.signedUrls !== false && row.storage_path.startsWith(`${workspaceId}/${row.id}/`) ? await signedUrlFor(row.storage_path) : null,
@@ -110,6 +116,7 @@ export function assetLocationScope(membership: { role: string; locationScope?: r
 }
 
 export async function signedUrlFor(storagePath: string): Promise<string | null> {
+  if (isConversationDocumentPath(storagePath)) return null;
   try { return await createPrivateBlobStorage().sign(ASSET_BUCKET, storagePath, SIGNED_URL_SECONDS); }
   catch { return null; }
 }
@@ -167,5 +174,6 @@ export async function updateAssetRights(input: UpdateRightsInput): Promise<Asset
   return assetRepository().updateRights(input, (input.now ?? new Date()).toISOString());
 }
 export async function getAsset(workspaceId: string, assetId: string): Promise<AssetRow | null> {
-  return assetRepository().get(workspaceId, assetId);
+  const row = await assetRepository().get(workspaceId, assetId);
+  return row && !isConversationDocumentPath(row.storage_path) ? row : null;
 }

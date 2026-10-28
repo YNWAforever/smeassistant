@@ -96,3 +96,10 @@ it.each(["material", "delegation"] as const)("rejects malformed %s expiry before
   await expect(storage().sign("report-evidence", "job/photo/a.png", 300)).rejects.toThrow(target === "material" ? "private_blob_expiry_invalid" : "private_blob_delegation_invalid");
   mock.assertNoPendingInterceptors();
 });
+
+it.each(["text/plain","text/markdown","text/csv"])("keeps bounded text originals in workspace assets only: %s", async contentType=>{
+  const pathname="workspace-assets/ws/a/file.txt";
+  mock.get("https://vercel.com").intercept({path:"/api/blob/?pathname=workspace-assets%2Fws%2Fa%2Ffile.txt",method:"PUT"}).reply(200,{pathname,url:`${origin}/${pathname}`,contentType});
+  await storage().upload("workspace-assets","ws/a/file.txt",new TextEncoder().encode("fixture"),{contentType,overwrite:false});
+  await expect(storage().upload("report-evidence","job/a/file.txt",new Uint8Array([1]),{contentType,overwrite:false})).rejects.toThrow("private_blob_upload_invalid");
+});
