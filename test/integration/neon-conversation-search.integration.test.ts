@@ -59,6 +59,24 @@ describe("Stage 3 confirmed search briefs on owned PostgreSQL", () => {
     await expect(repo.approve(a, unavailable.id, a.actorId)).rejects.toThrow("brief_unavailable");
     expect((await runtime.query("SELECT id FROM actions WHERE workspace_id=$1", [a.workspaceId])).rows).toEqual([]);
   });
+  it.each([
+    ["more than five candidates", ["午餐 F", "午餐 B", "午餐 E", "午餐 C", "午餐 D", "午餐 A"]],
+    ["distinct collation-equal titles", ["午餐 café", "午餐 cafe\u0301"]],
+  ])("reuses one confirmed task when Google reorders %s", async (_description, titles) => {
+    const scope = await setup(), repo = conversationSearchRepository(runtime);
+    const items = titles.map(title => ({ title, metrics: { impressions: 80, clicks: 0 } }));
+    const gap = gapFixture(gscFixture({ items }));
+    const first = await repo.append(scope, gap, buildSearchBriefs(gap));
+    const approved = await repo.approve(scope, first.id, scope.actorId);
+    const reordered = gapFixture(gscFixture({ observedAt: "2026-10-28T12:00:00Z", items: [...items].reverse() }));
+    const same = await repo.append(scope, reordered, buildSearchBriefs(reordered));
+    expect(same.id).toBe(first.id);
+    expect(same.gap.source.observedAt).toBe(first.gap.source.observedAt);
+    expect(same.brief).toEqual(first.brief);
+    expect((await repo.approve(scope, same.id, scope.actorId))!.actionId).toBe(approved!.actionId);
+    expect((await runtime.query("SELECT id FROM actions WHERE workspace_id=$1", [scope.workspaceId])).rows).toHaveLength(1);
+    expect((await runtime.query("SELECT id FROM audit_events WHERE workspace_id=$1", [scope.workspaceId])).rows).toHaveLength(1);
+  });
   it("rolls back todo and confirmation if accountability cannot be saved", async () => {
     const scope = await setup(), repo = conversationSearchRepository(runtime), gap = gapFixture();
     const record = await repo.append(scope, gap, buildSearchBriefs(gap));

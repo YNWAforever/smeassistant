@@ -24,7 +24,7 @@ A deterministic shop-language brief is saved alongside each usable gap in en, zh
 
 The new snapshot is the immutable approved **brief**, not an approved publishable output. The task’s later output versions still require the existing version confirmation and copy/export flow. Confirmation, draft creation, gap reads and observation do not write output versions, deliveries or delivery usage. Existing permissions and scoring rules are unchanged.
 
-Repeated confirmation returns the same todo even after completion. Re-reading identical final evidence reuses the original saved brief rather than offering another confirmable copy; the UI separately shows the most recent check time. Changed evidence appends another snapshot. The original citation/read time and approved brief cannot be rewritten by copy changes, later chat or refresh. Linking a shared task never copies or shares private thread notes.
+Repeated confirmation returns the same todo even after completion. Re-reading identical final evidence reuses the original saved brief rather than offering another confirmable copy; the UI separately shows the most recent check time. Candidate selection and evidence fingerprints use exact query-title ordering, so Google's arbitrary ordering of tied rows cannot create another task, including for distinct Unicode titles that locale collation treats as equal. Changed evidence appends another snapshot. The original citation/read time and approved brief cannot be rewritten by copy changes, later chat or refresh. Linking a shared task never copies or shares private thread notes.
 
 ## Observe
 

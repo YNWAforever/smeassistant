@@ -41,6 +41,13 @@ describe("source-scoped search gaps", () => {
     expect(gap.status).toBe("partial");
     expect(gap.queries.map(row => row.title)).toEqual(["午餐餐牌"]);
   });
+  it("pins the same five candidates when Google reorders tied query rows", () => {
+    const items = ["午餐 F", "午餐 B", "午餐 E", "午餐 C", "午餐 D", "午餐 A"].map(title => ({ title, metrics: { impressions: 80, clicks: 0 } }));
+    for (const rows of [items, [...items].reverse()]) {
+      const gap = gapFixture(gscFixture({ items: rows }));
+      expect(gap.queries.map(row => row.title)).toEqual(["午餐 A", "午餐 B", "午餐 C", "午餐 D", "午餐 E"]);
+    }
+  });
   it("has matching copy keys in every locale, including recovery states", () => {
     for (const locale of ["zh-HK", "zh-TW"] as const) {
       expect(Object.keys(searchCopy[locale])).toEqual(Object.keys(searchCopy.en));

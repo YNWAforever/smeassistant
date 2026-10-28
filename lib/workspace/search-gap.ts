@@ -26,6 +26,10 @@ const countryFor = (market: string) => market === "hk" ? "hkg" : market === "tw"
 const localQuery = (title: string) => /\p{Script=Han}/u.test(title) && !/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(title);
 const sufficient = (row: ContextItem) => Boolean(row.title.trim()) && Number.isFinite(row.metrics?.impressions) && (row.metrics?.impressions ?? 0) >= 20;
 
+// GSC ties have arbitrary order. Preserve exact query identity rather than
+// locale collation, which can consider distinct Unicode titles equal.
+export const compareQueryTitles = (a: ContextItem, b: ContextItem) => a.title < b.title ? -1 : a.title > b.title ? 1 : 0;
+
 /** A review heuristic, never proof of missing pages, ranking opportunity or a local win. */
 export function buildSearchGap(input: { market: string; websiteUrl: string | null; requestedAt: string; source: ConnectorContext }): SearchGap {
   const gap: SearchGap = { version: 1, ...input, status: "unavailable", reason: "source_unavailable", queries: [] };
@@ -38,7 +42,7 @@ export function buildSearchGap(input: { market: string; websiteUrl: string | nul
   if (!substantial.length) return { ...gap, status: "partial", reason: "thin" };
   const local = substantial.filter(row => localQuery(row.title));
   if (!local.length) return { ...gap, status: "partial", reason: "language_limited" };
-  const queries = local.filter(row => row.metrics?.clicks === 0).slice(0, 5);
+  const queries = local.filter(row => row.metrics?.clicks === 0).sort(compareQueryTitles).slice(0, 5);
   if (!queries.length) return { ...gap, status: "empty", reason: "no_review_queries" };
   return { ...gap, queries, status: source.status === "partial" || local.length !== substantial.length ? "partial" : "ready", reason: "review_queries" };
 }

@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import { getPool } from "@/lib/db/client";
 import { withTransaction } from "@/lib/db/transaction";
 import type { SearchGap, SearchRecord } from "@/lib/workspace/search-gap";
+import { compareQueryTitles } from "@/lib/workspace/search-gap";
 import { actionMutationRepository } from "./action-mutations";
 import { templateByKey } from "@/lib/workspace/templates";
 import { localized } from "@/lib/domain";
@@ -25,8 +26,8 @@ export function conversationSearchRepository(pool?: Pick<Pool, "query" | "connec
     async append(scope: SearchScope, gap: SearchGap, brief: SearchRecord["brief"]): Promise<SearchRecord> {
       // Re-reading identical final evidence must not make another confirmable brief.
       // Keep the original source/draft timestamps on that immutable snapshot.
-      const source = { ...gap.source, observedAt: undefined, items: [...gap.source.items].sort((a, b) => a.title.localeCompare(b.title)) };
-      const snapshotKey = createHash("sha256").update(JSON.stringify(brief ? { version: gap.version, market: gap.market, websiteUrl: gap.websiteUrl, status: gap.status, reason: gap.reason, source, queries: [...gap.queries].sort((a, b) => a.title.localeCompare(b.title)) } : randomUUID())).digest("hex");
+      const source = { ...gap.source, observedAt: undefined, items: [...gap.source.items].sort(compareQueryTitles) };
+      const snapshotKey = createHash("sha256").update(JSON.stringify(brief ? { version: gap.version, market: gap.market, websiteUrl: gap.websiteUrl, status: gap.status, reason: gap.reason, source, queries: [...gap.queries].sort(compareQueryTitles) } : randomUUID())).digest("hex");
       const saved = (await database().query<SearchRecord>(`INSERT INTO conversation_search_briefs(workspace_id,location_id,snapshot_key,gap,brief) VALUES($1,$2,$3,$4,$5) ON CONFLICT(workspace_id,location_id,snapshot_key) DO NOTHING RETURNING ${COLUMNS}`, [scope.workspaceId, scope.locationId, snapshotKey, JSON.stringify(gap), brief ? JSON.stringify(brief) : null])).rows[0];
       if (saved) return saved;
       const existing = (await database().query<SearchRecord>(`SELECT ${COLUMNS} FROM conversation_search_briefs WHERE workspace_id=$1 AND location_id=$2 AND snapshot_key=$3 AND ${VALID_SCOPE}`, [scope.workspaceId, scope.locationId, snapshotKey])).rows[0];
