@@ -73,7 +73,7 @@ describe("Stage 3 confirmed search briefs on owned PostgreSQL", () => {
     const scope = await setup(), repo = conversationSearchRepository(runtime), gap = gapFixture();
     const first = await repo.append(scope, gap, buildSearchBriefs(gap)); await repo.approve(scope, first.id, scope.actorId);
     const successor = (await runtime.query("INSERT INTO app_users(email) VALUES($1) RETURNING id", [`${crypto.randomUUID()}@example.test`])).rows[0].id;
-    await runtime.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,'successor@example.test','owner',now())", [scope.workspaceId, successor]);
+    await runtime.query("INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,'successor@example.test','manager',now())", [scope.workspaceId, successor]);
     await runtime.query("DELETE FROM app_users WHERE id=$1", [scope.actorId]);
     expect((await runtime.query("SELECT approved_by,approved_at FROM conversation_search_briefs WHERE id=$1", [first.id])).rows[0]).toMatchObject({ approved_by: null, approved_at: expect.any(Date) });
     await runtime.query("DELETE FROM locations WHERE id=$1", [scope.locationId]);
