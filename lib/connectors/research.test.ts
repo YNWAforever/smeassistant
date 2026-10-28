@@ -77,6 +77,36 @@ describe("paid research gates", () => {
 });
 
 describe("bounded paid adapters", () => {
+  it.each(["allinanchor", "allintext", "allintitle", "allinurl", "cache", "define", "filetype", "id", "inanchor", "info", "intext", "intitle", "inurl", "link", "site"])("rejects the premium %s: operator before reserving or calling DataForSEO", async operator => {
+    const ledger = budget(), fetcher = vi.fn();
+    const result = await runResearch({ ...input, provider: "dataforseo", market: "tw", keyword: `coffee ${operator}:example.com` }, { env, budget: ledger, fetch: fetcher });
+    expect(result).toMatchObject({ status: "unsupported", reason: "keyword_unsupported", observedAt: null, items: [] });
+    expect(ledger.reserve).not.toHaveBeenCalled(); expect(fetcher).not.toHaveBeenCalled();
+  });
+  it.each(["coffee SITE:example.com", "coffee site%3Aexample.com", "coffee %73ite%3aexample.com"])("rejects case/encoding variants of surcharge operators: %s", async keyword => {
+    const ledger = budget(), fetcher = vi.fn();
+    expect(await runResearch({ ...input, provider: "dataforseo", market: "tw", keyword }, { env, budget: ledger, fetch: fetcher })).toMatchObject({ status: "unsupported", reason: "keyword_unsupported" });
+    expect(ledger.reserve).not.toHaveBeenCalled(); expect(fetcher).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["coffee+tea 50% off", "coffee%2Btea 50%25 off"],
+    ["coffee 50%20 off", "coffee 50%2520 off"],
+  ])("preserves literal search text through provider decoding: %s", async (keyword, transmitted) => {
+    const fetcher = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const sent = JSON.parse(String(init?.body))[0].keyword;
+      expect(sent).toBe(transmitted);
+      // Documented provider behavior, modeled offline: '+' becomes space and percent escapes decode once.
+      const payload = serp(); payload.tasks[0].result[0].keyword = decodeURIComponent(sent.replace(/\+/g, " "));
+      return reply(payload);
+    });
+    expect(await runResearch({ ...input, provider: "dataforseo", market: "tw", keyword }, { env, budget: budget(), fetch: fetcher })).toMatchObject({ status: "ready", scope: `tw: ${keyword}`, items: [{ title: "Coffee" }] });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+  it("bounds the transmitted keyword before reserving when escaping expands it", async () => {
+    const ledger = budget(), fetcher = vi.fn();
+    expect(await runResearch({ ...input, provider: "dataforseo", market: "tw", keyword: "+".repeat(234) }, { env, budget: ledger, fetch: fetcher })).toMatchObject({ status: "unsupported", reason: "keyword_unsupported" });
+    expect(ledger.reserve).not.toHaveBeenCalled(); expect(fetcher).not.toHaveBeenCalled();
+  });
   it("reserves before one basic Firecrawl scrape with no parsers or auto proxy", async () => {
     const ledger = budget();
     const fetcher = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {

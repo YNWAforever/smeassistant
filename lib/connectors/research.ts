@@ -99,6 +99,17 @@ function reportedCost(provider: ResearchProvider, payload: unknown, ceiling: num
   return rootCost === undefined && taskCosts.every(cost => cost === undefined) ? undefined : Math.max(rootCost ?? 0, total);
 }
 type Parsed = { status: ResearchSettlement["outcome"]; items: ContextItem[]; reason?: string };
+/** DataForSEO charges 5x for these operators; Stage 2 reserves ordinary one-page pricing only.
+ * The provider also decodes percent escapes and '+' once, even in JSON keywords.
+ * https://github.com/dataforseo/TypeScriptClient/blob/master/docs/SerpGoogleOrganicLiveRegularRequestInfo.md
+ */
+function regularSerpKeyword(keyword: string): string | null {
+  const decoded = keyword.replace(/%([0-9a-f]{2})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+  const premium = /(?:allinanchor|allintext|allintitle|allinurl|cache|define|filetype|id|inanchor|info|intext|intitle|inurl|link|site):/i;
+  if (premium.test(keyword) || premium.test(decoded)) return null;
+  const escaped = keyword.replace(/%/g, "%25").replace(/\+/g, "%2B");
+  return escaped.length <= 700 ? escaped : null;
+}
 function parseFirecrawl(payload: unknown, url: string): Parsed {
   const root = record(payload), data = record(root?.data);
   if (root?.success !== true || !data || typeof data.markdown !== "string") return { status: "failed", items: [], reason: "provider_failed" };
@@ -138,6 +149,8 @@ export async function runResearch(input: ResearchInput, deps: ResearchDependenci
   const url = publicUrl(input.url), keyword = input.keyword?.trim();
   if (!url) return { ...result, status: "unsupported", reason: "website_unsupported" };
   if (input.provider === "dataforseo" && (!keyword || keyword.length > 700 || /[\u0000-\u001f]/.test(keyword))) return { ...result, status: "unsupported", reason: "keyword_required" };
+  const serpKeyword = input.provider === "dataforseo" ? regularSerpKeyword(keyword!) : null;
+  if (input.provider === "dataforseo" && serpKeyword === null) return { ...result, status: "unsupported", reason: "keyword_unsupported" };
   const now = (deps.now ?? (() => new Date()))(), ledger = deps.budget ?? researchBudgetRepository(), request = budgetInput(input, config, now);
   let reservation;
   try { reservation = await ledger.reserve(request); }
@@ -147,7 +160,7 @@ export async function runResearch(input: ResearchInput, deps: ResearchDependenci
   try {
     const endpoint = input.provider === "firecrawl" ? "https://api.firecrawl.dev/v2/scrape" : "https://api.dataforseo.com/v3/serp/google/organic/live/regular";
     // Empty parsers + basic proxy avoid automatic document OCR and premium proxy charges.
-    const body = input.provider === "firecrawl" ? { url, formats: ["markdown"], parsers: [], proxy: "basic", onlyMainContent: true, timeout: 10000, maxAge: 0 } : [{ keyword, location_code: markets[input.market as keyof typeof markets], language_code: "en", depth: 10, max_crawl_pages: 1, device: "desktop", os: "windows" }];
+    const body = input.provider === "firecrawl" ? { url, formats: ["markdown"], parsers: [], proxy: "basic", onlyMainContent: true, timeout: 10000, maxAge: 0 } : [{ keyword: serpKeyword, location_code: markets[input.market as keyof typeof markets], language_code: "en", depth: 10, max_crawl_pages: 1, device: "desktop", os: "windows" }];
     const response = await requestJson(endpoint, body, config.authorization, deps.fetch ?? fetch) as { payload: unknown; httpOk: boolean };
     reportedUsd = reportedCost(input.provider, response.payload, config.ceilingUsd);
     parsed = !response.httpOk ? { status: "failed", items: [], reason: "provider_failed" } : input.provider === "firecrawl" ? parseFirecrawl(response.payload, url) : parseSerp(response.payload, input.market, keyword!);
