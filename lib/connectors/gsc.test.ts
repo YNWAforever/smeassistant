@@ -5,12 +5,26 @@ const token = async <T>(_w: string, run: (token: string) => Promise<T>) => run("
 const datedRows = () => Array.from({length:28}, (_,i) => ({keys:[new Date(Date.UTC(2026,8,28+i)).toISOString().slice(0,10)],clicks:1,impressions:3,ctr:1/3,position:9}));
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 describe("GSC readonly context", () => {
+  it.each([
+    ["2026-10-28T00:00:00Z", "2026-09-27", "2026-10-24"],
+    ["2026-10-28T07:00:00Z", "2026-09-28", "2026-10-25"],
+    ["2026-01-01T00:30:00Z", "2025-12-01", "2025-12-28"],
+    ["2026-03-09T06:30:00Z", "2026-02-06", "2026-03-05"],
+    ["2026-11-02T07:30:00Z", "2026-10-02", "2026-10-29"],
+  ])("anchors Stage 3's 28-day window three Pacific calendar days before %s", async (now, startDate, endDate) => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(reply({ siteEntry: [{ siteUrl: input.websiteUrl, permissionLevel: "siteOwner" }] }))
+      .mockResolvedValueOnce(reply({ rows: [] }));
+    const context = await readGscContext({ ...input, marketOnly: true }, { withToken: token, fetch: fetcher, now: () => new Date(now) });
+    expect(context.analytics).toMatchObject({ startDate, endDate });
+    expect(JSON.parse(fetcher.mock.calls[1][1].body)).toMatchObject({ startDate, endDate, dataState: "final" });
+  });
   it("retains honest partial query evidence when dated history is missing or unavailable", async () => {
     for (const failed of [false, true]) {
       const fetcher = vi.fn().mockResolvedValueOnce(reply({siteEntry:[{siteUrl:input.websiteUrl,permissionLevel:"siteOwner"}]})).mockResolvedValueOnce(reply({rows:[{keys:["午餐餐牌"],clicks:0,impressions:80,ctr:0,position:9}]}));
       if (failed) fetcher.mockRejectedValueOnce(new DOMException("timeout","TimeoutError"));
       else fetcher.mockResolvedValueOnce(reply({rows:datedRows().slice(1)}));
-      const context = await readGscContext({...input,marketOnly:true},{withToken:token,fetch:fetcher,now:()=>new Date("2026-10-28T00:00:00Z")});
+      const context = await readGscContext({...input,marketOnly:true},{withToken:token,fetch:fetcher,now:()=>new Date("2026-10-28T12:00:00Z")});
       expect(context).toMatchObject({status:"partial",reason:"insufficient_history",items:[{title:"午餐餐牌"}],analytics:{reportedDays:failed?0:27}});
     }
   });
@@ -27,7 +41,7 @@ describe("GSC readonly context", () => {
   it("uses the same bounded readonly adapter with explicit HK/TW country filters for Stage 3", async () => {
     for (const [market, country] of [["hk", "hkg"], ["tw", "twn"]] as const) {
       const fetcher = vi.fn().mockResolvedValueOnce(reply({siteEntry:[{siteUrl:input.websiteUrl,permissionLevel:"siteOwner"}]})).mockResolvedValueOnce(reply({rows:[{keys:["午餐餐牌"],clicks:0,impressions:80,ctr:0,position:9}]})).mockResolvedValueOnce(reply({rows:datedRows()}));
-      const context = await readGscContext({...input,market,marketOnly:true}, {withToken:token,fetch:fetcher,now:()=>new Date("2026-10-28T00:00:00Z")});
+      const context = await readGscContext({...input,market,marketOnly:true}, {withToken:token,fetch:fetcher,now:()=>new Date("2026-10-28T12:00:00Z")});
       expect(JSON.parse(fetcher.mock.calls[1][1].body)).toMatchObject({type:"web",aggregationType:"byPage",dimensionFilterGroups:[{groupType:"and",filters:[{dimension:"country",operator:"equals",expression:country},{dimension:"page",operator:"includingRegex",expression:"^https://shop\\.example\\.test/"}]}],rowLimit:25,dataState:"final"});
       expect(context.analytics).toEqual({startDate:"2026-09-28",endDate:"2026-10-25",country,searchType:"web",dimensions:"query",dataState:"final",aggregation:"byPage",pageFilter:"^https://shop\\.example\\.test/",rowLimit:25,reportedDays:28});
       expect(JSON.parse(fetcher.mock.calls[2][1].body)).toMatchObject({dimensions:["date"],rowLimit:28});

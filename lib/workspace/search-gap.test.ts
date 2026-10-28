@@ -28,6 +28,19 @@ describe("source-scoped search gaps", () => {
     expect(buildSearchGap({ ...gapFixture(), market: "us" }).queries).toEqual([]);
     const partial = gapFixture(gscFixture({ status: "partial" })); expect(partial.status).toBe("partial"); expect(partial.queries).toHaveLength(1);
   });
+  it.each(["東京のおすすめラーメン", "漢字 カフェ", "漢字 한글", "漢字 한글"])("does not turn unsupported-language query %s into a Chinese-language brief", title => {
+    const gap = gapFixture(gscFixture({ items: [{ title, metrics: { impressions: 80, clicks: 0 } }] }));
+    expect(gap).toMatchObject({ status: "partial", reason: "language_limited", queries: [] });
+    expect(buildSearchBriefs(gap)).toBeNull();
+  });
+  it("keeps mixed supported and unsupported query coverage partial", () => {
+    const gap = gapFixture(gscFixture({ items: [
+      { title: "午餐餐牌", metrics: { impressions: 80, clicks: 0 } },
+      { title: "東京のおすすめラーメン", metrics: { impressions: 80, clicks: 0 } },
+    ] }));
+    expect(gap.status).toBe("partial");
+    expect(gap.queries.map(row => row.title)).toEqual(["午餐餐牌"]);
+  });
   it("has matching copy keys in every locale, including recovery states", () => {
     for (const locale of ["zh-HK", "zh-TW"] as const) {
       expect(Object.keys(searchCopy[locale])).toEqual(Object.keys(searchCopy.en));

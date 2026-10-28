@@ -21,7 +21,9 @@ export interface SearchRecord {
 }
 
 const countryFor = (market: string) => market === "hk" ? "hkg" : market === "tw" ? "twn" : null;
-const localQuery = (title: string) => /\p{Script=Han}/u.test(title);
+// Han alone cannot identify a language. Reject explicit Japanese/Korean script
+// before treating a query as a candidate for this conservative Chinese heuristic.
+const localQuery = (title: string) => /\p{Script=Han}/u.test(title) && !/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(title);
 const sufficient = (row: ContextItem) => Boolean(row.title.trim()) && Number.isFinite(row.metrics?.impressions) && (row.metrics?.impressions ?? 0) >= 20;
 
 /** A review heuristic, never proof of missing pages, ranking opportunity or a local win. */

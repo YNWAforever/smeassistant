@@ -39,7 +39,10 @@ export async function readGscContext(input: {workspaceId:string;websiteUrl:strin
       const sites=Sites.parse(await query(API));
       const property=sites.siteEntry?.filter(site=>["siteOwner","siteFullUser","siteRestrictedUser"].includes(site.permissionLevel)&&gscPropertyMatches(site.siteUrl,input.websiteUrl!)).sort((a,b)=>b.siteUrl.length-a.siteUrl.length)[0]?.siteUrl;
       if (!property) return {...result,reason:"property_missing"};
-      const end=new Date(now);end.setUTCDate(end.getUTCDate()-3);
+      // Search Analytics dates are Pacific calendar dates, including DST. Keep
+      // the existing worldwide Stage 2 window unchanged.
+      const today=input.marketOnly?new Intl.DateTimeFormat("en-CA",{timeZone:"America/Los_Angeles",year:"numeric",month:"2-digit",day:"2-digit"}).format(now):now.toISOString().slice(0,10);
+      const end=new Date(`${today}T00:00:00Z`);end.setUTCDate(end.getUTCDate()-3);
       const start=new Date(end);start.setUTCDate(start.getUTCDate()-27);
       const startDate=start.toISOString().slice(0,10),endDate=end.toISOString().slice(0,10);
       const country=input.market==="hk"?"hkg" as const:"twn" as const;
