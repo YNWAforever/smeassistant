@@ -9,7 +9,7 @@ type ConversationCopy = {
 };
 export const conversationCopy: Record<PrototypeLocale, ConversationCopy> = {
   en: {
-    switchLabel: "Start work", title: "What would you like to work on?", preview: "Preview", lead: "Keep a local thread of notes, choose a task template, or return to existing work.",
+    switchLabel: "Start work", title: "What would you like to do for your shop?", preview: "Preview", lead: "Start with a goal, or choose a template and work through it together.",
     privacy: "Notes stay in this browser, separated by account, workspace and location. No cloud backup or sync. People using this browser profile may read them; clearing site data deletes them.",
     boundary: "Notes are not AI replies or drafts and are not shared through linked tasks. Saving them does not confirm work or count a delivery. Ask Kinnso is available above.",
     templates: "Start with a template", templateHint: "Choose a template to fill your note. Nothing runs until you open an existing task and use its controls.", useTemplate: "Use template:",
@@ -21,7 +21,7 @@ export const conversationCopy: Record<PrototypeLocale, ConversationCopy> = {
     context: "Shop context", shop: "Shop", insights: "Better?", integrations: "Connections",
   },
   "zh-HK": {
-    switchLabel: "開始工作", title: "今日想處理啲咩？", preview: "預覽", lead: "用本機討論串記低想法、揀工作範本，或者繼續現有工作。",
+    switchLabel: "開始工作", title: "想為間舖做啲咩？", preview: "預覽", lead: "講低目標，或揀個模板，一齊做完。",
     privacy: "筆記只留喺呢個瀏覽器，按帳戶、工作空間同分店分開，冇雲端備份或同步。用同一瀏覽器設定檔嘅人可能讀到；清除網站資料會刪除筆記。",
     boundary: "筆記唔係 AI 回覆或草稿，亦唔會透過連結嘅待辦分享。儲存唔代表確認工作，唔會計作交付。現有助手「問 Kinnso」喺上面。",
     templates: "由範本開始", templateHint: "揀範本會填入筆記。要執行工作，請打開現有待辦，再用入面嘅操作。", useTemplate: "使用範本：",
@@ -29,11 +29,11 @@ export const conversationCopy: Record<PrototypeLocale, ConversationCopy> = {
     unavailable: "呢個瀏覽器未能儲存或還原筆記。目前筆記只留喺呢個畫面，離開或重新整理後可能遺失。",
     corrupt: "未能讀取已存嘅本機筆記，原有資料未被取代。要重新開始，請清除呢個網站嘅瀏覽器資料；其他本機設定亦會一併移除。",
     limit: "已達到呢個瀏覽器嘅筆記上限，最新更改未能儲存。離開前請另存一份。", missing: "呢個帳戶、工作空間同分店搵唔到呢個本機討論串。",
-    continueWork: "繼續現有工作", noActions: "目前清單未有待辦。", allActions: "睇全部待辦", openAction: "打開待辦", openVersion: "打開已存版本", linkAction: "連結現有待辦", chooseAction: "揀一項待辦", actionUnavailable: "連結嘅待辦唔喺目前清單。請到待辦清單確認存取權或其他工作。",
+    continueWork: "繼續工作", noActions: "目前清單未有待辦。", allActions: "睇全部待辦", openAction: "打開待辦", openVersion: "打開已存版本", linkAction: "連結現有待辦", chooseAction: "揀一項待辦", actionUnavailable: "連結嘅待辦唔喺目前清單。請到待辦清單確認存取權或其他工作。",
     context: "舖頭資料", shop: "舖", insights: "好啲？", integrations: "連接設定",
   },
   "zh-TW": {
-    switchLabel: "開始工作", title: "今天想處理什麼？", preview: "預覽", lead: "用本機討論串記下想法、選工作範本，或繼續現有工作。",
+    switchLabel: "開始工作", title: "想為店裡做什麼？", preview: "預覽", lead: "說說目標，或選個範本，一起做完。",
     privacy: "筆記只留在這個瀏覽器，依帳戶、工作空間和分店分開，沒有雲端備份或同步。使用同一瀏覽器設定檔的人可能讀到；清除網站資料會刪除筆記。",
     boundary: "筆記不是 AI 回覆或草稿，也不會透過連結的待辦分享。儲存不代表確認工作，不計入交付。現有助手「問 Kinnso」在上方。",
     templates: "從範本開始", templateHint: "選範本會填入筆記。要執行工作，請開啟現有待辦，再使用裡面的操作。", useTemplate: "使用範本：",
