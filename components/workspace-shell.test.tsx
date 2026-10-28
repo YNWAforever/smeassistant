@@ -108,3 +108,13 @@ it.each([0, 1, 2])("shows a mobile top-bar location control only for multiple br
   root.innerHTML = renderToStaticMarkup(<WorkspaceShell locale="en" workspace={{ ...workspace, locations }}><h1>Page</h1></WorkspaceShell>);
   expect(root.querySelectorAll(".workspace-topbar .workspace-mobile-brand [role=combobox]")).toHaveLength(count > 1 ? 1 : 0);
 });
+
+it("omits the optional conversation switch while disabled and adds reachable scoped links when enabled", () => {
+  route.pathname = "/en/owner/example";
+  const disabled = renderToStaticMarkup(<WorkspaceShell locale="en" workspace={workspace}><p>Today</p></WorkspaceShell>);
+  expect(disabled).not.toContain("conversation-switch");
+  const enabled = document.createElement("div");
+  enabled.innerHTML = renderToStaticMarkup(<WorkspaceShell locale="en" workspace={{ ...workspace, conversationEnabled: true }}><p>Today</p></WorkspaceShell>);
+  expect([...enabled.querySelectorAll(".conversation-switch a")].map(a => a.getAttribute("href"))).toEqual(["/en/owner/example?location=branch", "/en/owner/example/conversation?location=branch"]);
+  expect(enabled.querySelectorAll(".mobile-bottom-nav a")).toHaveLength(4);
+});

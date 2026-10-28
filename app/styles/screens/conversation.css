@@ -1,0 +1,29 @@
+@layer screens {
+  .conversation-switch { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+  .conversation-switch a { display: inline-flex; align-items: center; gap: .5rem; padding: .6rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--ink-2); }
+  .conversation-switch a[aria-current="page"] { background: var(--brand-soft); color: var(--ink); border-color: var(--brand); }
+  .conversation-switch small, .conversation-eyebrow { color: var(--ink-3); font-size: .75rem; }
+  .conversation-intro { margin-bottom: 1rem; max-width: 52rem; }
+  .conversation-intro h1 { margin: .5rem 0; font-size: clamp(1.5rem, 3vw, 2.25rem); }
+  .conversation-layout { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(0, 3fr) minmax(9rem, 1fr); gap: 1.5rem; margin-top: 1.5rem; align-items: start; }
+  .conversation-layout h2 { font-size: 1rem; font-weight: 650; margin-bottom: .75rem; }
+  .conversation-threads, .conversation-context { min-width: 0; padding: 1rem; background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .conversation-layout ul { list-style: none; padding: 0; margin: .75rem 0; }
+  .conversation-threads li button { width: 100%; text-align: start; padding: .75rem .5rem; overflow-wrap: anywhere; border-radius: var(--radius-sm); }
+  .conversation-threads li button.is-active { background: var(--brand-soft); }
+  .conversation-section-heading { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; }
+  .conversation-work { min-width: 0; }
+  .conversation-composer { display: grid; gap: .75rem; margin-bottom: 1.5rem; }
+  .conversation-composer textarea, .conversation-notes select { width: 100%; padding: .9rem; color: var(--ink); background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius-md); font: inherit; }
+  .conversation-composer textarea { resize: vertical; min-height: 8rem; }
+  .conversation-composer button { justify-self: start; }
+  .conversation-templates { margin: 1.5rem 0; }
+  .conversation-templates > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-top: .75rem; }
+  .conversation-templates button { padding: 1rem; text-align: start; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--paper); overflow-wrap: anywhere; }
+  .conversation-note { padding: 1rem; background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius-md); white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: .75rem; }
+  .conversation-linked-actions li, .conversation-continue li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .75rem; padding: .75rem 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+  .conversation-context > a { display: block; padding: .5rem 0; }
+  .conversation-continue { margin-top: 1.5rem; }
+  @media (max-width: 1100px) { .conversation-layout { grid-template-columns: minmax(10rem, 1fr) minmax(0, 3fr); } .conversation-context { grid-column: 1 / -1; } }
+  @media (max-width: 767px) { .conversation-layout { grid-template-columns: minmax(0, 1fr); gap: 1rem; } .conversation-threads { order: 1; } .conversation-context { order: 2; } .conversation-templates > div { grid-template-columns: minmax(0, 1fr); } .conversation-section-heading { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; } }
+}
