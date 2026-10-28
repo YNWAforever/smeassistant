@@ -23,6 +23,7 @@
     --muted-foreground: var(--ink-3);
     --input: var(--line);
     --soft: var(--ink-2);
+    --lime-soft: var(--brand-soft);
     --focus: var(--brand);
     --ring: var(--focus);
     --ed-bg: #fffbf6;

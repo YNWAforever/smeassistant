@@ -136,12 +136,16 @@ test("dark preference keeps cream-home controls and honesty copy readable", asyn
   await page.locator(".theme-button").click();
   await page.getByRole("menuitemradio", { name: "Dark", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator(".workspace-shell--conversation")).toHaveCSS("background-color", "rgb(255, 251, 246)");
+  await expect(page.locator(".workspace-shell--conversation")).toHaveCSS("color-scheme", "light");
+  await expect(page.locator(".workspace-sidebar")).toHaveCSS("background-color", "rgb(248, 246, 241)");
   await page.getByLabel("Your note", { exact: true }).fill("Readability check");
   await openTool(page, "search");
   await openTool(page, "documents");
   const targets = [
     ".conversation-composer [type=submit]",
     ".conversation-threads [data-slot=button]",
+    ".workspace-topbar .assistant-launcher",
     ".workspace-topbar [data-slot=select-trigger]",
     ".conversation-boundaries .limitation-note",
     "#conversation-search .limitation-note",
