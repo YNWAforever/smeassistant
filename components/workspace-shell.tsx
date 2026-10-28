@@ -9,7 +9,12 @@ import {
   ChevronDown,
   FileClock,
   Home,
+  FileText,
+  LayoutTemplate,
+  MessagesSquare,
   MoreHorizontal,
+  Plus,
+  Plug,
   Search,
 } from "lucide-react"
 import { useEffect, type ReactNode } from "react"
@@ -36,7 +41,8 @@ import { accountInitials, resolveLocationSlug, usagePercent } from "@/lib/worksp
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import { ThemeMenu, WorkspaceTheme } from "@/components/theme/workspace-theme"
 import { ConversationSwitch } from "@/components/workspace/conversation-switch"
-import { conversationCopy } from "@/lib/copy-conversation"
+import { conversationDesignCopy } from "@/lib/copy-conversation-design"
+import { ConversationNavigationProvider, openConversationTool, useConversationNavigation } from "@/components/workspace/conversation-navigation"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { useFocusClearOfBars } from "@/hooks/use-focus-clear-of-bars"
 import type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
@@ -72,6 +78,8 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const t = copy[locale].shell
+  const d = conversationDesignCopy[locale]
+  const conversationNavigation = useConversationNavigation()
   useFocusClearOfBars(".workspace-topbar", ".mobile-bottom-nav")
   const base = `/${locale}/owner/${workspace.slug}`
   const location = resolveLocationSlug(searchParams.get("location"), workspace.locations, workspace.defaultLocationSlug)
@@ -83,7 +91,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
   const isNewAction = pathname === `${base}/actions/new`
   const isActionDetail = !isNewAction && pathname.startsWith(`${base}/actions/`)
   const isConversation = workspace.conversationEnabled && pathname === `${base}/conversation`
-  const workspaceSection = isConversation ? conversationCopy[locale].switchLabel : isNewAction ? t.context.newAction : isActionDetail ? t.context.review : t.nav[current ?? "today"]
+  const workspaceSection = isConversation ? d.discussion : isNewAction ? t.context.newAction : isActionDetail ? t.context.review : t.nav[current ?? "today"]
   const assistantSurface: AssistantSurface = isNewAction
     ? "create"
     : isActionDetail
@@ -100,7 +108,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
     : t.notifications.label
 
   return (
-    <SidebarProvider className="workspace-shell">
+    <SidebarProvider className={`workspace-shell${isConversation ? " workspace-shell--conversation" : ""}`}>
       <a className="skip-link" href="#main-content">{t.skip}</a>
       <Sidebar collapsible="none" className="workspace-sidebar hidden md:flex">
         <SidebarHeader className="workspace-sidebar-header">
@@ -114,6 +122,10 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
             <span><strong>{workspace.name}</strong><small>{locationName}</small></span>
             <ChevronDown aria-hidden="true" />
           </Link>
+          {isConversation && <>
+            <Link className="conversation-sidebar-new" href={scopedHref(`${base}/conversation`)}><Plus aria-hidden="true" />{d.newDiscussion}</Link>
+            <Link className="conversation-sidebar-active" href={scopedHref(`${base}/conversation`)} aria-current="page"><MessagesSquare aria-hidden="true" />{d.discussion}</Link>
+          </>}
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
@@ -135,13 +147,33 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+          {isConversation && <>
+            <SidebarGroup><SidebarGroupLabel>{d.together}</SidebarGroupLabel><SidebarGroupContent><SidebarMenu>
+              {([
+                { label: d.documents, icon: FileText, target: "conversation-documents" },
+                { label: d.templateNav, icon: LayoutTemplate, target: "conversation-templates" },
+                { label: d.sources, icon: Plug, target: "conversation-sources" },
+              ]).map(({ label, icon: Icon, target }) => <SidebarMenuItem key={target}>
+                <SidebarMenuButton asChild>{target === "conversation-templates"
+                  ? <Link href={`${scopedHref(`${base}/conversation`)}#${target}`}><Icon /><span>{label}</span></Link>
+                  : <a href={`#${target}`} onClick={() => openConversationTool(target)}><Icon /><span>{label}</span></a>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>)}
+            </SidebarMenu></SidebarGroupContent></SidebarGroup>
+            <SidebarGroup><SidebarGroupLabel>{d.recent}</SidebarGroupLabel><SidebarGroupContent><ul className="conversation-sidebar-recent">
+              {conversationNavigation?.threads.map(thread => <li key={thread.id}><Link href={`${base}/conversation?location=${encodeURIComponent(location)}&thread=${encodeURIComponent(thread.id)}`}><span>{thread.title}</span><small>{d.local}</small></Link></li>)}
+            </ul><a className="conversation-sidebar-all" href="#conversation-recent">{d.recent}</a></SidebarGroupContent></SidebarGroup>
+          </>}
         </SidebarContent>
         <SidebarFooter className="workspace-sidebar-footer">
-          <div className="usage-mini">
+          {isConversation ? <details className="usage-mini conversation-usage">
+            <summary><span>{t.usage.label}</span><strong>{workspace.usage.approvedDeliveries} / {workspace.usage.allowance === null ? "∞" : workspace.usage.allowance}</strong></summary>
+            <small>{t.usage.note}</small>
+          </details> : <div className="usage-mini">
             <div><span>{t.usage.label}</span><strong>{workspace.usage.approvedDeliveries} / {workspace.usage.allowance === null ? "∞" : workspace.usage.allowance}</strong></div>
             {usageShare !== null && <div className="usage-track"><span style={{ width: `${usageShare}%` }} /></div>}
             <small>{t.usage.note}</small>
-          </div>
+          </div>}
           <Link className="account-button" href={`/${locale}/owner/select-workspace`} title={workspace.account.email}>
             <span className="account-avatar">{accountInitials(workspace.account.name)}</span>
             <span><strong>{workspace.account.name}</strong><small>{workspace.account.roleLabel}</small></span>
@@ -187,6 +219,11 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
  */
 export function WorkspacePageFrame({ locale, workspace, demo = false, children }: { locale: string; workspace: ShellWorkspace; demo?: boolean; children: ReactNode }) {
   const safeLocale = normaliseLocale(locale)
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const conversationScope = workspace.conversationEnabled && pathname === `/${safeLocale}/owner/${workspace.slug}/conversation`
+    ? JSON.stringify([workspace.slug, workspace.account.email, resolveLocationSlug(searchParams.get("location"), workspace.locations, workspace.defaultLocationSlug)])
+    : "outside-conversation"
   useEffect(() => {
     document.documentElement.lang = safeLocale === "zh-HK" ? "zh-HK" : safeLocale === "zh-TW" ? "zh-TW" : "en"
   }, [safeLocale])
@@ -194,7 +231,7 @@ export function WorkspacePageFrame({ locale, workspace, demo = false, children }
     <WorkspaceTheme>
       <div className={`workspace-root${demo ? " has-env-bar" : ""}`}>
         <EnvironmentBar locale={safeLocale} show={demo} />
-        <WorkspaceShell locale={safeLocale} workspace={workspace}>{children}</WorkspaceShell>
+        <ConversationNavigationProvider key={conversationScope}><WorkspaceShell locale={safeLocale} workspace={workspace}>{children}</WorkspaceShell></ConversationNavigationProvider>
       </div>
     </WorkspaceTheme>
   )

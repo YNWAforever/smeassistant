@@ -3,6 +3,8 @@ import { createRequire } from "node:module";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test as base, expect, type Page } from "@playwright/test";
+import { conversationDesignCopy } from "../../lib/copy-conversation-design";
+import { resourceCopy } from "../../lib/copy-conversation-resources";
 import { conversationCopy } from "../../lib/copy-conversation";
 import { searchCopy } from "../../lib/copy-search-gap";
 import { buildSearchBriefs, observeSearch, type SearchRecord } from "../../lib/workspace/search-gap";
@@ -25,7 +27,7 @@ const path=new URL(url),q=path.searchParams,locale=path.pathname.split("/")[1],s
 const ws={slug,name:"Synthetic shop",avatarInitial:"S",locations:[{slug:"central",name:"Central"},{slug:"east",name:"East"}],defaultLocationSlug:"central",usage:{approvedDeliveries:2,allowance:3},account:{name:user,email:user+"@example.test",roleLabel:"Owner"},unreadNotifications:0,demo:false,assistant:{workspaceId:slug,locationId:branch},...(q.get("flag")!=="off"?{conversationEnabled:true}:{})};
 const actions=q.get("empty")==="1"?[]:[{id:"${ACTION}",title:"Existing synthetic task",versionId:"${VERSION}"}];
 return <><aside className="fixture-label">OFFLINE SYNTHETIC · real product components · no DB, Auth or model</aside><WorkspacePageFrame locale={locale} workspace={ws}>
-{path.pathname.endsWith("/conversation")?<ConversationView locale={locale} workspaceSlug={slug} workspaceName={ws.name} location={branch} locationName={branch==="central"?"Central":"East"} scope={{userId:user,workspaceId:slug,locationId:branch}} initialThreadId={q.get("thread")??undefined} actions={actions} resources={{canManage:true}}/>:path.pathname.includes("/actions/")?<section><h1>Existing task surface</h1><p>Version {q.get("version")}</p></section>:<h1>{copy[locale].shell.nav.today}</h1>}
+{path.pathname.endsWith("/conversation")?<ConversationView locale={locale} workspaceSlug={slug} workspaceName={ws.name} location={branch} locationName={branch==="all"?"":branch==="central"?"Central":"East"} scope={{userId:user,workspaceId:slug,locationId:branch}} initialThreadId={q.get("thread")??undefined} actions={actions} today={{open:actions.length,drafts:actions.length,completed:2}} resources={{canManage:true}}/>:path.pathname.includes("/actions/")?<section><h1>Existing task surface</h1><p>Version {q.get("version")}</p></section>:<h1>{copy[locale].shell.nav.today}</h1>}
 </WorkspacePageFrame></>}
 createRoot(document.getElementById("root")).render(<App/>);`;
 let bundle = "", css = "";
@@ -119,11 +121,72 @@ const test = base.extend<{ app: { origin: string; writes: string[] } }>({
     finally { server.closeAllConnections(); await new Promise<void>(done => server.close(() => done())); }
   },
 });
+async function openTool(page: Page, id: string) {
+  const details = page.locator(`#conversation-${id}`);
+  if (!await details.evaluate(node => (node as HTMLDetailsElement).open)) await details.locator(":scope > summary").click();
+}
 async function save(page: Page, text: string) {
   await page.getByLabel("Your note", { exact: true }).fill(text);
   await page.getByRole("button", { name: "Save local note", exact: true }).click();
   await expect(page.locator(".conversation-note").filter({ hasText: text })).toBeVisible();
 }
+
+test("dark preference keeps cream-home controls and honesty copy readable", async ({ page, app }) => {
+  await page.goto(`${app.origin}/en/owner/test-shop/conversation?location=central`);
+  await page.locator(".theme-button").click();
+  await page.getByRole("menuitemradio", { name: "Dark", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator(".workspace-shell--conversation")).toHaveCSS("background-color", "rgb(255, 251, 246)");
+  await expect(page.locator(".workspace-shell--conversation")).toHaveCSS("color-scheme", "light");
+  await expect(page.locator(".workspace-sidebar")).toHaveCSS("background-color", "rgb(248, 246, 241)");
+  await page.getByLabel("Your note", { exact: true }).fill("Readability check");
+  await openTool(page, "search");
+  await openTool(page, "documents");
+  const targets = [
+    ".conversation-composer [type=submit]",
+    ".conversation-threads [data-slot=button]",
+    ".workspace-topbar .assistant-launcher",
+    ".workspace-topbar [data-slot=select-trigger]",
+    ".conversation-boundaries .limitation-note",
+    "#conversation-search .limitation-note",
+    "#conversation-documents .limitation-note",
+  ];
+  for (const selector of targets) {
+    const contrasts = await page.locator(selector).evaluateAll(nodes => {
+      const context = document.createElement("canvas").getContext("2d")!;
+      const luminance = (color: string) => {
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        const rgb = Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3).map(value => {
+          const srgb = value / 255;
+          return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+        });
+        return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+      };
+      return nodes.map(node => {
+        let surface: Element | null = node;
+        while (surface && getComputedStyle(surface).backgroundColor === "rgba(0, 0, 0, 0)") surface = surface.parentElement;
+        const foreground = luminance(getComputedStyle(node).color);
+        const background = luminance(getComputedStyle(surface!).backgroundColor);
+        return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+      });
+    });
+    expect(contrasts.length, selector).toBeGreaterThan(0);
+    for (const contrast of contrasts) expect.soft(contrast, selector).toBeGreaterThanOrEqual(4.5);
+  }
+  await page.screenshot({ path: test.info().outputPath("conversation-dark-preference.png"), fullPage: true });
+  // Model a client navigation: the chosen global theme must survive the local palette.
+  await page.evaluate(() => {
+    const next = new URL(location.href);
+    next.pathname = next.pathname.replace(/\/conversation$/, "");
+    next.searchParams.set("flag", "off");
+    history.pushState(null, "", next);
+    dispatchEvent(new Event("fixture:refresh"));
+  });
+  await expect(page.locator(".workspace-shell--conversation, .conversation-switch")).toHaveCount(0);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(await page.locator(".workspace-shell").evaluate(node => getComputedStyle(node).colorScheme)).toBe("dark");
+});
 
 test("Today remains default and the optional switch works in every locale; existing Ask Kinnso opens", async ({ page, app }) => {
   for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
@@ -187,6 +250,7 @@ test("scope transitions and stale thread IDs never show another account, workspa
   await page.evaluate(() => { const next = new URL(location.href); next.searchParams.set("location", "east"); history.replaceState(null, "", next); dispatchEvent(new Event("fixture:refresh")); });
   await expect(page.getByText(conversationCopy.en.missing, { exact: true })).toBeVisible();
   await expect(page.locator(".conversation-note")).toHaveCount(0);
+  await expect(page.locator(".conversation-sidebar-recent a")).toHaveCount(0);
 });
 
 test("blocked storage retains notes on screen, reports failure, and never claims refresh persistence", async ({ page, app }) => {
@@ -240,12 +304,13 @@ test("long unbroken note titles stay inside the viewport", async ({ page, app })
 test("Stage 2 documents cite immutable versions across refresh; source context stays honest",async({page,app})=>{
   const url=`${app.origin}/en/owner/test-shop/conversation?location=central`;
   await page.goto(url);await save(page,"Synthetic private thread with source");
+  await openTool(page,"documents");
   await page.getByLabel("Shop document",{exact:true}).setInputFiles({name:"menu.txt",mimeType:"text/plain",buffer:Buffer.from("Synthetic confirmed menu v1")});
   await page.getByRole("button",{name:"Save document version",exact:true}).click();
   await expect(page.getByText("Document version saved",{exact:true})).toBeVisible();
   await page.getByRole("button",{name:"Cite this version",exact:true}).click();
   await expect(page.locator(".conversation-citations")).toContainText("menu.txt · v1");
-  const threadUrl=page.url();await page.reload();await expect(page.locator(".conversation-citations")).toContainText("menu.txt · v1");
+  const threadUrl=page.url();await page.reload();await openTool(page,"documents");await expect(page.locator(".conversation-citations")).toContainText("menu.txt · v1");
   const parentValue=await page.locator("#conversation-document-parent option").nth(1).getAttribute("value");await page.getByLabel("Add a version of",{exact:true}).selectOption(parentValue!);
   await page.getByLabel("Shop document",{exact:true}).setInputFiles({name:"menu.txt",mimeType:"text/plain",buffer:Buffer.from("Synthetic corrected menu v2")});
   await page.getByRole("button",{name:"Save document version",exact:true}).click();
@@ -254,6 +319,7 @@ test("Stage 2 documents cite immutable versions across refresh; source context s
   await page.locator(".conversation-citations summary").click();await expect(page.locator(".conversation-citations")).toContainText("Synthetic confirmed menu v1");
   const stored=await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith("kinnso:conversation:")).map(k=>localStorage.getItem(k)).join(""));
   expect(stored).not.toContain("Synthetic confirmed menu v1");expect(stored).not.toContain("Synthetic corrected menu v2");
+  await openTool(page,"sources");
   await expect(page.getByRole("link",{name:"Connect Google Search Console",exact:true})).toBeVisible();
   await expect(page.getByText("Budget reached. No paid request was sent.",{exact:true})).toBeVisible();
   const paid=page.locator(".conversation-connector").filter({has:page.getByRole("heading",{name:"DataForSEO",exact:true})});
@@ -272,6 +338,7 @@ test("Stage 2 availability refresh releases a temporary account block without a 
   });
   const url=`${app.origin}/en/owner/test-shop/conversation?location=central`;
   await page.goto(url);
+  await openTool(page,"sources");
   const connector=page.locator(".conversation-connector");
   await expect(connector.getByRole("button",{name:"Read context",exact:true})).toBeDisabled();
   await page.getByRole("button",{name:"Refresh availability",exact:true}).click();
@@ -284,6 +351,7 @@ test("Stage 2 availability refresh releases a temporary account block without a 
 test("Stage 3 synthetic gap → brief → explicit confirm → observe retains the approved snapshot and delivery count", async ({ page, app }) => {
   const url = `${app.origin}/en/owner/test-shop/conversation?location=central`;
   await page.goto(url); await save(page, "Private note must not enter the search brief");
+  await openTool(page,"search");
   const panel = page.getByRole("region", { name: searchCopy.en.title, exact: true });
   await panel.getByRole("button", { name: searchCopy.en.read, exact: true }).click();
   await expect(panel.getByText("午餐餐牌 · Impressions: 80 · Clicks: 0", { exact: true })).toBeVisible();
@@ -296,6 +364,9 @@ test("Stage 3 synthetic gap → brief → explicit confirm → observe retains t
   await expect(panel.getByText(searchCopy.en.approved, { exact: true })).toBeVisible();
   await expect(panel.getByRole("link", { name: searchCopy.en.openAction })).toHaveAttribute("href", `/en/owner/test-shop/actions/${ACTION}?location=central`);
   const savedBrief = await panel.locator(".search-brief h3").textContent();
+  await page.locator("#conversation-search > summary").click();
+  await openTool(page, "search");
+  await expect(panel.locator(".search-brief h3")).toHaveText(savedBrief!);
   await save(page, "Later chat cannot overwrite the confirmed brief");
   await expect(panel.locator(".search-brief h3")).toHaveText(savedBrief!);
   await panel.getByRole("button", { name: searchCopy.en.observe, exact: true }).click();
@@ -307,7 +378,7 @@ test("Stage 3 synthetic gap → brief → explicit confirm → observe retains t
   await expect(panel.getByRole("row", { name: "午餐餐牌 0 3 80 100", exact: true })).toBeVisible();
   await expect(page.locator(".usage-mini strong")).toHaveText("2 / 3");
   const recordId = await panel.locator("select").inputValue();
-  await page.reload(); await panel.getByLabel(searchCopy.en.records, { exact: true }).selectOption(recordId);
+  await page.reload(); await openTool(page,"search"); await panel.getByLabel(searchCopy.en.records, { exact: true }).selectOption(recordId);
   await expect(panel.getByText(searchCopy.en.approved, { exact: true })).toBeVisible();
   await expect(panel.getByRole("button", { name: searchCopy.en.approve, exact: true })).toHaveCount(0);
   await panel.getByRole("button", { name: searchCopy.en.refresh, exact: true }).click();
@@ -321,6 +392,7 @@ test("Stage 3 English-only HK fixture remains partial in every locale and all ne
   for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
     const t = searchCopy[locale];
     await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation?location=east`);
+    await openTool(page,"search");
     const panel = page.getByRole("region", { name: t.title, exact: true });
     await panel.getByRole("button", { name: t.read, exact: true }).click();
     await expect(panel.getByText(t.reasons.language_limited, { exact: true })).toBeVisible();
@@ -328,9 +400,63 @@ test("Stage 3 English-only HK fixture remains partial in every locale and all ne
     await expect(panel.getByRole("link", { name: t.openAction })).toHaveCount(0);
   }
   await page.goto(`${app.origin}/en/owner/test-shop/conversation?location=all`);
+  await openTool(page,"search");
+  await openTool(page,"search");
   const panel = page.getByRole("region", { name: searchCopy.en.title, exact: true });
   await expect(panel.getByText(searchCopy.en.selectLocation, { exact: true })).toBeVisible();
   await expect(panel.getByRole("button")).toHaveCount(0);
   await page.goto(`${app.origin}/en/owner/test-shop?location=central&flag=off`);
   await expect(page.getByRole("region", { name: searchCopy.en.title, exact: true })).toHaveCount(0);
+});
+
+
+test("boutique home keeps Today above the composer, filters seed-only cards and opens existing attachments", async ({ page, app }) => {
+  const mutations: string[] = [];
+  page.on("request", request => { if (request.method() !== "GET") mutations.push(request.url()); });
+  await page.goto(`${app.origin}/zh-HK/owner/test-shop/conversation?location=central`);
+  const d = conversationDesignCopy["zh-HK"];
+  await expect(page.locator(".workspace-shell--conversation")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "想為間舖做啲咩？", exact: true })).toBeVisible();
+  const summary = page.getByRole("region", { name: d.today, exact: true });
+  await expect(summary.locator("dd")).toHaveText(["1", "1", "2"]);
+  expect(await summary.evaluate(node => Boolean(node.compareDocumentPosition(document.querySelector(".conversation-composer")!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  await expect(summary.getByRole("link")).toHaveAttribute("href", "/zh-HK/owner/test-shop?location=central");
+  await expect(page.locator(".conversation-templates button")).toHaveCount(6);
+  await expect(page.locator(".conversation-tool[open]")).toHaveCount(0);
+  const filters = page.getByRole("group", { name: d.filters });
+  for (const [category, count] of [["start", 2], ["content", 3], ["search", 1]] as const) {
+    await filters.getByRole("button", { name: d.categories[category], exact: true }).click();
+    await expect(page.locator(".conversation-templates button")).toHaveCount(count);
+  }
+  await page.locator(".conversation-templates button").click();
+  await expect(page.getByLabel(conversationCopy["zh-HK"].note, { exact: true })).not.toHaveValue("");
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith("kinnso:conversation:")))).toEqual([]);
+  expect(mutations).toEqual([]);
+  await filters.getByRole("button", { name: d.categories.all, exact: true }).click();
+  await expect(page.locator(".conversation-templates button")).toHaveCount(6);
+  await page.getByRole("button", { name: d.attach, exact: true }).click();
+  await expect(page.locator("#conversation-document")).toBeVisible();
+  await expect(page.getByText(resourceCopy["zh-HK"].createThread, { exact: true })).toBeVisible();
+  await expect(page.locator("#conversation-documents")).toHaveAttribute("open", "");
+  expect(mutations).toEqual([]);
+  await page.locator("#conversation-documents > summary").click();
+  await page.locator("#conversation-note").fill("");
+  await page.locator("#conversation-note").blur();
+  await page.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("conversation-design-parity-zh-HK.png"), fullPage: true });
+  await page.getByLabel(conversationCopy["zh-HK"].note, { exact: true }).fill("本機討論：舖頭網站常見問題");
+  await page.getByRole("button", { name: conversationCopy["zh-HK"].save, exact: true }).click();
+  await page.getByRole("button", { name: conversationCopy["zh-HK"].newThread, exact: true }).click();
+  await expect(page.locator("#conversation-recent").getByRole("button", { name: "本機討論：舖頭網站常見問題", exact: true })).toBeVisible();
+  await expect(page.locator(".conversation-sidebar-recent a")).toContainText(["本機討論：舖頭網站常見問題"]);
+  if (test.info().project.name === "desktop") {
+    await page.locator(".conversation-sidebar-recent a").click();
+    await expect(page.locator(".conversation-note")).toHaveText("本機討論：舖頭網站常見問題");
+    await page.locator('.workspace-sidebar a[href$="#conversation-templates"]').click();
+    await expect(page.locator(".conversation-templates button")).toHaveCount(6);
+  }
+  await page.goto(`${app.origin}/zh-HK/owner/test-shop?location=central&flag=off`);
+  await expect(page.locator(".workspace-shell--conversation, .conversation-sidebar-new, .conversation-tools, .conversation-today")).toHaveCount(0);
 });
