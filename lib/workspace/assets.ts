@@ -20,12 +20,17 @@ export const SIGNED_URL_SECONDS = 60;
 export type AssetKind = "image" | "document" | "menu";
 export type RightsStatus = "approved" | "needs_review" | "rejected";
 
-/** Mirrors the bucket's allowed_mime_types; extension used for a safe filename fallback. */
+/** Legacy asset uploads support images and PDFs; conversation text has its own validated endpoint. */
 export const ALLOWED_ASSET_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
   "application/pdf": "pdf",
+};
+
+/** Filename support is broader than the legacy upload allowlist. */
+const ASSET_FILENAME_EXTENSIONS: Record<string, string> = {
+  ...ALLOWED_ASSET_MIME,
   "text/plain": "txt",
   "text/markdown": "md",
   "text/csv": "csv",
@@ -63,7 +68,7 @@ export function isAssetKind(value: unknown): value is AssetKind {
 
 /** Keep the user's name readable but path-safe: no separators, no control chars, bounded length, extension from the mime type when missing. */
 export function safeFilename(name: string, mime: string): string {
-  const ext = ALLOWED_ASSET_MIME[mime] ?? "bin";
+  const ext = ASSET_FILENAME_EXTENSIONS[mime] ?? "bin";
   const trimmed = name.split(/[\\/]/).pop() ?? "";
   let cleaned = trimmed.replace(/[\x00-\x1f"'<>?*:|%#]/g, "").replace(/\s+/g, "-").replace(/^\.+/, "").slice(0, 120);
   if (!cleaned) cleaned = `asset.${ext}`;

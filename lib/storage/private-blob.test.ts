@@ -97,9 +97,27 @@ it.each(["material", "delegation"] as const)("rejects malformed %s expiry before
   mock.assertNoPendingInterceptors();
 });
 
-it.each(["text/plain","text/markdown","text/csv"])("keeps bounded text originals in workspace assets only: %s", async contentType=>{
-  const pathname="workspace-assets/ws/a/file.txt";
-  mock.get("https://vercel.com").intercept({path:"/api/blob/?pathname=workspace-assets%2Fws%2Fa%2Ffile.txt",method:"PUT"}).reply(200,{pathname,url:`${origin}/${pathname}`,contentType});
-  await storage().upload("workspace-assets","ws/a/file.txt",new TextEncoder().encode("fixture"),{contentType,overwrite:false});
+it.each(["text/plain","text/markdown","text/csv"])("keeps text originals in the reserved conversation-document path only: %s", async contentType=>{
+  const pathname="workspace-assets/ws/a/__conversation_document__/file.txt";
+  mock.get("https://vercel.com").intercept({path:"/api/blob/?pathname=workspace-assets%2Fws%2Fa%2F__conversation_document__%2Ffile.txt",method:"PUT"}).reply(200,{pathname,url:`${origin}/${pathname}`,contentType});
+  await storage().upload("workspace-assets","ws/a/__conversation_document__/file.txt",new TextEncoder().encode("fixture"),{contentType,overwrite:false});
   await expect(storage().upload("report-evidence","job/a/file.txt",new Uint8Array([1]),{contentType,overwrite:false})).rejects.toThrow("private_blob_upload_invalid");
+  mock.assertNoPendingInterceptors();
+});
+
+it.each([
+  ["ws/a/file.txt", "text/plain"],
+  ["ws/a/file.md", "text/markdown"],
+  ["ws/a/file.csv", "text/csv"],
+  ["ws/__conversation_document__/file.txt", "text/plain"],
+  ["ws/a/__conversation_document__/nested/file.txt", "text/plain"],
+  ["prefix/ws/a/__conversation_document__/file.txt", "text/plain"],
+])("rejects text outside the exact reserved conversation-document path: %s", async (path, contentType) => {
+  const pathname = `workspace-assets/${path}`;
+  // A successful transport fixture makes broadened validation fail by resolving.
+  mock.get("https://vercel.com").intercept({
+    path: `/api/blob/?pathname=${encodeURIComponent(pathname)}`, method: "PUT",
+  }).reply(200, { pathname, url: `${origin}/${pathname}`, contentType });
+
+  await expect(storage().upload("workspace-assets", path, new Uint8Array([0xc3, 0x28, 0x00]), { contentType, overwrite: false })).rejects.toThrow("private_blob_upload_invalid");
 });

@@ -7,6 +7,15 @@ const row = { id: "a1", workspace_id: "ws", location_id: "loc", kind: "image", s
 const input = { id: "a1", workspaceId: "ws", locationId: null, kind: "image" as const, filename: "lunch.jpg", contentType: "image/jpeg", bytes: new Uint8Array([1]), altText: null, uploadedBy: "u" };
 beforeEach(() => { vi.resetAllMocks(); fake.remove.mockResolvedValue(undefined); fake.list.mockResolvedValue([row]); fake.sign.mockResolvedValue("https://signed/fixture"); fake.insert.mockImplementation(async r => r); });
 it("keeps safe filenames and MIME allowlist", () => { expect(safeFilename("../../lunch set:v2?.JPG", "image/jpeg")).toBe("lunch-setv2.JPG"); expect(safeFilename("", "image/png")).toBe("asset.png"); expect(isAllowedMime("image/svg+xml")).toBe(false); expect(storagePathFor("ws", "a", "menu.pdf")).toBe("ws/a/menu.pdf"); });
+it.each([
+  ["text/plain", "txt"],
+  ["text/markdown", "md"],
+  ["text/csv", "csv"],
+])("keeps %s filename extensions without permitting legacy uploads", (mime, extension) => {
+  expect(isAllowedMime(mime)).toBe(false);
+  expect(safeFilename("", mime)).toBe(`asset.${extension}`);
+  expect(safeFilename("notes", mime)).toBe(`notes.${extension}`);
+});
 it("signs previews 60sec and permits explicit unsigned reads", async () => {
   expect(await listAssets("ws", [{ id: "loc", name: "Main" }])).toMatchObject([{ signedUrl: "https://signed/fixture", locationName: "Main" }]);
   expect(fake.sign).toHaveBeenCalledWith("workspace-assets", row.storage_path, 60);

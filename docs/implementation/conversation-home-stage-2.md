@@ -14,6 +14,8 @@ Location UUID and `all` are exact, separate namespaces. Every read checks member
 
 Originals stay in the existing private asset namespace at `<workspace>/<asset>/__conversation_document__/<filename>`. That enforced path keeps contextual documents out of legacy publishable-asset listings, action attachments and preview signing. The original bytes are not exposed through an unscoped signed URL. The scoped extraction endpoint is the supported reading surface. This avoids adding an independent storage product or a new share ACL.
 
+PR-diff review follow-up: the legacy asset endpoint retains its existing JPEG/PNG/WebP/PDF upload allowlist, including while the conversation flag is OFF. Text filename support is separate from that allowlist, and private Blob accepts text MIME types only at the exact reserved conversation-document path. Production cannot use the legacy endpoint to bypass the conversation document gate or its UTF-8/binary checks.
+
 ## GSC first, read-only
 
 The existing `/api/oauth/google/start` and callback support `provider=gsc`, signed as `google_gsc`. The same Google OAuth configuration, encryption, owner authorization and callback are reused. GSC requests only `webmasters.readonly`, with incremental scopes disabled for this consent. Its encrypted connection is separate from GBP; connecting or disconnecting GSC never replaces GBP or completes a GBP reconnect action.
