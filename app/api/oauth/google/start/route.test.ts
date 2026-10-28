@@ -152,3 +152,23 @@ describe("GET /api/oauth/google/start", () => {
     expect(mocks.getUser).not.toHaveBeenCalled();
   });
 });
+
+it("GSC is hidden before identity work when the conversation flag is off or production", async()=>{
+  vi.stubEnv("CONVERSATION_HOME_ENABLED","true");vi.stubEnv("VERCEL_ENV","production");mocks.getUser.mockClear();
+  expect((await GET(request("?provider=gsc"))).status).toBe(404);expect(mocks.getUser).not.toHaveBeenCalled();vi.unstubAllEnvs();
+});
+it("an owner starts a separately signed read-only GSC flow in Preview",async()=>{
+  vi.stubEnv("CONVERSATION_HOME_ENABLED","true");vi.stubEnv("VERCEL_ENV","preview");
+  mocks.getUser.mockResolvedValue({data:{user:{id:"user-1",email:"owner@example.test"}}});
+  mocks.from.mockImplementation(()=>membershipTable([{workspace_id:"ws-1",role:"owner",created_at:"2026-01-01"}]).builder);
+  expect((await GET(request("?provider=gsc&locale=en"))).status).toBe(307);
+  expect(mocks.signState).toHaveBeenCalledWith("ws-1",undefined,"en","google_gsc");
+  expect(mocks.buildConsentUrl).toHaveBeenCalledWith("signed-state",undefined,"google_gsc");vi.unstubAllEnvs();
+});
+
+it("signs the selected conversation location into GSC consent",async()=>{
+  vi.stubEnv("CONVERSATION_HOME_ENABLED","true");vi.stubEnv("VERCEL_ENV","preview");
+  mocks.getUser.mockResolvedValue({data:{user:{id:"user-1",email:"owner@example.test"}}});mocks.from.mockImplementation(()=>membershipTable([{workspace_id:"ws-1",role:"owner",created_at:"2026-01-01"}]).builder);
+  expect((await GET(request("?provider=gsc&locale=en&location=east"))).status).toBe(307);
+  expect(mocks.signState).toHaveBeenCalledWith("ws-1",undefined,"en","google_gsc","east");vi.unstubAllEnvs();
+});

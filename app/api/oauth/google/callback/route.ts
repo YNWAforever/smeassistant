@@ -1,9 +1,11 @@
+import { conversationHomeEnabled } from "@/lib/workspace/conversation-flag";
+import { conversationConnectorRepository } from "@/lib/repositories/conversation-connectors";
 import { NextResponse } from "next/server";
 import { claimsRepository, recordClaimAuditEvent } from "@/lib/repositories/claims";
 import { getUser } from "@/lib/auth";
 import { membershipRepository } from "@/lib/repositories/membership";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
-import { exchangeCode, GBP_SCOPE_REQUIRED, verifyState } from "@/lib/oauth/google-connection";
+import { exchangeCode, GBP_SCOPE_REQUIRED, GSC_SCOPE_REQUIRED, verifyState } from "@/lib/oauth/google-connection";
 import { encryptToken } from "@/lib/security/token-crypto";
 
 const WORKSPACE_SLUG_RE = /^[a-z0-9-]{1,64}$/;
@@ -22,7 +24,7 @@ const WORKSPACE_SLUG_RE = /^[a-z0-9-]{1,64}$/;
 function back(origin: string, locale: Locale, workspaceSlug: string | null, params: Record<string, string>): NextResponse {
   const target =
     workspaceSlug && WORKSPACE_SLUG_RE.test(workspaceSlug)
-      ? `/${locale}/owner/${workspaceSlug}/settings/integrations`
+      ? `/${locale}/owner/${workspaceSlug}/${params.connector === "gsc" ? "conversation" : "settings/integrations"}`
       : `/${locale}/owner/select-workspace`;
   const url = new URL(target, origin);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
@@ -55,22 +57,25 @@ export async function GET(req: Request) {
   // returns the original `state` on an error redirect too, not only on success.
   const payload = state ? verifyState(state) : null;
   const locale: Locale = isLocale(payload?.locale) ? payload.locale : DEFAULT_LOCALE;
+  const gsc = payload?.provider === "google_gsc";
+  if (gsc && !conversationHomeEnabled()) return NextResponse.json({error:"not_enabled"},{status:404});
+  const respond = (slug: string | null, params: Record<string,string>) => back(origin,locale,slug,{...params,...(gsc?{connector:"gsc",...(payload?.returnLocation?{location:payload.returnLocation}:{})}:{})});
 
   // Declining consent is an ordinary outcome, not a failure.
   if (requestUrl.searchParams.get("error")) {
     const slug = payload ? await workspaceSlugFor(payload.workspaceId) : null;
-    return back(origin, locale, slug, { connected: "declined" });
+    return respond(slug, { connected: "declined" });
   }
-  if (!code || !state) return back(origin, locale, null, { connected: "invalid" });
+  if (!code || !state) return respond(null, { connected: "invalid" });
 
-  if (!payload) return back(origin, locale, null, { connected: "invalid_state" });
+  if (!payload) return respond(null, { connected: "invalid_state" });
 
   try {
     const user = await getUser();
-    if (!user?.id || !user.verified) return back(origin, locale, null, { connected: "unauthenticated" });
+    if (!user?.id || !user.verified) return respond(null, { connected: "unauthenticated" });
 
     const workspace = await membershipRepository.workspace({id:payload.workspaceId});
-    if (!workspace) return back(origin, locale, null, { connected: "forbidden" });
+    if (!workspace) return respond(null, { connected: "forbidden" });
     const workspaceSlug: string | null = typeof workspace.slug === "string" ? workspace.slug : null;
 
     const membership = await membershipRepository.accepted(user.id,payload.workspaceId);
@@ -82,26 +87,26 @@ export async function GET(req: Request) {
     if (!membership || membership.role !== "owner") {
       // Not the workspace's slug: a caller who is not a member must not be
       // redirected into that workspace's pages.
-      return back(origin, locale, null, { connected: "forbidden" });
+      return respond(null, { connected: "forbidden" });
     }
 
     const tokens = await exchangeCode(code);
-    if (!tokens) return back(origin, locale, workspaceSlug, { connected: "exchange_failed" });
+    if (!tokens) return respond(workspaceSlug, { connected: "exchange_failed" });
 
     // A repeat consent without a refresh token would silently downgrade the
     // connection to single-use, so it is refused rather than stored.
     if (!tokens.refreshToken) {
       console.error("[google-oauth] consent returned no refresh token");
-      return back(origin, locale, workspaceSlug, { connected: "no_refresh_token" });
+      return respond(workspaceSlug, { connected: "no_refresh_token" });
     }
 
     // Google's granular consent lets the user deselect business.manage and still
     // return a valid code. Storing that as active would report a healthy
     // connection whose every API call 403s, and the partial unique index would
     // then block a corrective reconnect until someone flipped the row by hand.
-    if (!tokens.scopes.includes(GBP_SCOPE_REQUIRED)) {
+    if (!tokens.scopes.includes(gsc ? GSC_SCOPE_REQUIRED : GBP_SCOPE_REQUIRED)) {
       console.error("[google-oauth] consent omitted the business.manage scope");
-      return back(origin, locale, workspaceSlug, { connected: "missing_scope" });
+      return respond(workspaceSlug, { connected: "missing_scope" });
     }
 
     // Encrypt BEFORE touching the existing row: encryptToken throws in
@@ -114,13 +119,13 @@ export async function GET(req: Request) {
 
     let connectionId: string;
     try {
-      connectionId = await claimsRepository.replaceGoogleConnection({
+      connectionId = await (gsc ? conversationConnectorRepository().replaceGsc : claimsRepository.replaceGoogleConnection)({
         workspaceId:workspace.id, accessTokenEncrypted:encrypted.access_token_encrypted,
         refreshTokenEncrypted:encrypted.refresh_token_encrypted, scopes:tokens.scopes, expiresAt:tokens.expiresAt,
       });
     } catch {
       console.error("Google OAuth connection storage failed");
-      return back(origin,locale,workspaceSlug,{connected:"storage_failed"});
+      return respond(workspaceSlug,{connected:"storage_failed"});
     }
 
     // Best-effort audit trail (CLAUDE.md §3.11 `integration.updated`). The
@@ -133,12 +138,12 @@ export async function GET(req: Request) {
       event: "integration.updated",
       entity_type: "oauth_connection",
       entity_id: connectionId,
-      payload: { locale, provider: "google_gbp" },
+      payload: { locale, provider: gsc ? "google_gsc" : "google_gbp" },
     });
 
-    return back(origin, locale, workspaceSlug, { connected: "ok" });
+    return respond(workspaceSlug, { connected: "ok" });
   } catch (error) {
     console.error("Google OAuth callback failed", error);
-    return back(origin, locale, null, { connected: "unavailable" });
+    return respond(null, { connected: "unavailable" });
   }
 }

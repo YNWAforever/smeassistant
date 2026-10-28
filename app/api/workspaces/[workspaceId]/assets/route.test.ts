@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   authorizeWorkspaceRequest: vi.fn(),
@@ -39,6 +39,8 @@ function multipart(fields: Record<string, string | Blob>, file?: { bytes: number
 const params = { params: Promise.resolve({ workspaceId: WORKSPACE }) };
 
 describe("POST /api/workspaces/[workspaceId]/assets", () => {
+  afterEach(() => { vi.unstubAllEnvs(); });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.enforceRateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 1 });
@@ -54,6 +56,23 @@ describe("POST /api/workspaces/[workspaceId]/assets", () => {
     expect((await POST(multipart({ kind: "image", location_id: "not-a-uuid" }, { bytes: 10, type: "image/png" }), params)).status).toBe(400);
     expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
     expect(mocks.insertAsset).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["notes.txt", "text/plain"],
+    ["notes.md", "text/markdown"],
+    ["notes.csv", "text/csv"],
+  ])("rejects text-labeled binary %s through the legacy route with conversation disabled", async (name, type) => {
+    vi.stubEnv("CONVERSATION_HOME_ENABLED", "false");
+    vi.stubEnv("VERCEL_ENV", "production");
+    const file = new File([new Uint8Array([0xc3, 0x28, 0x00])], name, { type });
+    const response = await POST(multipart({ kind: "document", file }), params);
+
+    expect(response.status).toBe(415);
+    expect(await response.json()).toEqual({ error: "unsupported_type" });
+    expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
+    expect(mocks.insertAsset).not.toHaveBeenCalled();
+    expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
   });
 
   it("401s without a session and 403s a viewer or out-of-scope manager, with the location passed to the scope check", async () => {

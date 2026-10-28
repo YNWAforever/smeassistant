@@ -16,6 +16,9 @@ export type DatabaseRows = {
   "brand_profiles": typeof schema.brandProfiles.$inferSelect;
   "brand_revisions": typeof schema.brandRevisions.$inferSelect;
   "consent_records": typeof schema.consentRecords.$inferSelect;
+  "conversation_document_versions": typeof schema.conversationDocumentVersions.$inferSelect;
+  "conversation_research_accounts": typeof schema.conversationResearchAccounts.$inferSelect;
+  "conversation_research_ledger": typeof schema.conversationResearchLedger.$inferSelect;
   "deliveries": typeof schema.deliveries.$inferSelect;
   "erasure_events": typeof schema.erasureEvents.$inferSelect;
   "leads": typeof schema.leads.$inferSelect;
@@ -62,6 +65,9 @@ export type DatabaseInserts = {
   "brand_profiles": typeof schema.brandProfiles.$inferInsert;
   "brand_revisions": typeof schema.brandRevisions.$inferInsert;
   "consent_records": typeof schema.consentRecords.$inferInsert;
+  "conversation_document_versions": typeof schema.conversationDocumentVersions.$inferInsert;
+  "conversation_research_accounts": typeof schema.conversationResearchAccounts.$inferInsert;
+  "conversation_research_ledger": typeof schema.conversationResearchLedger.$inferInsert;
   "deliveries": typeof schema.deliveries.$inferInsert;
   "erasure_events": typeof schema.erasureEvents.$inferInsert;
   "leads": typeof schema.leads.$inferInsert;

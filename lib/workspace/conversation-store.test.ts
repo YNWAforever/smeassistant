@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { conversationScopeKey, readConversationThreads, writeConversationThreads, type ConversationScope, type LocalThread } from "./conversation-store";
+import { describe, expect, it, vi } from "vitest";
+import { conversationScopeKey, saveConversationChanges, readConversationThreads, writeConversationThreads, type ConversationScope, type LocalThread } from "./conversation-store";
 
 const scope: ConversationScope = { userId: "u", workspaceId: "w", locationId: "l" };
 const thread: LocalThread = { id: "t1", title: "First note", notes: ["First note"], actionIds: ["a1"], createdAt: "2026-10-27T00:00:00.000Z", updatedAt: "2026-10-27T00:00:00.000Z" };
@@ -55,4 +55,14 @@ it("refuses to replace corrupt, unreadable or over-limit stores during a merge",
   expect(saveConversationChanges(storage, scope, [thread]).status).toBe("invalid");
   expect(readConversationThreads(storage, scope).threads).toEqual(full);
   expect(saveConversationChanges({ getItem: () => { throw new Error("denied"); }, setItem: () => { throw new Error("must not write"); } }, scope, [thread]).status).toBe("unavailable");
+});
+
+it("persists document version references without document or private action contents",()=>{
+  const storage={getItem:vi.fn().mockReturnValue(null),setItem:vi.fn()};
+  const scope={userId:"u",workspaceId:"w",locationId:"l"};
+  const thread={id:"t",title:"note",notes:["private note"],actionIds:[],documentVersionIds:["version-one"],createdAt:"2026-10-27T00:00:00Z",updatedAt:"2026-10-27T00:00:00Z"};
+  expect(saveConversationChanges(storage,scope,[thread]).status).toBe("saved");
+  const raw=storage.setItem.mock.calls[0][1];expect(JSON.parse(raw).threads[0].documentVersionIds).toEqual(["version-one"]);
+  storage.getItem.mockReturnValue(raw);expect(readConversationThreads(storage,scope).threads[0].documentVersionIds).toEqual(["version-one"]);
+  expect(saveConversationChanges(storage,scope,[{...thread,documentVersionIds:Array(21).fill("v")}]).status).toBe("invalid");
 });

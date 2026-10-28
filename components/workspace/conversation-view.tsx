@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { ConversationDocuments, ConversationConnectors } from "./conversation-resources";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { copy, type PrototypeLocale } from "@/lib/copy";
+import { resourceCopy } from "@/lib/copy-conversation-resources";
 import { conversationCopy } from "@/lib/copy-conversation";
 import { CONVERSATION_LIMITS, conversationScopeKey, readConversationThreads, saveConversationChanges, type ConversationSave, type ConversationScope, type LocalThread } from "@/lib/workspace/conversation-store";
 import { TEMPLATES, type TemplateKey } from "@/lib/workspace/templates";
@@ -22,6 +24,8 @@ export interface ConversationViewProps {
   scope: ConversationScope;
   initialThreadId?: string;
   actions: ConversationAction[];
+  resources?: { canManage: boolean };
+  connectionOutcome?: string;
 }
 
 const subscribeToHydration = () => () => {};
@@ -34,7 +38,7 @@ export function ConversationView(props: ConversationViewProps) {
   return hydrated ? <ScopedConversation key={conversationScopeKey(props.scope)} {...props} /> : <p role="status">{conversationCopy[props.locale].loading}</p>;
 }
 
-function ScopedConversation({ locale, workspaceSlug, workspaceName, location, locationName, scope, initialThreadId, actions }: ConversationViewProps) {
+function ScopedConversation({ locale, workspaceSlug, workspaceName, location, locationName, scope, initialThreadId, actions, resources, connectionOutcome }: ConversationViewProps) {
   const t = conversationCopy[locale];
   const router = useRouter();
   const base = `/${locale}/owner/${workspaceSlug}`;
@@ -97,8 +101,14 @@ function ScopedConversation({ locale, workspaceSlug, workspaceName, location, lo
     const next = { ...selected, actionIds: [...selected.actionIds, id], updatedAt: new Date().toISOString() };
     persist(next);
   }
+  function citeDocument(id: string) {
+    if (!selected || local.status === "corrupt" || selected.documentVersionIds?.includes(id)) return;
+    if ((selected.documentVersionIds?.length ?? 0) >= 20) { setSaveError("limit"); return; }
+    persist({ ...selected, documentVersionIds: [...(selected.documentVersionIds ?? []), id], updatedAt: new Date().toISOString() });
+  }
   return <div className="conversation-page">
     <header className="conversation-intro"><span className="conversation-eyebrow">{t.preview}</span><h1>{t.title}</h1><p>{t.lead}</p></header>
+    {resources && connectionOutcome && <p role="status">{connectionOutcome === "ok" ? resourceCopy[locale].oauthConnected : connectionOutcome === "declined" ? resourceCopy[locale].oauthDeclined : resourceCopy[locale].oauthFailed}</p>}
     <p className="limitation-note">{t.privacy}</p>
     <div className="conversation-layout">
       <aside className="conversation-threads" aria-label={t.threads}>
@@ -123,9 +133,10 @@ function ScopedConversation({ locale, workspaceSlug, workspaceName, location, lo
           {!selected && <section className="conversation-templates" aria-label={t.templates}><h2>{t.templates}</h2><p>{t.templateHint}</p><div>{ENTRY_TEMPLATES.map(template => { const title = copy[locale].workspace.templates[template.key].title; return <button type="button" key={template.key} aria-label={`${t.useTemplate} ${title}`} onClick={() => { setComposer(title); setSaved(false); composerRef.current?.focus(); }}>{title}</button>; })}</div></section>}
         </>}
         <p className="limitation-note">{t.boundary}</p>
+        {resources && <ConversationDocuments key={selectedId ?? "new"} locale={locale} workspaceId={scope.workspaceId} locationId={scope.locationId} canManage={resources.canManage} citedIds={selected?.documentVersionIds ?? []} canCite={Boolean(selected) && local.status !== "corrupt"} onCite={citeDocument} />}
         <section className="conversation-continue"><h2>{t.continueWork}</h2>{actions.length === 0 ? <p>{t.noActions}</p> : <ul>{actions.slice(0, 6).map(action => <li key={action.id}><Link href={actionHref(action)}>{action.title}</Link>{action.versionId && <Link href={actionHref(action, true)}>{t.openVersion}</Link>}</li>)}</ul>}<Link href={`${base}/actions?${locationQuery}`}>{t.allActions}</Link></section>
       </section>
-      <aside className="conversation-context"><h2>{t.context}</h2><strong>{workspaceName}</strong><p>{locationName || copy[locale].shell.allLocations}</p><Link href={`${base}/business?${locationQuery}`}>{t.shop}</Link><Link href={`${base}/insights?${locationQuery}`}>{t.insights}</Link><Link href={`${base}/business/integrations?${locationQuery}`}>{t.integrations}</Link></aside>
+      <aside className="conversation-context"><h2>{t.context}</h2><strong>{workspaceName}</strong><p>{locationName || copy[locale].shell.allLocations}</p><Link href={`${base}/business?${locationQuery}`}>{t.shop}</Link><Link href={`${base}/insights?${locationQuery}`}>{t.insights}</Link><Link href={`${base}/business/integrations?${locationQuery}`}>{t.integrations}</Link>{resources && <ConversationConnectors locale={locale} workspaceId={scope.workspaceId} locationId={scope.locationId} workspaceSlug={workspaceSlug} locationSlug={location} canManage={resources.canManage} />}</aside>
     </div>
   </div>;
 }

@@ -22,7 +22,7 @@ const path=new URL(url),q=path.searchParams,locale=path.pathname.split("/")[1],s
 const ws={slug,name:"Synthetic shop",avatarInitial:"S",locations:[{slug:"central",name:"Central"},{slug:"east",name:"East"}],defaultLocationSlug:"central",usage:{approvedDeliveries:2,allowance:3},account:{name:user,email:user+"@example.test",roleLabel:"Owner"},unreadNotifications:0,demo:false,assistant:{workspaceId:slug,locationId:branch},...(q.get("flag")!=="off"?{conversationEnabled:true}:{})};
 const actions=q.get("empty")==="1"?[]:[{id:"${ACTION}",title:"Existing synthetic task",versionId:"${VERSION}"}];
 return <><aside className="fixture-label">OFFLINE SYNTHETIC · real product components · no DB, Auth or model</aside><WorkspacePageFrame locale={locale} workspace={ws}>
-{path.pathname.endsWith("/conversation")?<ConversationView locale={locale} workspaceSlug={slug} workspaceName={ws.name} location={branch} locationName={branch==="central"?"Central":"East"} scope={{userId:user,workspaceId:slug,locationId:branch}} initialThreadId={q.get("thread")??undefined} actions={actions}/>:path.pathname.includes("/actions/")?<section><h1>Existing task surface</h1><p>Version {q.get("version")}</p></section>:<h1>{copy[locale].shell.nav.today}</h1>}
+{path.pathname.endsWith("/conversation")?<ConversationView locale={locale} workspaceSlug={slug} workspaceName={ws.name} location={branch} locationName={branch==="central"?"Central":"East"} scope={{userId:user,workspaceId:slug,locationId:branch}} initialThreadId={q.get("thread")??undefined} actions={actions} resources={{canManage:true}}/>:path.pathname.includes("/actions/")?<section><h1>Existing task surface</h1><p>Version {q.get("version")}</p></section>:<h1>{copy[locale].shell.nav.today}</h1>}
 </WorkspacePageFrame></>}
 createRoot(document.getElementById("root")).render(<App/>);`;
 let bundle = "", css = "";
@@ -39,7 +39,36 @@ base.beforeAll(async () => {
 const test = base.extend<{ app: { origin: string; writes: string[] } }>({
   app: async ({ page }, runFixture) => {
     const writes: string[] = [];
-    const server = createServer((req, res) => {
+    const documents=new Map<string,Array<{id:string;documentId:string;assetId:string;version:number;title:string;createdAt:string;text:string;truncated:boolean;sha256:string}>>();
+    const server = createServer(async (req, res) => {
+      const requestUrl=new URL(req.url??"/","http://fixture.test");
+      const documentRoute=/^\/api\/workspaces\/([^/]+)\/conversation\/documents$/.exec(requestUrl.pathname);
+      const connectorRoute=/^\/api\/workspaces\/([^/]+)\/conversation\/connectors$/.exec(requestUrl.pathname);
+      const json=(body:unknown,status=200)=>{res.writeHead(status,{"content-type":"application/json","cache-control":"no-store"});res.end(JSON.stringify(body));};
+      if(documentRoute){
+        if(req.method==="GET"){
+          const rows=documents.get(`${documentRoute[1]}:${requestUrl.searchParams.get("location_id")}`)??[];
+          const ids=requestUrl.searchParams.get("ids")?.split(",");
+          json({versions:ids?rows.filter(v=>ids.includes(v.id)):rows.filter(v=>!rows.some(other=>other.documentId===v.documentId&&other.version>v.version))});return;
+        }
+        if(req.method==="POST"){
+          const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(Buffer.from(chunk));
+          const form=await new Request(requestUrl,{method:"POST",headers:{"content-type":req.headers["content-type"]??""},body:Buffer.concat(chunks)}).formData();
+          const file=form.get("file") as File,key=`${documentRoute[1]}:${form.get("location_id")}`,rows=documents.get(key)??[],parent=form.get("document_id");
+          const documentId=typeof parent==="string"?parent:crypto.randomUUID(),version=1+Math.max(0,...rows.filter(v=>v.documentId===documentId).map(v=>v.version));
+          const text=await file.text(),saved={id:crypto.randomUUID(),documentId,assetId:crypto.randomUUID(),version,title:file.name,createdAt:new Date().toISOString(),text:text.slice(0,20000),truncated:text.length>20000,sha256:"a".repeat(64)};
+          documents.set(key,[...rows,saved]);json({version:saved},201);return;
+        }
+      }
+      if(connectorRoute){
+        const base={scope:"https://synthetic.example.test/",items:[],observedAt:null};
+        const connectors=[{...base,source:"gsc",status:"disconnected"},{...base,source:"firecrawl",status:"blocked",budget:{workspaceRemainingUsd:0,accountRemainingUsd:1,reservedUsd:0}},{...base,source:"dataforseo",status:"empty"}];
+        if(req.method==="GET"){json({connectors});return;}
+        if(req.method==="POST"){
+          const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(Buffer.from(chunk));const body=JSON.parse(Buffer.concat(chunks).toString());
+          json({context:{...base,source:body.provider,status:"failed",reason:"timeout"}});return;
+        }
+      }
       if (req.method !== "GET") { writes.push(req.url ?? ""); res.writeHead(403).end(); return; }
       res.setHeader("cache-control", "no-store");
       if (req.url === "/bundle.js") { res.setHeader("content-type", "text/javascript"); res.end(bundle); return; }
@@ -173,4 +202,49 @@ test("long unbroken note titles stay inside the viewport", async ({ page, app })
   await page.goto(`${app.origin}/en/owner/test-shop/conversation?location=central`);
   await save(page, "x".repeat(200));
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+
+test("Stage 2 documents cite immutable versions across refresh; source context stays honest",async({page,app})=>{
+  const url=`${app.origin}/en/owner/test-shop/conversation?location=central`;
+  await page.goto(url);await save(page,"Synthetic private thread with source");
+  await page.getByLabel("Shop document",{exact:true}).setInputFiles({name:"menu.txt",mimeType:"text/plain",buffer:Buffer.from("Synthetic confirmed menu v1")});
+  await page.getByRole("button",{name:"Save document version",exact:true}).click();
+  await expect(page.getByText("Document version saved",{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"Cite this version",exact:true}).click();
+  await expect(page.locator(".conversation-citations")).toContainText("menu.txt · v1");
+  const threadUrl=page.url();await page.reload();await expect(page.locator(".conversation-citations")).toContainText("menu.txt · v1");
+  const parentValue=await page.locator("#conversation-document-parent option").nth(1).getAttribute("value");await page.getByLabel("Add a version of",{exact:true}).selectOption(parentValue!);
+  await page.getByLabel("Shop document",{exact:true}).setInputFiles({name:"menu.txt",mimeType:"text/plain",buffer:Buffer.from("Synthetic corrected menu v2")});
+  await page.getByRole("button",{name:"Save document version",exact:true}).click();
+  await expect(page.locator(".conversation-document-list")).toContainText("menu.txt · v2");
+  await expect(page.locator(".conversation-citations")).toContainText("menu.txt · v1");
+  await page.locator(".conversation-citations summary").click();await expect(page.locator(".conversation-citations")).toContainText("Synthetic confirmed menu v1");
+  const stored=await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith("kinnso:conversation:")).map(k=>localStorage.getItem(k)).join(""));
+  expect(stored).not.toContain("Synthetic confirmed menu v1");expect(stored).not.toContain("Synthetic corrected menu v2");
+  await expect(page.getByRole("link",{name:"Connect Google Search Console",exact:true})).toBeVisible();
+  await expect(page.getByText("Budget reached. No paid request was sent.",{exact:true})).toBeVisible();
+  const paid=page.locator(".conversation-connector").filter({has:page.getByRole("heading",{name:"DataForSEO",exact:true})});
+  await paid.getByLabel("Search phrase").fill("synthetic query");await paid.getByRole("button",{name:"Read context"}).click();
+  await expect(paid).toContainText("The source took too long");
+  await page.goto(threadUrl.replace("location=central","location=east"));await expect(page.locator(".conversation-citations")).toHaveCount(0);await expect(page.locator(".conversation-document-list")).toHaveCount(0);
+  await expect(page.getByText(conversationCopy.en.missing,{exact:true})).toBeVisible();
+});
+
+test("Stage 2 availability refresh releases a temporary account block without a paid request",async({page,app})=>{
+  const methods:string[]=[];
+  await page.route("**/conversation/connectors?*",async route=>{
+    methods.push(route.request().method());
+    const blocked=methods.length===1;
+    await route.fulfill({json:{connectors:[{source:"firecrawl",status:blocked?"blocked":"empty",reason:blocked?"account_reconciliation_pending":"research_available",scope:"https://synthetic.example.test/",items:[],observedAt:null}]}});
+  });
+  const url=`${app.origin}/en/owner/test-shop/conversation?location=central`;
+  await page.goto(url);
+  const connector=page.locator(".conversation-connector");
+  await expect(connector.getByRole("button",{name:"Read context",exact:true})).toBeDisabled();
+  await page.getByRole("button",{name:"Refresh availability",exact:true}).click();
+  await expect(connector.getByRole("button",{name:"Read context",exact:true})).toBeEnabled();
+  await expect(connector).toContainText("Ready to read on request. No source data has been fetched on this screen.");
+  await expect(page).toHaveURL(url);
+  expect(methods).toEqual(["GET","GET"]);
 });

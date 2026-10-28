@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   workspace: vi.fn(),
   accepted: vi.fn(),
   replaceGoogleConnection: vi.fn(),
+  replaceGsc: vi.fn(),
   recordClaimAuditEvent: vi.fn(),
   encryptToken: vi.fn((plaintext: string) => `enc:${plaintext}`),
   verifyState: vi.fn(),
@@ -20,8 +21,10 @@ vi.mock("@/lib/repositories/claims",()=>({
  recordClaimAuditEvent:mocks.recordClaimAuditEvent,
  claimsRepository:{replaceGoogleConnection:mocks.replaceGoogleConnection},
 }));
+vi.mock("@/lib/repositories/conversation-connectors",()=>({conversationConnectorRepository:()=>({replaceGsc:mocks.replaceGsc})}));
 vi.mock("@/lib/security/token-crypto", () => ({ encryptToken: mocks.encryptToken }));
 vi.mock("@/lib/oauth/google-connection", () => ({
+  GSC_SCOPE_REQUIRED:"https://www.googleapis.com/auth/webmasters.readonly",
   GBP_SCOPE_REQUIRED: "https://www.googleapis.com/auth/business.manage",
   verifyState: mocks.verifyState,
   exchangeCode: mocks.exchangeCode,
@@ -214,4 +217,28 @@ describe("GET /api/oauth/google/callback", () => {
     expect(url.searchParams.get("connected")).toBe("ok");
     expect(url.pathname).toBe("/en/owner/select-workspace");
   });
+});
+
+
+it("GSC callback is gated, scope-checked and does not replace GBP",async()=>{
+  mocks.verifyState.mockReturnValue({...STATE,provider:"google_gsc"});
+  vi.stubEnv("CONVERSATION_HOME_ENABLED","true");vi.stubEnv("VERCEL_ENV","production");
+  expect((await GET(request("?code=c&state=s"))).status).toBe(404);
+  vi.stubEnv("VERCEL_ENV","preview");tables({role:"owner"});
+  mocks.getUser.mockResolvedValue({data:{user:{id:"u",email:"owner@example.test"}}});
+  mocks.exchangeCode.mockResolvedValue({...TOKENS,scopes:["https://www.googleapis.com/auth/webmasters.readonly"]});
+  mocks.replaceGsc.mockResolvedValue("gsc-connection");mocks.replaceGoogleConnection.mockClear();
+  const response=await GET(request("?code=c&state=s"));
+  expect(location(response).pathname).toBe("/en/owner/demo-cafe/conversation");
+  expect(location(response).searchParams.get("connected")).toBe("ok");
+  expect(mocks.replaceGsc).toHaveBeenCalled();expect(mocks.replaceGoogleConnection).not.toHaveBeenCalled();
+  mocks.replaceGsc.mockClear();mocks.exchangeCode.mockResolvedValue(TOKENS);
+  expect(location(await GET(request("?code=c&state=s"))).searchParams.get("connected")).toBe("missing_scope");
+  expect(mocks.replaceGsc).not.toHaveBeenCalled();vi.unstubAllEnvs();
+});
+
+it("returns declined GSC consent to the signed location with an honest outcome",async()=>{
+  vi.stubEnv("CONVERSATION_HOME_ENABLED","true");vi.stubEnv("VERCEL_ENV","preview");mocks.verifyState.mockReturnValue({...STATE,provider:"google_gsc",returnLocation:"east"});tables({role:"owner"});
+  const url=location(await GET(request("?error=access_denied&state=s")));
+  expect(url.pathname).toBe("/en/owner/demo-cafe/conversation");expect(url.searchParams.get("location")).toBe("east");expect(url.searchParams.get("connected")).toBe("declined");vi.unstubAllEnvs();
 });
