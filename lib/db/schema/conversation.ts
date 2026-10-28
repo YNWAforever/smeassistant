@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { bigint, boolean, check, date, foreignKey, index, integer, pgPolicy, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, date, foreignKey, index, integer, jsonb, pgPolicy, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { appUsers } from "./identity";
 import { assets, workspaces } from "./business";
 export const conversationDocumentVersions=pgTable("conversation_document_versions",{
@@ -12,6 +12,25 @@ export const conversationDocumentVersions=pgTable("conversation_document_version
   foreignKey({name:"conversation_document_versions_workspace_id_fkey",columns:[t.workspaceId],foreignColumns:[workspaces.id]}).onDelete("cascade"),foreignKey({name:"conversation_document_versions_asset_id_fkey",columns:[t.assetId],foreignColumns:[assets.id]}),foreignKey({name:"conversation_document_versions_uploaded_by_fkey",columns:[t.uploadedBy],foreignColumns:[appUsers.id]}).onDelete("set null"),
   index("conversation_document_versions_scope_idx").on(t.workspaceId,t.locationId,t.documentId,t.version.desc()),
   pgPolicy("server_read_conversation_document_versions",{for:"select",to:"sme_app_runtime",using:sql`true`}),pgPolicy("server_append_conversation_document_versions",{for:"insert",to:"sme_app_runtime",withCheck:sql`true`}),
+]).enableRLS();
+
+export const conversationSearchBriefs = pgTable("conversation_search_briefs", {
+  id: uuid("id").notNull().default(sql`gen_random_uuid()`), workspaceId: uuid("workspace_id").notNull(), locationId: uuid("location_id").notNull(),
+  snapshotKey: text("snapshot_key").notNull(), gap: jsonb("gap").notNull(), brief: jsonb("brief"), createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().default(sql`now()`),
+  approvedAt: timestamp("approved_at", { withTimezone: true, mode: "string" }), approvedBy: uuid("approved_by"), actionId: uuid("action_id"),
+}, t => [
+  primaryKey({ name: "conversation_search_briefs_pkey", columns: [t.id] }), unique("conversation_search_briefs_action_id_key").on(t.actionId),
+  unique("conversation_search_briefs_scope_snapshot_key").on(t.workspaceId, t.locationId, t.snapshotKey),
+  check("conversation_search_briefs_snapshot_key_check", sql`${t.snapshotKey} ~ '^[a-f0-9]{64}$'`),
+  foreignKey({ name: "conversation_search_briefs_workspace_id_fkey", columns: [t.workspaceId], foreignColumns: [workspaces.id] }).onDelete("cascade"),
+  foreignKey({ name: "conversation_search_briefs_approved_by_fkey", columns: [t.approvedBy], foreignColumns: [appUsers.id] }).onDelete("set null"),
+  check("conversation_search_briefs_gap_check", sql`jsonb_typeof(${t.gap})='object' AND octet_length(${t.gap}::text)<=131072`),
+  check("conversation_search_briefs_brief_check", sql`${t.brief} IS NULL OR (jsonb_typeof(${t.brief})='object' AND octet_length(${t.brief}::text)<=32768)`),
+  check("conversation_search_briefs_check", sql`(${t.approvedAt} IS NULL)=(${t.actionId} IS NULL)`), check("conversation_search_briefs_check1", sql`${t.approvedAt} IS NOT NULL OR ${t.approvedBy} IS NULL`),
+  index("conversation_search_briefs_scope_idx").on(t.workspaceId, t.locationId, t.createdAt.desc(), t.id.desc()),
+  pgPolicy("server_read_conversation_search_briefs", { for: "select", to: "sme_app_runtime", using: sql`true` }),
+  pgPolicy("server_append_conversation_search_briefs", { for: "insert", to: "sme_app_runtime", withCheck: sql`true` }),
+  pgPolicy("server_confirm_conversation_search_briefs", { for: "update", to: "sme_app_runtime", using: sql`true`, withCheck: sql`true` }),
 ]).enableRLS();
 
 export const conversationResearchAccounts=pgTable("conversation_research_accounts",{

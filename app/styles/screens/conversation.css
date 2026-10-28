@@ -42,4 +42,14 @@
   .conversation-connector button { margin-block: .25rem; white-space: normal; }
   .conversation-connector dl { font-size: .85rem; margin-block: .5rem; }
   .conversation-connector dd { margin: 0 0 .5rem; }
+  .conversation-search select { width: 100%; max-width: 100%; padding: .5rem; margin-block: .5rem; color: var(--ink); background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .search-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: .75rem; }
+  .conversation-search button { white-space: normal; }
+  .search-brief, .search-observation { margin-block: 1rem; padding: .75rem; background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius-md); overflow-wrap: anywhere; }
+  .search-provenance { font-size: .85rem; color: var(--ink-3); overflow-wrap: anywhere; margin-block: .75rem; }
+  .search-brief ol { list-style: decimal; padding-inline-start: 1.5rem; }
+  .search-brief li { margin-block: .5rem; }
+  .search-confirm { display: flex; align-items: baseline; gap: .5rem; margin-block: .75rem; }
+  .search-table { max-width: 100%; overflow-x: auto; }
+  .search-table th, .search-table td { padding: .5rem; text-align: start; border-bottom: 1px solid var(--border); }
 }

@@ -20,7 +20,7 @@ export function gscPropertyMatches(property: string, website: string): boolean {
     return prefix.origin===site.origin && site.pathname.startsWith(prefix.pathname);
   } catch {return false;}
 }
-export async function readGscContext(input: {workspaceId:string;websiteUrl:string|null;market:string}, deps: {withToken?:typeof withGscAccessToken;fetch?:typeof fetch;now?:()=>Date} = {}): Promise<ConnectorContext> {
+export async function readGscContext(input: {workspaceId:string;websiteUrl:string|null;market:string;marketOnly?:boolean}, deps: {withToken?:typeof withGscAccessToken;fetch?:typeof fetch;now?:()=>Date} = {}): Promise<ConnectorContext> {
   const result: ConnectorContext={source:"gsc",status:"empty",observedAt:null,scope:input.websiteUrl??"",items:[]};
   if (!["hk","tw"].includes(input.market)) return {...result,status:"unsupported",reason:"market_unsupported"};
   if (!input.websiteUrl) return {...result,reason:"website_missing"};
@@ -41,14 +41,37 @@ export async function readGscContext(input: {workspaceId:string;websiteUrl:strin
       if (!property) return {...result,reason:"property_missing"};
       const end=new Date(now);end.setUTCDate(end.getUTCDate()-3);
       const start=new Date(end);start.setUTCDate(start.getUTCDate()-27);
-      const payload=await query(`${API}/${encodeURIComponent(property)}/searchAnalytics/query`,{startDate:start.toISOString().slice(0,10),endDate:end.toISOString().slice(0,10),dimensions:["query"],rowLimit:25,dataState:"final"});
+      const startDate=start.toISOString().slice(0,10),endDate=end.toISOString().slice(0,10);
+      const country=input.market==="hk"?"hkg" as const:"twn" as const;
+      // A verified domain property may include sibling locations/sites. Pin the
+      // selected site's origin and path as well as country; never read a sibling.
+      const website=new URL(input.websiteUrl!);
+      const prefix=`${website.origin}${website.pathname}`;
+      const pageFilter=`^${prefix.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}${website.pathname.endsWith("/")?"":"(?:[/?#]|$)"}`;
+      const filters=input.marketOnly?{type:"web",aggregationType:"byPage",dimensionFilterGroups:[{groupType:"and",filters:[{dimension:"country",operator:"equals",expression:country},{dimension:"page",operator:"includingRegex",expression:pageFilter}]}]}:{};
+      const endpoint=`${API}/${encodeURIComponent(property)}/searchAnalytics/query`;
+      const payload=await query(endpoint,{startDate,endDate,dimensions:["query"],rowLimit:25,dataState:"final",...filters});
       // A provider error object must never masquerade as an honest no-rows response.
       if (!payload || typeof payload!=="object" || "error" in payload) throw new Error("invalid_gsc_response");
       const analytics=Analytics.parse(payload), rows=analytics.rows??[];
       const parsed=rows.map(row=>Row.safeParse(row));
       const items=parsed.flatMap(row=>row.success?[{title:row.data.keys[0],metrics:{clicks:row.data.clicks,impressions:row.data.impressions,ctr:row.data.ctr,position:row.data.position}}]:[]);
-      const partial=items.length!==rows.length || rows.length===25;
-      return {...result,scope:property,observedAt:now.toISOString(),items,status:partial?"partial":items.length?"ready":"empty",reason:partial?"bounded_results":"search_analytics_28_days"};
+      let reportedDays=0,historyFailed=false;
+      if(input.marketOnly&&items.length){
+        // A requested 28-day window is not proof of 28 days of history. A second
+        // bounded readonly query verifies dated evidence, within the same deadline.
+        try{
+          const history=await query(endpoint,{startDate,endDate,dimensions:["date"],rowLimit:28,dataState:"final",...filters});
+          if(!history||typeof history!=="object"||"error" in history)throw new Error("invalid_gsc_history");
+          const dates=z.object({rows:z.array(Row).max(28).optional()}).parse(history).rows??[];
+          const validDates=dates.map(row=>row.keys[0]).filter(date=>/^\d{4}-\d{2}-\d{2}$/.test(date)&&date>=startDate&&date<=endDate);
+          reportedDays=new Set(validDates).size;
+          if(validDates.length!==dates.length)historyFailed=true;
+        }catch{historyFailed=true;}
+      }
+      const bounded=items.length!==rows.length || rows.length===25;
+      const partial=bounded||Boolean(input.marketOnly&&items.length&&(reportedDays!==28||historyFailed));
+      return {...result,scope:property,observedAt:now.toISOString(),items,status:partial?"partial":items.length?"ready":"empty",reason:bounded?"bounded_results":partial?"insufficient_history":"search_analytics_28_days",...(input.marketOnly?{analytics:{startDate,endDate,country,searchType:"web" as const,dimensions:"query" as const,dataState:"final" as const,aggregation:"byPage" as const,pageFilter,rowLimit:25 as const,reportedDays}}:{})};
     });
   } catch(error) {
     if (error instanceof GscConnectionError) return {...result,status:error.code==="disconnected"?"disconnected":error.code==="forbidden"?"failed":"reconnect",reason:error.code};

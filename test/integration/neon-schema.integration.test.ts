@@ -23,8 +23,8 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("fresh application schema",
   afterAll(async () => { await Promise.all([owner?.end(), runtime?.end(), denied?.end()]); fixture?.stop(); });
 
   it("applies all final business objects to empty PostgreSQL with no business seeds", async () => {
-    expect(await applyMigrations(owner)).toEqual(["0001_identity.sql", "0002_business.sql", "0003_workflows.sql", "0004_atomic_operations.sql", "0005_owner_removal_guard.sql", "0006_action_applications.sql", "0007_action_verification.sql", "0008_workspace_internal.sql", "0009_scan_attempts.sql", "0010_mail_outbox.sql", "0011_offers.sql", "0012_work_packs.sql", "0013_preview_events.sql", "0014_publish_reply.sql", "0015_action_list_indexes.sql","0016_brand_revisions.sql","0017_brand_profile_revision_capture.sql","0018_content_version_retry_boundaries.sql","0019_conversation_resources.sql"]);
-    expect(await verifyCatalog(owner)).toMatchObject({ tables: 45, columns: 526, constraints: 234, indexes: 123, triggers: 15, functions: 32, seededRows: 0 });
+    expect(await applyMigrations(owner)).toEqual(["0001_identity.sql", "0002_business.sql", "0003_workflows.sql", "0004_atomic_operations.sql", "0005_owner_removal_guard.sql", "0006_action_applications.sql", "0007_action_verification.sql", "0008_workspace_internal.sql", "0009_scan_attempts.sql", "0010_mail_outbox.sql", "0011_offers.sql", "0012_work_packs.sql", "0013_preview_events.sql", "0014_publish_reply.sql", "0015_action_list_indexes.sql","0016_brand_revisions.sql","0017_brand_profile_revision_capture.sql","0018_content_version_retry_boundaries.sql","0019_conversation_resources.sql","0020_conversation_search.sql"]);
+    expect(await verifyCatalog(owner)).toMatchObject({ tables: 46, columns: 536, constraints: 244, indexes: 127, triggers: 16, functions: 33, seededRows: 0 });
     expect((await owner.query("SELECT nspname FROM pg_namespace WHERE nspname IN ('auth','storage','neon_auth')")).rows).toEqual([]);
   });
   it("replays as a no-op and rejects changed, missing, and reordered history", async () => {
@@ -61,7 +61,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("fresh application schema",
   it("exposes all final columns and constraints through typed Drizzle tables", async () => {
     const oracle = JSON.parse(await readFile(new URL("./fixtures/legacy-final-catalog.json", import.meta.url), "utf8"));
     const tables = Object.values(schema).map(table => getTableConfig(table));
-    expect(tables.length).toBe(47);
+    expect(tables.length).toBe(48);
     for (const expected of oracle.tables as Array<{name:string}>) {
       const table = tables.find(table => table.name === expected.name)!;
       expect(table, expected.name).toBeDefined();
