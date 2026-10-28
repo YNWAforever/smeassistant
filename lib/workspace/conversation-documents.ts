@@ -28,7 +28,7 @@ type DocumentFile = Pick<File, "name" | "type" | "size" | "arrayBuffer">;
 const MIME: Record<string, { canonical: string; allowed: string[] }> = {
   txt: { canonical: "text/plain", allowed: ["", "text/plain"] },
   md: { canonical: "text/markdown", allowed: ["", "text/plain", "text/markdown"] },
-  csv: { canonical: "text/csv", allowed: ["", "text/plain", "text/csv"] },
+  csv: { canonical: "text/csv", allowed: ["", "text/plain", "text/csv", "application/vnd.ms-excel"] },
 };
 
 /** Fatal UTF-8 decoding and binary checks happen before any storage or database write. */

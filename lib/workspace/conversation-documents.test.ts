@@ -16,6 +16,17 @@ describe("bounded UTF-8 document extraction", () => {
     const value = "日期,備註\r\n2026-10-27,Fresh menu 🍲";
     expect(await extractConversationDocument(file(value, name, type))).toMatchObject({ text: value, truncated: false, sha256: createHash("sha256").update(value).digest("hex") });
   });
+  it("accepts a browser's Excel MIME label for UTF-8 CSV and stores it as CSV text", async () => {
+    const value = "date,amount\r\n2026-10-28,12";
+    expect(await extractConversationDocument(file(value, "sales.csv", "application/vnd.ms-excel"))).toMatchObject({ text: value, contentType: "text/csv", title: "sales.csv", truncated: false });
+  });
+  it.each([
+    [new Uint8Array([0xc3, 0x28]), "invalid_utf8"],
+    ["valid\u0000binary", "binary_file"],
+    ["%PDF-1.7\nbody", "unsupported_type"],
+  ] as const)("still rejects unsafe CSV bytes with an Excel MIME label: %s", async (value, code) => {
+    await expect(extractConversationDocument(file(value, "sales.csv", "application/vnd.ms-excel"))).rejects.toMatchObject({ code });
+  });
   it("bounds extracted text without splitting a Unicode character", async () => {
     const value = "a".repeat(19_999) + "🍲" + "last";
     const result = await extractConversationDocument(file(value));

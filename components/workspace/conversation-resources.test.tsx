@@ -78,11 +78,11 @@ it("keeps reads disabled during a status refresh and after a failed refresh",asy
   expect(requests).toHaveBeenCalledTimes(2);
 });
 
-it("lets an owner correct an unsupported search phrase without refreshing availability",async()=>{
+it.each(["keyword_required","keyword_unsupported"])("lets an owner correct %s without refreshing availability",async reason=>{
   const context={source:"dataforseo",status:"empty",reason:"research_available",scope:"https://shop.example/",items:[],observedAt:null};
   const requests=vi.fn()
     .mockResolvedValueOnce({ok:true,json:async()=>({connectors:[context]})})
-    .mockResolvedValueOnce({ok:true,json:async()=>({context:{...context,status:"unsupported",reason:"keyword_unsupported"}})})
+    .mockResolvedValueOnce({ok:true,json:async()=>({context:{...context,status:"unsupported",reason}})})
     .mockResolvedValueOnce({ok:true,json:async()=>({context:{...context,status:"ready",reason:undefined,scope:"tw: coffee",items:[{title:"Synthetic coffee result"}]}})});
   vi.stubGlobal("fetch",requests);
   render(<ConversationConnectors {...props} workspaceSlug="shop"/>);
@@ -91,7 +91,7 @@ it("lets an owner correct an unsupported search phrase without refreshing availa
   fireEvent.click(screen.getByRole("button",{name:"Read context"}));
   await waitFor(()=>expect(requests).toHaveBeenCalledTimes(2));
   await waitFor(()=>expect(screen.getByRole("button",{name:"Read context"})).toBeEnabled());
-  expect(screen.getByText(/Search operators.*No paid request was sent/)).toBeInTheDocument();
+  expect(screen.getByText(reason==="keyword_required"?/Enter a plain search phrase.*No paid request was sent/:/Search operators.*No paid request was sent/)).toBeInTheDocument();
   fireEvent.change(keyword,{target:{value:"coffee"}});
   fireEvent.click(screen.getByRole("button",{name:"Read context"}));
   expect(await screen.findByText("Synthetic coffee result")).toBeInTheDocument();
