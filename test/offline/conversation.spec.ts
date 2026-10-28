@@ -193,6 +193,7 @@ test("scope transitions and stale thread IDs never show another account, workspa
   await page.evaluate(() => { const next = new URL(location.href); next.searchParams.set("location", "east"); history.replaceState(null, "", next); dispatchEvent(new Event("fixture:refresh")); });
   await expect(page.getByText(conversationCopy.en.missing, { exact: true })).toBeVisible();
   await expect(page.locator(".conversation-note")).toHaveCount(0);
+  await expect(page.locator(".conversation-sidebar-recent a")).toHaveCount(0);
 });
 
 test("blocked storage retains notes on screen, reports failure, and never claims refresh persistence", async ({ page, app }) => {

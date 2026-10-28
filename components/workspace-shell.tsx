@@ -219,6 +219,11 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
  */
 export function WorkspacePageFrame({ locale, workspace, demo = false, children }: { locale: string; workspace: ShellWorkspace; demo?: boolean; children: ReactNode }) {
   const safeLocale = normaliseLocale(locale)
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const conversationScope = workspace.conversationEnabled && pathname === `/${safeLocale}/owner/${workspace.slug}/conversation`
+    ? JSON.stringify([workspace.slug, workspace.account.email, resolveLocationSlug(searchParams.get("location"), workspace.locations, workspace.defaultLocationSlug)])
+    : "outside-conversation"
   useEffect(() => {
     document.documentElement.lang = safeLocale === "zh-HK" ? "zh-HK" : safeLocale === "zh-TW" ? "zh-TW" : "en"
   }, [safeLocale])
@@ -226,7 +231,7 @@ export function WorkspacePageFrame({ locale, workspace, demo = false, children }
     <WorkspaceTheme>
       <div className={`workspace-root${demo ? " has-env-bar" : ""}`}>
         <EnvironmentBar locale={safeLocale} show={demo} />
-        <ConversationNavigationProvider><WorkspaceShell locale={safeLocale} workspace={workspace}>{children}</WorkspaceShell></ConversationNavigationProvider>
+        <ConversationNavigationProvider key={conversationScope}><WorkspaceShell locale={safeLocale} workspace={workspace}>{children}</WorkspaceShell></ConversationNavigationProvider>
       </div>
     </WorkspaceTheme>
   )
