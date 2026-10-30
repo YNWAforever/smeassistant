@@ -5,7 +5,8 @@ const replace = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 import { ConversationView, type ConversationViewProps } from "./conversation-view";
 import { conversationCopy } from "@/lib/copy-conversation";
-const props: ConversationViewProps = { locale: "en", workspaceSlug: "shop", workspaceName: "Shop", location: "branch", locationName: "Branch", scope: { userId: "u", workspaceId: "w", locationId: "l" }, initialThreadId: undefined, actions: [{ id: "a1", title: "Real work", versionId: "v1" }] };
+import { writeConversationThreads } from "@/lib/workspace/conversation-store";
+const props: ConversationViewProps = { locale: "en", timezone: "Asia/Singapore", workspaceSlug: "shop", workspaceName: "Shop", location: "branch", locationName: "Branch", scope: { userId: "u", workspaceId: "w", locationId: "l" }, initialThreadId: undefined, actions: [{ id: "a1", title: "Real work", versionId: "v1" }] };
 beforeEach(() => { localStorage.clear(); replace.mockClear(); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 async function addNote(note: string) {
@@ -13,6 +14,33 @@ async function addNote(note: string) {
   fireEvent.click(screen.getByRole("button", { name: "Save local note" }));
   await screen.findByText(note, { selector: ".conversation-note" });
 }
+it.each(["en", "zh-HK", "zh-TW"] as const)("keeps the visible %s primary CTA honest before and after saving a local note", async locale => {
+  const t = conversationCopy[locale];
+  render(<ConversationView {...props} locale={locale} />);
+  const save = await screen.findByRole("button", { name: t.save });
+  expect(save).toHaveTextContent(t.save);
+  expect(save).toBeDisabled();
+  fireEvent.change(screen.getByLabelText(t.note), { target: { value: "Local note" } });
+  expect(save).toHaveTextContent(t.save);
+  expect(save).toBeEnabled();
+  fireEvent.click(save);
+  await screen.findByText("Local note", { selector: ".conversation-note" });
+  expect(save).toHaveTextContent(t.save);
+  expect(save).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: t.newThread }));
+  expect(save).toHaveTextContent(t.save);
+  expect(save).toBeDisabled();
+});
+it("renders recent local-note timestamps in the workspace timezone without changing the stored instant", async () => {
+  const updatedAt = "2026-10-30T20:09:08.000Z";
+  writeConversationThreads(localStorage, props.scope, [{ id: "t1", title: "Preview note", notes: ["Preview note"], actionIds: [], createdAt: updatedAt, updatedAt }]);
+  const view = render(<ConversationView {...props} locale="zh-HK" />);
+  const recent = await screen.findByRole("button", { name: "Preview note" });
+  expect(recent.querySelector("time")).toHaveTextContent("2026年10月31日 上午4:09");
+  expect(recent.querySelector("time")).toHaveAttribute("datetime", updatedAt);
+  view.rerender(<ConversationView {...props} locale="zh-HK" timezone="America/New_York" />);
+  expect(recent.querySelector("time")).toHaveTextContent("2026年10月30日 下午4:09");
+});
 it("prefills from six existing templates without saving or sending a request", async () => {
   render(<ConversationView {...props} />);
   await screen.findByLabelText("Your note");

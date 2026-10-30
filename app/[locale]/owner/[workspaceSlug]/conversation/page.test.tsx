@@ -10,7 +10,7 @@ import Page from "./page";
 const props = { params: Promise.resolve({ locale: "en", workspaceSlug: "shop" }) };
 beforeEach(() => {
   vi.stubEnv("NODE_ENV", "test"); vi.stubEnv("VERCEL_ENV", undefined); vi.stubEnv("VERCEL", undefined); vi.clearAllMocks();
-  mocks.load.mockResolvedValue({ locale: "en", workspaceSlug: "shop", locationSlug: "branch", membership: { userId: "user" }, query: { thread: "t1" }, ctx: { workspace: { id: "ws", name: "Shop" }, locations: [{ id: "loc", slug: "branch", name: "Branch" }] } });
+  mocks.load.mockResolvedValue({ locale: "en", workspaceSlug: "shop", locationSlug: "branch", membership: { userId: "user" }, query: { thread: "t1" }, ctx: { workspace: { id: "ws", name: "Shop", timezone: "Asia/Singapore" }, locations: [{ id: "loc", slug: "branch", name: "Branch" }] } });
   mocks.brief.mockResolvedValue({ openActionCount: 12, openActions: [], month: { awaitingApproval: 3, completed: 2 } });
   mocks.actions.mockResolvedValue({ actions: [{ id: "a1", title: { en: "Real action" }, latestVersion: { id: "v1" } }], hasMore: false });
 });
@@ -25,7 +25,7 @@ it("loads membership-scoped actions and passes only reference labels plus the ac
   vi.stubEnv("CONVERSATION_HOME_ENABLED", "true");
   const html = renderToStaticMarkup(await Page(props));
   expect(mocks.load).toHaveBeenCalledWith(props);
-  expect(mocks.actions).toHaveBeenCalledWith(expect.objectContaining({ workspace: { id: "ws", name: "Shop" } }), { location: "branch", pageSize: 50 });
+  expect(mocks.actions).toHaveBeenCalledWith(expect.objectContaining({ workspace: { id: "ws", name: "Shop", timezone: "Asia/Singapore" } }), { location: "branch", pageSize: 50 });
   expect(html).toContain("userId"); expect(html).toContain("loc"); expect(html).toContain("Real action"); expect(html).toContain("v1");
 });
 it("propagates membership failure before reading actions", async () => {
@@ -36,8 +36,9 @@ it("propagates membership failure before reading actions", async () => {
 it("reuses the location-scoped Today brief and passes only task activity counts", async () => {
   vi.stubEnv("CONVERSATION_HOME_ENABLED", "true");
   const element = await Page(props);
-  expect(mocks.brief).toHaveBeenCalledWith(expect.objectContaining({ workspace: { id: "ws", name: "Shop" } }), "branch");
+  expect(mocks.brief).toHaveBeenCalledWith(expect.objectContaining({ workspace: { id: "ws", name: "Shop", timezone: "Asia/Singapore" } }), "branch");
   expect(element.props.today).toEqual({ open: 12, drafts: 3, completed: 2 });
+  expect(element.props.timezone).toBe("Asia/Singapore");
 });
 
 it("keeps local work available without substituting zero when the Today brief fails", async () => {

@@ -20,7 +20,7 @@ export default async function ConversationRoute(props: OwnerPageProps) {
   ]);
   const location = page.ctx.locations.find(item => item.slug === page.locationSlug);
   return <ConversationView
-    locale={page.locale} workspaceSlug={page.workspaceSlug} workspaceName={page.ctx.workspace.name}
+    locale={page.locale} timezone={page.ctx.workspace.timezone} workspaceSlug={page.workspaceSlug} workspaceName={page.ctx.workspace.name}
     location={page.locationSlug} locationName={location?.name ?? ""}
     scope={{ userId: page.membership.userId, workspaceId: page.ctx.workspace.id, locationId: location?.id ?? "all" }}
     connectionOutcome={page.query.connector === "gsc" ? page.query.connected : undefined}
