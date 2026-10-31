@@ -18,7 +18,7 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
 
 /** Parent remounts by account/workspace/location. No thread text or browser draft is submitted. */
 export function ConversationSearch(props: Props) {
-  return props.locationId === "all" ? <section className="conversation-resources" aria-label={searchCopy[props.locale].title}><h2>{searchCopy[props.locale].title}</h2><p>{searchCopy[props.locale].selectLocation}</p></section> : <ScopedSearch key={`${props.workspaceId}:${props.locationId}`} {...props} />;
+  return props.locationId === "all" ? <section className="conversation-resources" aria-label={searchCopy[props.locale].title}><h2>{searchCopy[props.locale].title}</h2><p className="conversation-empty">{searchCopy[props.locale].selectLocation}</p></section> : <ScopedSearch key={`${props.workspaceId}:${props.locationId}`} {...props} />;
 }
 function ScopedSearch({ locale, workspaceId, locationId, workspaceSlug, locationSlug, canManage }: Props) {
   const t = searchCopy[locale], rt = resourceCopy[locale], api = `/api/workspaces/${encodeURIComponent(workspaceId)}/conversation/search`;
@@ -54,27 +54,28 @@ function ScopedSearch({ locale, workspaceId, locationId, workspaceSlug, location
   const source = (context: ConnectorContext) => <p className="search-provenance">{t.source}: Google Search Console · {context.scope || "—"} · {context.observedAt ? new Date(context.observedAt).toLocaleString(locale) : rt.never}{context.analytics && <> · {context.analytics.country} · {context.analytics.startDate} – {context.analytics.endDate} · PT · web · query · {context.analytics.pageFilter}</>}</p>;
   const brief = selected?.brief?.[locale];
   return <section className="conversation-resources conversation-search" aria-label={t.title}>
-    <h2>{t.title}</h2><p>{t.lead}</p><p className="limitation-note">{t.limits}</p>
+    <h2>{t.title}</h2><p>{t.lead}</p><p className="limitation-note conversation-panel-note">{t.limits}</p>
     {error && <p role="alert">{t.failed}</p>}
     <div className="search-controls"><Button disabled={!canManage || busy || loading} onClick={() => void run("read")}>{busy ? t.loading : selected ? t.refresh : t.read}</Button>
       <Button variant="outline" disabled={loading || busy} onClick={() => { setLoading(true); setError(false); setRefresh(value => value + 1); }}>{t.retry}</Button></div>
     {loading && <p role="status">{t.loading}</p>}
-    {checkedAt && <p>{t.checkedAt}: {new Date(checkedAt).toLocaleString(locale)}</p>}
+    {checkedAt && <p className="search-provenance">{t.checkedAt}: {new Date(checkedAt).toLocaleString(locale)}</p>}
     {!canManage && <p>{t.ownerOnly}</p>}
-    <label htmlFor="conversation-search-record">{t.records}</label>
-    <select id="conversation-search-record" value={selectedId ?? ""} disabled={busy || loading} onChange={event => choose(event.target.value)}><option value="">{records.length ? t.chooseRead : t.noRecords}</option>{records.map(row => <option key={row.id} value={row.id}>{new Date(row.createdAt).toLocaleString(locale)} · {row.approvedAt ? t.approved : t.pending}</option>)}</select>
-    {selected && <article>
-      <p role="status">{t.reasons[selected.gap.reason]}</p>
-      <p>{rt.states[selected.gap.status === "unavailable" ? selected.gap.source.status : selected.gap.status]}</p>{source(selected.gap.source)}
-      {selected.gap.queries.length > 0 && <><h3>{t.queries}</h3><ul>{selected.gap.queries.map(row => <li key={row.title}>{row.title} · {t.impressions}: {row.metrics?.impressions} · {t.clicks}: {row.metrics?.clicks}</li>)}</ul></>}
+    <div className="conversation-field search-saved-reads"><label htmlFor="conversation-search-record">{t.records}</label>
+      <select id="conversation-search-record" value={selectedId ?? ""} disabled={busy || loading} onChange={event => choose(event.target.value)}><option value="">{records.length ? t.chooseRead : t.noRecords}</option>{records.map(row => <option key={row.id} value={row.id}>{new Date(row.createdAt).toLocaleString(locale)} · {row.approvedAt ? t.approved : t.pending}</option>)}</select>
+    </div>
+    {selected && <article className="search-result">
+      <p role="status" className="conversation-panel-state">{t.reasons[selected.gap.reason]}</p>
+      <p className="search-source-state">{rt.states[selected.gap.status === "unavailable" ? selected.gap.source.status : selected.gap.status]}</p>{source(selected.gap.source)}
+      {selected.gap.queries.length > 0 && <><h3>{t.queries}</h3><ul className="search-queries">{selected.gap.queries.map(row => <li key={row.title}>{row.title} · {t.impressions}: {row.metrics?.impressions} · {t.clicks}: {row.metrics?.clicks}</li>)}</ul></>}
       {brief && <>
         <Button variant="outline" disabled={busy} onClick={() => setShowBrief(true)}>{t.createBrief}</Button>
-        {(showBrief || selected.approvedAt) && <div className="search-brief"><p>{selected.approvedAt ? t.approved : t.draft}</p><h3>{brief.title}</h3><p>{brief.missing}</p><p>{brief.why}</p><ol>{brief.steps.map(step => <li key={step}>{step}</li>)}</ol><p className="search-provenance">{brief.citation}</p>
-          {selected.approvedAt ? <>
+        {(showBrief || selected.approvedAt) && <div className="search-brief"><p className="search-brief-state">{selected.approvedAt ? t.approved : t.draft}</p><h3>{brief.title}</h3><p>{brief.missing}</p><p>{brief.why}</p><ol>{brief.steps.map(step => <li key={step}>{step}</li>)}</ol><p className="search-provenance">{brief.citation}</p>
+          {selected.approvedAt ? <div className="search-approved-actions">
             <p>{new Date(selected.approvedAt).toLocaleString(locale)}</p>
             <Link href={`/${locale}/owner/${workspaceSlug}/actions/${encodeURIComponent(selected.actionId!)}?location=${encodeURIComponent(locationSlug)}`}>{t.openAction}</Link>
             <p className="limitation-note">{t.observeNote}</p><Button variant="outline" disabled={busy || !canManage} onClick={() => void run("observe")}>{t.observe}</Button>
-          </> : canManage ? <><label className="search-confirm"><input type="checkbox" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />{t.confirmLabel}</label><Button disabled={!confirmed || busy} onClick={() => void run("approve")}>{t.approve}</Button></> : <p>{t.ownerOnly}</p>}
+          </div> : canManage ? <div className="search-confirm-actions"><label className="search-confirm"><input type="checkbox" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />{t.confirmLabel}</label><Button disabled={!confirmed || busy} onClick={() => void run("approve")}>{t.approve}</Button></div> : <p>{t.ownerOnly}</p>}
         </div>}
       </>}
       {observation && <div className="search-observation"><p role="status">{t.observations[observation.observation.reason]}</p>{source(observation.source)}

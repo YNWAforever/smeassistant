@@ -130,6 +130,31 @@ async function save(page: Page, text: string) {
   await page.getByRole("button", { name: "Save local note", exact: true }).click();
   await expect(page.locator(".conversation-note").filter({ hasText: text })).toBeVisible();
 }
+async function expectReadable(page: Page, selectors: string[]) {
+  for (const selector of selectors) {
+    const contrasts = await page.locator(selector).evaluateAll(nodes => {
+      const context = document.createElement("canvas").getContext("2d")!;
+      const luminance = (color: string) => {
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        const rgb = Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3).map(value => {
+          const srgb = value / 255;
+          return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+        });
+        return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+      };
+      return nodes.map(node => {
+        let surface: Element | null = node;
+        while (surface && getComputedStyle(surface).backgroundColor === "rgba(0, 0, 0, 0)") surface = surface.parentElement;
+        const foreground = luminance(getComputedStyle(node).color);
+        const background = luminance(getComputedStyle(surface!).backgroundColor);
+        return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+      });
+    });
+    expect(contrasts.length, selector).toBeGreaterThan(0);
+    for (const contrast of contrasts) expect.soft(contrast, selector).toBeGreaterThanOrEqual(4.5);
+  }
+}
 
 test.describe("Stage A Preview polish", () => {
   // Exercise a 12-hour difference between the browser in New York and the workspace in Singapore.
@@ -189,29 +214,7 @@ test("dark preference keeps cream-home controls and honesty copy readable", asyn
     "#conversation-search .limitation-note",
     "#conversation-documents .limitation-note",
   ];
-  for (const selector of targets) {
-    const contrasts = await page.locator(selector).evaluateAll(nodes => {
-      const context = document.createElement("canvas").getContext("2d")!;
-      const luminance = (color: string) => {
-        context.fillStyle = color;
-        context.fillRect(0, 0, 1, 1);
-        const rgb = Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3).map(value => {
-          const srgb = value / 255;
-          return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
-        });
-        return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
-      };
-      return nodes.map(node => {
-        let surface: Element | null = node;
-        while (surface && getComputedStyle(surface).backgroundColor === "rgba(0, 0, 0, 0)") surface = surface.parentElement;
-        const foreground = luminance(getComputedStyle(node).color);
-        const background = luminance(getComputedStyle(surface!).backgroundColor);
-        return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
-      });
-    });
-    expect(contrasts.length, selector).toBeGreaterThan(0);
-    for (const contrast of contrasts) expect.soft(contrast, selector).toBeGreaterThanOrEqual(4.5);
-  }
+  await expectReadable(page, targets);
   await page.screenshot({ path: test.info().outputPath("conversation-dark-preference.png"), fullPage: true });
   // Model a client navigation: the chosen global theme must survive the local palette.
   await page.evaluate(() => {
@@ -224,6 +227,65 @@ test("dark preference keeps cream-home controls and honesty copy readable", asyn
   await expect(page.locator(".workspace-shell--conversation, .conversation-switch")).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(await page.locator(".workspace-shell").evaluate(node => getComputedStyle(node).colorScheme)).toBe("dark");
+});
+
+test("Stage B expanded work surfaces retain readable gates and form state in the boutique shell", async ({ page, app }) => {
+  const locale = "zh-HK", t = conversationCopy[locale], rt = resourceCopy[locale], st = searchCopy[locale];
+  await page.clock.setFixedTime(new Date("2026-10-31T04:00:00Z"));
+  await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation?location=central`);
+  await page.locator(".theme-button").click();
+  await page.getByRole("menuitemradio", { name: "深色", exact: true }).click();
+  await page.getByLabel(t.note, { exact: true }).fill("本機筆記：核對舖頭餐牌同網站資料（離線合成示例）");
+  await page.getByRole("button", { name: t.save, exact: true }).click();
+  await page.getByLabel(t.note, { exact: true }).fill("價錢同服務要先確認，唔好當作已發布。\n" + "synthetic-long-note-".repeat(12));
+  await page.getByRole("button", { name: t.save, exact: true }).click();
+  await expect(page.locator(".conversation-note")).toHaveCount(2);
+  await page.getByLabel(t.linkAction, { exact: true }).selectOption(ACTION);
+  await expect(page.locator(".conversation-linked-actions").getByRole("link", { name: t.openVersion })).toHaveAttribute("href", `/${locale}/owner/test-shop/actions/${ACTION}?location=central&version=${VERSION}`);
+  await page.getByRole("button", { name: conversationDesignCopy[locale].attach, exact: true }).click();
+  const filename = "synthetic-confirmed-menu-".repeat(4) + ".txt";
+  await page.locator("input[type=file]").and(page.getByLabel(rt.file, { exact: true })).setInputFiles({ name: filename, mimeType: "text/plain", buffer: Buffer.from("離線合成餐牌 · 只供版面驗證\n" + "synthetic-source-".repeat(30)) });
+  await page.getByRole("button", { name: rt.save, exact: true }).click();
+  const cite = page.getByRole("button", { name: rt.cite, exact: true });
+  await expect(cite).toBeEnabled(); await cite.click(); await expect(cite).toBeDisabled();
+  await page.locator(".conversation-citations summary").click();
+  await expect(page.locator(".conversation-citations pre")).toBeVisible();
+  await expectReadable(page, [".conversation-note", ".conversation-thread-heading > span", ".conversation-thread-heading time", "#conversation-documents .limitation-note", ".conversation-citations h3", ".conversation-citations pre"]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("stage-b-thread-documents-zh-HK.png"), fullPage: true });
+  await page.locator("#conversation-documents > summary").click();
+
+  await openTool(page, "search");
+  const search = page.getByRole("region", { name: st.title, exact: true });
+  await search.getByRole("button", { name: st.read, exact: true }).click();
+  await search.getByRole("button", { name: st.createBrief, exact: true }).click();
+  const confirm = search.getByRole("checkbox", { name: st.confirmLabel }), approve = search.getByRole("button", { name: st.approve, exact: true });
+  await expect(approve).toBeDisabled();
+  await confirm.focus(); await page.keyboard.press("Space");
+  await page.locator("#conversation-search > summary").click(); await openTool(page, "search");
+  await expect(confirm).toBeChecked(); await expect(approve).toBeEnabled();
+  await expectReadable(page, [".search-confirm", ".search-confirm-actions button", ".search-brief-state", ".search-provenance", ".search-result > [role=status]", "#conversation-search .limitation-note"]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("stage-b-search-confirm-zh-HK.png"), fullPage: true });
+  await approve.click();
+  await expect(search.getByText(st.approved, { exact: true })).toBeVisible();
+  await search.getByRole("button", { name: st.observe, exact: true }).click();
+  await expect(search.getByText(st.observations.later_window_required, { exact: true })).toBeVisible();
+  await expectReadable(page, [".search-approved-actions .limitation-note", ".search-observation > [role=status]"]);
+  await page.locator("#conversation-search > summary").click();
+
+  await openTool(page, "sources");
+  await expect(page.getByText(rt.states.blocked, { exact: true })).toBeVisible();
+  const keyword = page.getByLabel(rt.keyword, { exact: true });
+  await keyword.fill("synthetic plain phrase");
+  await page.locator("#conversation-sources > summary").click(); await openTool(page, "sources");
+  await expect(keyword).toHaveValue("synthetic plain phrase");
+  await expectReadable(page, [".conversation-connector [role=status]", ".conversation-budget", ".conversation-source-meta dt", ".conversation-source-meta dd", "#conversation-sources .limitation-note", ".conversation-resource-actions > a"]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("stage-b-connectors-zh-HK.png"), fullPage: true });
+  await openTool(page, "documents");
+  await expect(page.locator(".conversation-citations pre")).toBeVisible();
+  await expect(page.locator(".usage-mini strong")).toHaveText("2 / 3");
 });
 
 test("Today remains default and the optional switch works in every locale; existing Ask Kinnso opens", async ({ page, app }) => {
