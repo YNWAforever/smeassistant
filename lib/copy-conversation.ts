@@ -10,7 +10,7 @@ type ConversationCopy = {
 export const conversationCopy: Record<PrototypeLocale, ConversationCopy> = {
   en: {
     switchLabel: "Start work", title: "What would you like to do for your shop?", preview: "Preview", lead: "Start with a goal, or choose a template and work through it together.",
-    privacy: "Notes stay in this browser, separated by account, workspace and location. No cloud backup or sync. People using this browser profile may read them; clearing site data deletes them.",
+    privacy: "Notes stay only in this browser on this device, separated by account, workspace and location. They do not sync to other devices and have no cloud backup. Anyone using this browser profile can read them; clearing site data deletes them.",
     boundary: "Notes are not AI replies or drafts and are not shared through linked tasks. Saving them does not confirm work or count a delivery. Ask Kinnso is available above.",
     templates: "Start with a template", templateHint: "Choose a template to fill your note. Nothing runs until you open an existing task and use its controls.", useTemplate: "Use template:",
     threads: "Recent local threads", empty: "No local threads yet.", newThread: "New thread", note: "Your note", placeholder: "What do you want to work on? Add confirmed facts or a next step.", save: "Save local note", saved: "Saved in this browser", loading: "Loading local notes…",
@@ -22,7 +22,7 @@ export const conversationCopy: Record<PrototypeLocale, ConversationCopy> = {
   },
   "zh-HK": {
     switchLabel: "開始工作", title: "想為間舖做啲咩？", preview: "預覽", lead: "講低目標，或揀個模板，一齊做完。",
-    privacy: "筆記只留喺呢個瀏覽器，按帳戶、工作空間同分店分開，冇雲端備份或同步。用同一瀏覽器設定檔嘅人可能讀到；清除網站資料會刪除筆記。",
+    privacy: "筆記只留喺呢部裝置嘅呢個瀏覽器，按帳戶、工作空間同分店分開，唔會同步去其他裝置，亦冇雲端備份。用同一瀏覽器設定檔嘅人可以讀到；清除網站資料會刪除筆記。",
     boundary: "筆記唔係 AI 回覆或草稿，亦唔會透過連結嘅待辦分享。儲存唔代表確認工作，唔會計作交付。現有助手「問 Kinnso」喺上面。",
     templates: "由範本開始", templateHint: "揀範本會填入筆記。要執行工作，請打開現有待辦，再用入面嘅操作。", useTemplate: "使用範本：",
     threads: "最近嘅本機討論串", empty: "未有本機討論串。", newThread: "新討論串", note: "你嘅筆記", placeholder: "想處理啲咩？記低已確認資料或者下一步。", save: "儲存本機筆記", saved: "已儲存喺呢個瀏覽器", loading: "讀取本機筆記中…",
@@ -34,7 +34,7 @@ export const conversationCopy: Record<PrototypeLocale, ConversationCopy> = {
   },
   "zh-TW": {
     switchLabel: "開始工作", title: "想為店裡做什麼？", preview: "預覽", lead: "說說目標，或選個範本，一起做完。",
-    privacy: "筆記只留在這個瀏覽器，依帳戶、工作空間和分店分開，沒有雲端備份或同步。使用同一瀏覽器設定檔的人可能讀到；清除網站資料會刪除筆記。",
+    privacy: "筆記只留在這台裝置的這個瀏覽器，依帳戶、工作空間和分店分開，不會同步到其他裝置，也沒有雲端備份。使用同一瀏覽器設定檔的人可以讀到；清除網站資料會刪除筆記。",
     boundary: "筆記不是 AI 回覆或草稿，也不會透過連結的待辦分享。儲存不代表確認工作，不計入交付。現有助手「問 Kinnso」在上方。",
     templates: "從範本開始", templateHint: "選範本會填入筆記。要執行工作，請開啟現有待辦，再使用裡面的操作。", useTemplate: "使用範本：",
     threads: "最近的本機討論串", empty: "還沒有本機討論串。", newThread: "新討論串", note: "你的筆記", placeholder: "想處理什麼？記下已確認資料或下一步。", save: "儲存本機筆記", saved: "已儲存在這個瀏覽器", loading: "正在讀取本機筆記…",

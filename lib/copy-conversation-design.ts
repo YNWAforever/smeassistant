@@ -1,5 +1,6 @@
 import type { PrototypeLocale } from "@/lib/copy";
 import type { TemplateKey } from "@/lib/workspace/templates";
+import { CONVERSATION_LIMITS } from "@/lib/workspace/conversation-store";
 
 export type ConversationCategory = "all" | "start" | "content" | "search";
 type EntryKey = Extract<TemplateKey, "review-response" | "review-request" | "social-post" | "gbp-post" | "visibility-content" | "website-basics">;
@@ -28,7 +29,7 @@ export const conversationDesignCopy: Record<PrototypeLocale, DesignCopy> = {
     },
     today: "Today", fullToday: "Full Today view", open: "Open tasks", awaiting: "Draft versions", completed: "Done this month", todayUnavailable: "Today’s summary is unavailable. Open Today for the full view.",
     effort: "Work in this scope · task activity, not a claim of business results.", continue: "Continue", recent: "Recent discussions", local: "Only in this browser", savedVersion: "A saved version is available", tools: "Documents, search & sources", toolHint: "Open a tool when you need it. Reads and confirmations stay under your control.",
-    language: "English", localNote: "Discussions save as browser-local notes. No AI reply is generated here.", contextHint: "Use confirmed shop details and check your sources before approving work.",
+    language: "English", localNote: `Discussions save as browser-local notes. No AI reply is generated here. Per account, workspace and location: up to ${CONVERSATION_LIMITS.threads} threads, ${CONVERSATION_LIMITS.notes} notes per thread, ${CONVERSATION_LIMITS.noteLength.toLocaleString("en-US")} characters per note.`, contextHint: "Use confirmed shop details and check your sources before approving work.",
   },
   "zh-HK": {
     eyebrow: "舖頭工作，由一句開始", discussion: "對話", newDiscussion: "新討論", together: "一齊工作",
@@ -44,7 +45,7 @@ export const conversationDesignCopy: Record<PrototypeLocale, DesignCopy> = {
     },
     today: "今日", fullToday: "睇完整今日", open: "未完成待辦", awaiting: "草稿版本", completed: "今個月已完成", todayUnavailable: "暫時讀唔到今日摘要，可以打開今日睇完整資料。",
     effort: "目前範圍嘅工作紀錄，唔代表生意成效。", continue: "繼續", recent: "最近討論", local: "只喺呢個瀏覽器", savedVersion: "有已存版本可以繼續", tools: "文件、搜尋同資料來源", toolHint: "有需要先打開工具。讀取資料同確認工作，都由你決定。",
-    language: "繁體中文・香港", localNote: "討論會存成本機筆記，呢度唔會產生 AI 回覆。", contextHint: "用已確認嘅舖頭資料，確認工作前先核對來源。",
+    language: "繁體中文・香港", localNote: `討論會存成本機筆記，呢度唔會產生 AI 回覆。每個帳戶、工作空間同分店範圍最多 ${CONVERSATION_LIMITS.threads} 個討論串；每串最多 ${CONVERSATION_LIMITS.notes} 則筆記，每則最多 ${CONVERSATION_LIMITS.noteLength.toLocaleString("en-US")} 字元。`, contextHint: "用已確認嘅舖頭資料，確認工作前先核對來源。",
   },
   "zh-TW": {
     eyebrow: "店裡工作，從一句開始", discussion: "對話", newDiscussion: "新討論", together: "一起工作",
@@ -60,6 +61,6 @@ export const conversationDesignCopy: Record<PrototypeLocale, DesignCopy> = {
     },
     today: "今天", fullToday: "查看完整今天", open: "未完成待辦", awaiting: "草稿版本", completed: "本月已完成", todayUnavailable: "暫時無法讀取今天摘要，可以開啟今天查看完整資料。",
     effort: "目前範圍的工作紀錄，不代表生意成效。", continue: "繼續", recent: "最近討論", local: "只在這個瀏覽器", savedVersion: "有已存版本可以繼續", tools: "文件、搜尋與資料來源", toolHint: "有需要再開啟工具。讀取資料和確認工作，都由你決定。",
-    language: "繁體中文・台灣", localNote: "討論會存成本機筆記，這裡不會產生 AI 回覆。", contextHint: "使用已確認的店裡資料，確認工作前先核對來源。",
+    language: "繁體中文・台灣", localNote: `討論會存成本機筆記，這裡不會產生 AI 回覆。每個帳戶、工作空間和分店範圍最多 ${CONVERSATION_LIMITS.threads} 個討論串；每串最多 ${CONVERSATION_LIMITS.notes} 則筆記，每則最多 ${CONVERSATION_LIMITS.noteLength.toLocaleString("en-US")} 字元。`, contextHint: "使用已確認的店裡資料，確認工作前先核對來源。",
   },
 };
