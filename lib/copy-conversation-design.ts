@@ -5,7 +5,7 @@ export type ConversationCategory = "all" | "start" | "content" | "search";
 type EntryKey = Extract<TemplateKey, "review-response" | "review-request" | "social-post" | "gbp-post" | "visibility-content" | "website-basics">;
 type DesignCopy = {
   eyebrow: string; discussion: string; newDiscussion: string; together: string;
-  start: string; attach: string; documents: string; sources: string; templates: string; templateNav: string; filters: string;
+  attach: string; documents: string; sources: string; templates: string; templateNav: string; filters: string;
   categories: Record<ConversationCategory, string>;
   cards: Record<EntryKey, { title: string; description: string; tag: string }>;
   today: string; fullToday: string; open: string; awaiting: string; completed: string; todayUnavailable: string;
@@ -16,7 +16,7 @@ type DesignCopy = {
 export const conversationDesignCopy: Record<PrototypeLocale, DesignCopy> = {
   en: {
     eyebrow: "Your work, one conversation away", discussion: "Conversation", newDiscussion: "New discussion", together: "Work together",
-    start: "Start discussion", attach: "Add document", documents: "Documents & outputs", sources: "Sources", templates: "Choose a template, start something", templateNav: "Templates", filters: "Filter templates",
+    attach: "Add document", documents: "Documents & outputs", sources: "Sources", templates: "Choose a template, start something", templateNav: "Templates", filters: "Filter templates",
     categories: { all: "All", start: "Get started", content: "Content & reviews", search: "Search & results" },
     cards: {
       "review-response": { title: "Reply to a Google review", description: "Start with the review and your shop’s tone of voice.", tag: "Review + brand voice" },
@@ -31,8 +31,8 @@ export const conversationDesignCopy: Record<PrototypeLocale, DesignCopy> = {
     language: "English", localNote: "Discussions save as browser-local notes. No AI reply is generated here.", contextHint: "Use confirmed shop details and check your sources before approving work.",
   },
   "zh-HK": {
-    eyebrow: "Your work, one conversation away", discussion: "對話", newDiscussion: "新討論", together: "一齊工作",
-    start: "開始討論", attach: "加入文件", documents: "文件與產出", sources: "資料來源", templates: "揀個模板，開始做", templateNav: "模板", filters: "篩選模板",
+    eyebrow: "舖頭工作，由一句開始", discussion: "對話", newDiscussion: "新討論", together: "一齊工作",
+    attach: "加入文件", documents: "文件與產出", sources: "資料來源", templates: "揀個模板，開始做", templateNav: "模板", filters: "篩選模板",
     categories: { all: "全部", start: "開始工作", content: "內容與評論", search: "搜尋與成效" },
     cards: {
       "review-response": { title: "回覆 Google 評論", description: "沿用舖頭語氣，準備一份可以審閱嘅稿。", tag: "評論＋品牌語氣" },
@@ -47,8 +47,8 @@ export const conversationDesignCopy: Record<PrototypeLocale, DesignCopy> = {
     language: "繁體中文・香港", localNote: "討論會存成本機筆記，呢度唔會產生 AI 回覆。", contextHint: "用已確認嘅舖頭資料，確認工作前先核對來源。",
   },
   "zh-TW": {
-    eyebrow: "Your work, one conversation away", discussion: "對話", newDiscussion: "新討論", together: "一起工作",
-    start: "開始討論", attach: "加入文件", documents: "文件與產出", sources: "資料來源", templates: "選個範本，開始做", templateNav: "範本", filters: "篩選範本",
+    eyebrow: "店裡工作，從一句開始", discussion: "對話", newDiscussion: "新討論", together: "一起工作",
+    attach: "加入文件", documents: "文件與產出", sources: "資料來源", templates: "選個範本，開始做", templateNav: "範本", filters: "篩選範本",
     categories: { all: "全部", start: "開始工作", content: "內容與評論", search: "搜尋與成效" },
     cards: {
       "review-response": { title: "回覆 Google 評論", description: "沿用店裡語氣，準備一份可以審閱的稿。", tag: "評論＋品牌語氣" },

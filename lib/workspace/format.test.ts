@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { basisLabel, buildExportText, comparisonReasonText, numericOrNull, ordinal, signed } from "./format";
+import { basisLabel, buildExportText, comparisonReasonText, formatDateTime, numericOrNull, ordinal, signed } from "./format";
+
+describe("formatDateTime", () => {
+  it.each([
+    ["en", "31 Oct 2026, 04:09"],
+    ["zh-HK", "2026年10月31日 上午4:09"],
+    ["zh-TW", "2026年10月31日 凌晨4:09"],
+  ] as const)("formats the Preview instant at Singapore wall-clock time in %s", (locale, expected) => {
+    expect(formatDateTime("2026-10-30T20:09:08.000Z", locale, "Asia/Singapore")).toBe(expected);
+    expect(formatDateTime("2026-10-31T04:09:08+08:00", locale, "Asia/Singapore")).toBe(expected);
+  });
+
+  it("honours a different workspace timezone for the same instant", () => {
+    expect(formatDateTime("2026-10-30T20:09:08.000Z", "zh-HK", "America/New_York")).toBe("2026年10月30日 下午4:09");
+  });
+});
 
 describe("ordinal", () => {
   it("covers every day a monthly cadence can fall on", () => {

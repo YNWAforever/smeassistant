@@ -27,7 +27,7 @@ const path=new URL(url),q=path.searchParams,locale=path.pathname.split("/")[1],s
 const ws={slug,name:"Synthetic shop",avatarInitial:"S",locations:[{slug:"central",name:"Central"},{slug:"east",name:"East"}],defaultLocationSlug:"central",usage:{approvedDeliveries:2,allowance:3},account:{name:user,email:user+"@example.test",roleLabel:"Owner"},unreadNotifications:0,demo:false,assistant:{workspaceId:slug,locationId:branch},...(q.get("flag")!=="off"?{conversationEnabled:true}:{})};
 const actions=q.get("empty")==="1"?[]:[{id:"${ACTION}",title:"Existing synthetic task",versionId:"${VERSION}"}];
 return <><aside className="fixture-label">OFFLINE SYNTHETIC · real product components · no DB, Auth or model</aside><WorkspacePageFrame locale={locale} workspace={ws}>
-{path.pathname.endsWith("/conversation")?<ConversationView locale={locale} workspaceSlug={slug} workspaceName={ws.name} location={branch} locationName={branch==="all"?"":branch==="central"?"Central":"East"} scope={{userId:user,workspaceId:slug,locationId:branch}} initialThreadId={q.get("thread")??undefined} actions={actions} today={{open:actions.length,drafts:actions.length,completed:2}} resources={{canManage:true}}/>:path.pathname.includes("/actions/")?<section><h1>Existing task surface</h1><p>Version {q.get("version")}</p></section>:<h1>{copy[locale].shell.nav.today}</h1>}
+{path.pathname.endsWith("/conversation")?<ConversationView locale={locale} timezone="Asia/Singapore" workspaceSlug={slug} workspaceName={ws.name} location={branch} locationName={branch==="all"?"":branch==="central"?"Central":"East"} scope={{userId:user,workspaceId:slug,locationId:branch}} initialThreadId={q.get("thread")??undefined} actions={actions} today={{open:actions.length,drafts:actions.length,completed:2}} resources={{canManage:true}}/>:path.pathname.includes("/actions/")?<section><h1>Existing task surface</h1><p>Version {q.get("version")}</p></section>:<h1>{copy[locale].shell.nav.today}</h1>}
 </WorkspacePageFrame></>}
 createRoot(document.getElementById("root")).render(<App/>);`;
 let bundle = "", css = "";
@@ -130,6 +130,44 @@ async function save(page: Page, text: string) {
   await page.getByRole("button", { name: "Save local note", exact: true }).click();
   await expect(page.locator(".conversation-note").filter({ hasText: text })).toBeVisible();
 }
+
+test.describe("Stage A Preview polish", () => {
+  // Exercise a 12-hour difference between the browser in New York and the workspace in Singapore.
+  test.use({ timezoneId: "America/New_York" });
+  for (const [locale, eyebrow, timestamp] of [
+    ["zh-HK", "舖頭工作，由一句開始", "2026年10月31日 上午4:09"],
+    ["zh-TW", "店裡工作，從一句開始", "2026年10月31日 凌晨4:09"],
+  ] as const) {
+    test(`${locale} localizes the eyebrow, labels local saves and uses workspace time`, async ({ page, app }) => {
+      await page.clock.setFixedTime(new Date("2026-10-30T20:09:08.000Z"));
+      await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation?location=central`);
+      const t = conversationCopy[locale];
+      await expect(page.locator(".conversation-eyebrow")).toHaveText(eyebrow);
+      await expect(page.getByRole("heading", { name: t.title, exact: true })).toBeVisible();
+      const save = page.getByRole("button", { name: t.save, exact: true });
+      await expect(save).toHaveText(t.save);
+      await expect(save).toBeDisabled();
+      await expect(page.locator(".conversation-local-note")).toHaveText(conversationDesignCopy[locale].localNote);
+      await page.screenshot({ path: test.info().outputPath(`conversation-stage-a-${locale}.png`), fullPage: true });
+      await page.getByLabel(t.note, { exact: true }).fill("Stage A 本機筆記");
+      await expect(save).toHaveText(t.save);
+      await expect(save).toBeEnabled();
+      await save.click();
+      const time = page.locator("#conversation-recent time");
+      await expect(time).toHaveAttribute("datetime", "2026-10-30T20:09:08.000Z");
+      await expect(time).toHaveText(timestamp);
+      await expect(save).toHaveText(t.save);
+      await expect(save).toBeDisabled();
+      await page.reload();
+      await expect(page.locator(".conversation-note")).toHaveText("Stage A 本機筆記");
+      await expect(time).toHaveText(timestamp);
+      await page.screenshot({ path: test.info().outputPath(`conversation-stage-a-local-note-${locale}.png`), fullPage: true });
+      await page.getByRole("button", { name: t.newThread, exact: true }).click();
+      await expect(save).toHaveText(t.save);
+      await expect(save).toBeDisabled();
+    });
+  }
+});
 
 test("dark preference keeps cream-home controls and honesty copy readable", async ({ page, app }) => {
   await page.goto(`${app.origin}/en/owner/test-shop/conversation?location=central`);

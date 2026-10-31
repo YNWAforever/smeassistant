@@ -14,6 +14,7 @@ import { conversationDesignCopy, type ConversationCategory } from "@/lib/copy-co
 import { searchCopy } from "@/lib/copy-search-gap";
 import { openConversationTool, useConversationNavigation } from "./conversation-navigation";
 import { CONVERSATION_LIMITS, conversationScopeKey, readConversationThreads, saveConversationChanges, type ConversationSave, type ConversationScope, type LocalThread } from "@/lib/workspace/conversation-store";
+import { formatDateTime } from "@/lib/workspace/format";
 import type { TemplateKey } from "@/lib/workspace/templates";
 
 /** The six entry points reference the existing workflow catalog; they never run a workflow. */
@@ -30,6 +31,7 @@ export interface ConversationAction { id: string; title: string; versionId?: str
 export interface ConversationToday { open: number; drafts: number; completed: number }
 export interface ConversationViewProps {
   locale: PrototypeLocale;
+  timezone: string;
   workspaceSlug: string;
   workspaceName: string;
   location: string;
@@ -52,7 +54,7 @@ export function ConversationView(props: ConversationViewProps) {
   return hydrated ? <ScopedConversation key={conversationScopeKey(props.scope)} {...props} /> : <p role="status">{conversationCopy[props.locale].loading}</p>;
 }
 
-function ScopedConversation({ locale, workspaceSlug, workspaceName, location, locationName, scope, initialThreadId, actions, today, resources, connectionOutcome }: ConversationViewProps) {
+function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, location, locationName, scope, initialThreadId, actions, today, resources, connectionOutcome }: ConversationViewProps) {
   const t = conversationCopy[locale];
   const d = conversationDesignCopy[locale];
   const navigation = useConversationNavigation();
@@ -157,7 +159,7 @@ function ScopedConversation({ locale, workspaceSlug, workspaceName, location, lo
             <textarea id="conversation-note" ref={composerRef} value={composer} maxLength={CONVERSATION_LIMITS.noteLength} rows={3} placeholder={t.placeholder} disabled={local.status === "corrupt"} onChange={event => { setComposer(event.target.value); setSaved(false); }} />
             <div className="conversation-composer-actions">
               {resources && <button className="conversation-attach" type="button" onClick={() => openConversationTool("conversation-documents")}><Paperclip aria-hidden="true" />{d.attach}{Boolean(selected?.documentVersionIds?.length) && <span>({selected!.documentVersionIds!.length})</span>}</button>}
-              <Button type="submit" aria-label={t.save} disabled={!composer.trim() || local.status === "corrupt"}>{selected ? t.save : d.start}<ArrowUp aria-hidden="true" /></Button>
+              <Button type="submit" aria-label={t.save} disabled={!composer.trim() || local.status === "corrupt"}>{t.save}<ArrowUp aria-hidden="true" /></Button>
             </div>
             {saved && <p role="status">{t.saved}</p>}
           </form>
@@ -178,7 +180,7 @@ function ScopedConversation({ locale, workspaceSlug, workspaceName, location, lo
         </section>
         <section id="conversation-recent" className="conversation-threads" aria-label={t.threads}>
           <div className="conversation-section-heading"><h2>{d.recent}</h2><Button variant="outline" onClick={() => selectThread()}><Plus aria-hidden="true" />{t.newThread}</Button></div>
-          {local.threads.length === 0 ? <p className="conversation-empty">{t.empty}</p> : <ul>{local.threads.map(thread => <li key={thread.id}><MessagesSquare aria-hidden="true" /><button type="button" className={selectedId === thread.id ? "is-active" : ""} aria-label={thread.title} aria-pressed={selectedId === thread.id} onClick={() => selectThread(thread.id)}><span>{thread.title}</span><small>{d.local} · <time dateTime={thread.updatedAt}>{new Date(thread.updatedAt).toLocaleString(locale)}</time></small></button><ArrowRight aria-hidden="true" /></li>)}</ul>}
+          {local.threads.length === 0 ? <p className="conversation-empty">{t.empty}</p> : <ul>{local.threads.map(thread => <li key={thread.id}><MessagesSquare aria-hidden="true" /><button type="button" className={selectedId === thread.id ? "is-active" : ""} aria-label={thread.title} aria-pressed={selectedId === thread.id} onClick={() => selectThread(thread.id)}><span>{thread.title}</span><small>{d.local} · <time dateTime={thread.updatedAt}>{formatDateTime(thread.updatedAt, locale, timezone)}</time></small></button><ArrowRight aria-hidden="true" /></li>)}</ul>}
         </section>
         {resources && <section className="conversation-tools" aria-label={d.tools}>
           <h2>{d.tools}</h2><p className="conversation-tool-hint">{d.toolHint}</p>
