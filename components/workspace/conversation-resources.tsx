@@ -39,16 +39,16 @@ export function ConversationDocuments({locale,workspaceId,locationId,canManage,c
   }
   const provenance=(v:DocumentVersion)=>`${v.title} · v${v.version} · ${new Date(v.createdAt).toLocaleString(locale)}`;
   return <section className="conversation-resources" aria-label={t.documents}>
-    <h2>{t.documents}</h2><p className="limitation-note">{t.documentNote}</p>
+    <div className="conversation-panel-heading"><h2>{t.documents}</h2><Button variant="outline" disabled={loading||busy} onClick={()=>{setError(null);setRefresh(v=>v+1);}}>{t.retry}</Button></div>
+    <p className="limitation-note conversation-panel-note">{t.documentNote}</p>
     {error&&<p role="alert">{error}</p>}{saved&&<p role="status">{t.saved}</p>}
-    <Button variant="outline" disabled={loading||busy} onClick={()=>{setError(null);setRefresh(v=>v+1);}}>{t.retry}</Button>
     {canManage?<form onSubmit={event=>void upload(event)} className="conversation-document-upload">
-      <label htmlFor="conversation-document">{t.file}</label><input ref={file} id="conversation-document" type="file" accept=".txt,.md,.csv,text/plain,text/markdown,text/csv" disabled={busy}/>
-      <label htmlFor="conversation-document-parent">{t.versionOf}</label><select id="conversation-document-parent" value={documentId} onChange={e=>setDocumentId(e.target.value)} disabled={busy}><option value="">{t.newDocument}</option>{versions.map(v=><option key={v.id} value={v.documentId}>{v.title} · v{v.version}</option>)}</select>
-      <Button type="submit" disabled={busy}>{busy?t.loading:t.save}</Button>
+      <div className="conversation-field"><label htmlFor="conversation-document">{t.file}</label><input ref={file} id="conversation-document" type="file" accept=".txt,.md,.csv,text/plain,text/markdown,text/csv" disabled={busy}/></div>
+      <div className="conversation-field"><label htmlFor="conversation-document-parent">{t.versionOf}</label><select id="conversation-document-parent" value={documentId} onChange={e=>setDocumentId(e.target.value)} disabled={busy}><option value="">{t.newDocument}</option>{versions.map(v=><option key={v.id} value={v.documentId}>{v.title} · v{v.version}</option>)}</select></div>
+      <div className="conversation-resource-actions"><Button type="submit" disabled={busy}>{busy?t.loading:t.save}</Button></div>
     </form>:<p className="limitation-note">{t.readOnly}</p>}
-    {loading?<p role="status">{t.loading}</p>:versions.length===0?<p>{t.empty}</p>:<ul className="conversation-document-list">{versions.map(v=><li key={v.id}><details><summary>{provenance(v)}</summary><pre>{v.text}</pre>{v.truncated&&<p>{t.truncated}</p>}</details><Button variant="outline" disabled={!canCite||citedIds.includes(v.id)} onClick={()=>onCite(v.id)}>{t.cite}</Button></li>)}</ul>}
-    {!canCite&&<p className="limitation-note">{t.createThread}</p>}
+    {loading?<p role="status">{t.loading}</p>:versions.length===0?<p className="conversation-empty">{t.empty}</p>:<ul className="conversation-document-list">{versions.map(v=><li key={v.id}><details><summary>{provenance(v)}</summary><pre>{v.text}</pre>{v.truncated&&<p className="limitation-note">{t.truncated}</p>}</details><Button variant="outline" disabled={!canCite||citedIds.includes(v.id)} onClick={()=>onCite(v.id)}>{t.cite}</Button></li>)}</ul>}
+    {!canCite&&<p className="limitation-note conversation-panel-note">{t.createThread}</p>}
     {citedIds.length>0&&<div className="conversation-citations"><h3>{t.cited}</h3><ul>{citedIds.map(id=>{const v=cited.find(item=>item.id===id);return <li key={id}>{v?<details><summary>{provenance(v)}</summary><pre>{v.text}</pre>{v.truncated&&<p>{t.truncated}</p>}</details>:<span>{loading?t.loading:t.missing}</span>}</li>;})}</ul></div>}
   </section>;
 }
@@ -64,17 +64,20 @@ export function ConversationConnectors({locale,workspaceId,locationId,canManage,
     catch{if(active.current)setError(true);}finally{if(active.current)setBusy(null);}
   }
   const connect=`/api/oauth/google/start?provider=gsc&workspace=${encodeURIComponent(workspaceSlug)}&locale=${locale}${locationSlug ? `&location=${encodeURIComponent(locationSlug)}` : ""}`;
-  return <section className="conversation-resources" aria-label={t.connectors}><h2>{t.connectors}</h2><p className="limitation-note">{t.connectorNote}</p><p className="limitation-note">{t.coverage}</p>
-    <Button variant="outline" disabled={loading||busy!==null} onClick={()=>{setError(false);setLoading(true);setRefresh(v=>v+1);}}>{t.refreshStatus}</Button>
+  return <section className="conversation-resources" aria-label={t.connectors}>
+    <div className="conversation-panel-heading"><h2>{t.connectors}</h2><Button variant="outline" disabled={loading||busy!==null} onClick={()=>{setError(false);setLoading(true);setRefresh(v=>v+1);}}>{t.refreshStatus}</Button></div>
+    <p className="limitation-note conversation-panel-note">{t.connectorNote}</p><p className="limitation-note">{t.coverage}</p>
     {loading&&<p role="status">{t.loading}</p>}{error&&<p role="alert">{t.failed}</p>}
-    {contexts.map(context=><article className="conversation-connector" key={context.source}><h3>{names[context.source]}</h3><p role="status">{context.reason && t.reasons[context.reason] || t.states[context.status]}</p><dl><dt>{t.scope}</dt><dd>{context.scope||"—"}</dd><dt>{t.lastRead}</dt><dd>{context.observedAt?new Date(context.observedAt).toLocaleString(locale):t.never}</dd></dl>
+    {contexts.map(context=><article className="conversation-connector" key={context.source}><h3>{names[context.source]}</h3><p role="status" className="conversation-panel-state">{context.reason && t.reasons[context.reason] || t.states[context.status]}</p><dl className="conversation-source-meta"><div><dt>{t.scope}</dt><dd>{context.scope||"—"}</dd></div><div><dt>{t.lastRead}</dt><dd>{context.observedAt?new Date(context.observedAt).toLocaleString(locale):t.never}</dd></div></dl>
       {context.source==="gsc"&&<p className="limitation-note">{t.gscNote}</p>}
-      {context.budget&&<p>{t.remaining} {context.budget.workspaceRemainingUsd.toFixed(2)} · {t.accountRemaining} {context.budget.accountRemainingUsd.toFixed(2)} · {t.reservation} {context.budget.reservedUsd.toFixed(4)}</p>}
+      {context.budget&&<p className="conversation-budget">{t.remaining} {context.budget.workspaceRemainingUsd.toFixed(2)} · {t.accountRemaining} {context.budget.accountRemainingUsd.toFixed(2)} · {t.reservation} {context.budget.reservedUsd.toFixed(4)}</p>}
+      <div className="conversation-resource-actions">
       {context.source==="gsc"&&canManage&&(["disconnected","reconnect"].includes(context.status) || ["property_missing","forbidden"].includes(context.reason??""))&&<a href={connect}>{t.connect}</a>}
       {context.source==="dataforseo"&&<label>{t.keyword}<input value={keyword} maxLength={120} onChange={e=>setKeyword(e.target.value)}/></label>}
       <Button variant="outline" disabled={loading||busy!==null||["disabled","blocked","disconnected","reconnect"].includes(context.status)||(context.status==="unsupported"&&!(context.source==="dataforseo"&&["keyword_required","keyword_unsupported"].includes(context.reason??"")))||(context.source!=="gsc"&&!canManage)||(context.source==="dataforseo"&&!keyword.trim())} onClick={()=>void request(context.source)}>{busy===context.source?t.loading:t.read}</Button>
       {context.source==="gsc"&&canManage&&!["disabled","disconnected"].includes(context.status)&&<Button variant="outline" disabled={loading||busy!==null} onClick={()=>void request("gsc",true)}>{t.disconnect}</Button>}
-      {context.items.length>0&&<ul>{context.items.map((item,index)=><li key={index}><strong>{item.title}</strong>{item.url&&safeUrl(item.url)&&<a href={safeUrl(item.url)!} target="_blank" rel="noreferrer">{item.url}</a>}{item.text&&<pre>{item.text}</pre>}{item.metrics&&<dl>{Object.entries(item.metrics).map(([key,value])=><div key={key}><dt>{t.metrics[context.source==="dataforseo"&&key==="position"?"organicPosition":key]??key}</dt><dd>{key==="ctr"?`${(value*100).toFixed(2)}%`:value}</dd></div>)}</dl>}</li>)}</ul>}
+      </div>
+      {context.items.length>0&&<ul className="conversation-source-results">{context.items.map((item,index)=><li key={index}><strong>{item.title}</strong>{item.url&&safeUrl(item.url)&&<a href={safeUrl(item.url)!} target="_blank" rel="noreferrer">{item.url}</a>}{item.text&&<pre>{item.text}</pre>}{item.metrics&&<dl>{Object.entries(item.metrics).map(([key,value])=><div key={key}><dt>{t.metrics[context.source==="dataforseo"&&key==="position"?"organicPosition":key]??key}</dt><dd>{key==="ctr"?`${(value*100).toFixed(2)}%`:value}</dd></div>)}</dl>}</li>)}</ul>}
     </article>)}
   </section>;
 }

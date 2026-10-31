@@ -149,11 +149,15 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
           {today ? <><dl>{([[d.open, today.open], [d.awaiting, today.drafts], [d.completed, today.completed]] as const).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><p>{d.effort}</p></> : <p>{d.todayUnavailable}</p>}
         </section>
         {missing ? <p role="status">{t.missing}</p> : <>
-          {selected && <div className="conversation-notes"><h2>{selected.title}</h2>{selected.notes.map((note, index) => <p className="conversation-note" key={index}>{note}</p>)}
-            <label htmlFor="conversation-action">{t.linkAction}</label>
-            <select id="conversation-action" value="" onChange={event => linkAction(event.target.value)} disabled={local.status === "corrupt"}><option value="">{t.chooseAction}</option>{actions.filter(action => !selected.actionIds.includes(action.id)).map(action => <option value={action.id} key={action.id}>{action.title}</option>)}</select>
-            <ul className="conversation-linked-actions">{selected.actionIds.map(id => { const action = actions.find(item => item.id === id); return <li key={id}>{action ? <><Link href={actionHref(action)}>{action.title}</Link>{action.versionId && <Link href={actionHref(action, true)}>{t.openVersion}</Link>}</> : <span>{t.actionUnavailable}</span>}</li>; })}</ul>
-          </div>}
+          {selected && <section className="conversation-notes" aria-label={selected.title}>
+            <header className="conversation-thread-heading"><span><MessagesSquare aria-hidden="true" />{d.local}</span><time dateTime={selected.updatedAt}>{formatDateTime(selected.updatedAt, locale, timezone)}</time><h2>{selected.title}</h2></header>
+            <div className="conversation-note-stack">{selected.notes.map((note, index) => <p className="conversation-note" key={index}>{note}</p>)}</div>
+            <div className="conversation-thread-links">
+              <label htmlFor="conversation-action"><ListChecks aria-hidden="true" />{t.linkAction}</label>
+              <select id="conversation-action" value="" onChange={event => linkAction(event.target.value)} disabled={local.status === "corrupt"}><option value="">{t.chooseAction}</option>{actions.filter(action => !selected.actionIds.includes(action.id)).map(action => <option value={action.id} key={action.id}>{action.title}</option>)}</select>
+              <ul className="conversation-linked-actions">{selected.actionIds.map(id => { const action = actions.find(item => item.id === id); return <li key={id}>{action ? <><Link href={actionHref(action)}>{action.title}</Link>{action.versionId && <Link href={actionHref(action, true)}>{t.openVersion}<ArrowRight aria-hidden="true" /></Link>}</> : <span>{t.actionUnavailable}</span>}</li>; })}</ul>
+            </div>
+          </section>}
           <form className="conversation-composer" onSubmit={saveNote}>
             <label htmlFor="conversation-note">{t.note}</label>
             <textarea id="conversation-note" ref={composerRef} value={composer} maxLength={CONVERSATION_LIMITS.noteLength} rows={3} placeholder={t.placeholder} disabled={local.status === "corrupt"} onChange={event => { setComposer(event.target.value); setSaved(false); }} />
