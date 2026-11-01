@@ -16,15 +16,17 @@ const safeUrl=(value:string)=>{try{const url=new URL(value);return ["https:","ht
 export function ConversationDocuments({locale,workspaceId,locationId,canManage,citedIds,canCite,onCite}:ResourceProps&{citedIds:string[];canCite:boolean;onCite:(id:string)=>void}) {
   const t=resourceCopy[locale],api=`/api/workspaces/${encodeURIComponent(workspaceId)}/conversation/documents`,query=`location_id=${encodeURIComponent(locationId)}`;
   const [versions,setVersions]=useState<DocumentVersion[]>([]),[cited,setCited]=useState<DocumentVersion[]>([]);
-  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null),[saved,setSaved]=useState(false),[refresh,setRefresh]=useState(0);
+  const [loading,setLoading]=useState(false),[loaded,setLoaded]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null),[saved,setSaved]=useState(false),[refresh,setRefresh]=useState(0);
   const [documentId,setDocumentId]=useState("");const file=useRef<HTMLInputElement>(null);
   const citationsKey=citedIds.join(",");
   const active=useRef(true);
   useEffect(()=>{active.current=true;return()=>{active.current=false;};},[]);
   useEffect(()=>{
+    // Read saved versions only after an explicit reload or a successful upload.
+    if(refresh===0)return;
     const controller=new AbortController();
     Promise.all([resourceRequest<{versions:DocumentVersion[]}>(`${api}?${query}`,{signal:controller.signal}),citationsKey?resourceRequest<{versions:DocumentVersion[]}>(`${api}?${query}&ids=${encodeURIComponent(citationsKey)}`,{signal:controller.signal}).catch(()=>({versions:[]})):Promise.resolve({versions:[]})])
-      .then(([library,citations])=>{if(!controller.signal.aborted){if(!Array.isArray(library.versions)||!Array.isArray(citations.versions))throw new Error("unavailable");setVersions(library.versions);setCited(citations.versions);setLoading(false);}})
+      .then(([library,citations])=>{if(!controller.signal.aborted){if(!Array.isArray(library.versions)||!Array.isArray(citations.versions))throw new Error("unavailable");setVersions(library.versions);setCited(citations.versions);setLoaded(true);setLoading(false);}})
       .catch(()=>{if(!controller.signal.aborted){setError(t.failed);setLoading(false);}});
     return()=>controller.abort();
   },[api,query,citationsKey,refresh,t.failed]);
@@ -33,13 +35,13 @@ export function ConversationDocuments({locale,workspaceId,locationId,canManage,c
     const selected=file.current?.files?.[0];setSaved(false);setError(null);
     if(!selected||!/^.*\.(txt|md|csv)$/i.test(selected.name)||selected.size<=0||selected.size>128*1024){setError(t.unsupported);return;}
     setBusy(true);const form=new FormData();form.set("file",selected);form.set("location_id",locationId);form.set("locale",locale);if(documentId)form.set("document_id",documentId);
-    try{await resourceRequest<{version:DocumentVersion}>(api,{method:"POST",body:form});if(active.current){setSaved(true);setRefresh(v=>v+1);if(file.current)file.current.value="";}}
+    try{await resourceRequest<{version:DocumentVersion}>(api,{method:"POST",body:form});if(active.current){setSaved(true);setLoading(true);setRefresh(v=>v+1);if(file.current)file.current.value="";}}
     catch(e){if(active.current)setError(e instanceof Error&&["unsupported_type","invalid_utf8","binary_file","file_too_large","empty_file"].includes(e.message)?t.unsupported:t.failed);}
     finally{if(active.current)setBusy(false);}
   }
   const provenance=(v:DocumentVersion)=>`${v.title} · v${v.version} · ${new Date(v.createdAt).toLocaleString(locale)}`;
   return <section className="conversation-resources" aria-label={t.documents}>
-    <div className="conversation-panel-heading"><h2>{t.documents}</h2><Button variant="outline" disabled={loading||busy} onClick={()=>{setError(null);setRefresh(v=>v+1);}}>{t.retry}</Button></div>
+    <div className="conversation-panel-heading"><h2>{t.documents}</h2><Button variant="outline" disabled={loading||busy} onClick={()=>{setLoading(true);setError(null);setRefresh(v=>v+1);}}>{t.retry}</Button></div>
     <p className="limitation-note conversation-panel-note">{t.documentNote}</p>
     {error&&<p role="alert">{error}</p>}{saved&&<p role="status">{t.saved}</p>}
     {canManage?<form onSubmit={event=>void upload(event)} className="conversation-document-upload">
@@ -47,9 +49,9 @@ export function ConversationDocuments({locale,workspaceId,locationId,canManage,c
       <div className="conversation-field"><label htmlFor="conversation-document-parent">{t.versionOf}</label><select id="conversation-document-parent" value={documentId} onChange={e=>setDocumentId(e.target.value)} disabled={busy}><option value="">{t.newDocument}</option>{versions.map(v=><option key={v.id} value={v.documentId}>{v.title} · v{v.version}</option>)}</select></div>
       <div className="conversation-resource-actions"><Button type="submit" disabled={busy}>{busy?t.loading:t.save}</Button></div>
     </form>:<p className="limitation-note">{t.readOnly}</p>}
-    {loading?<p role="status">{t.loading}</p>:versions.length===0?<p className="conversation-empty">{t.empty}</p>:<ul className="conversation-document-list">{versions.map(v=><li key={v.id}><details><summary>{provenance(v)}</summary><pre>{v.text}</pre>{v.truncated&&<p className="limitation-note">{t.truncated}</p>}</details><Button variant="outline" disabled={!canCite||citedIds.includes(v.id)} onClick={()=>onCite(v.id)}>{t.cite}</Button></li>)}</ul>}
+    {loading?<p role="status">{t.loading}</p>:versions.length===0?<p className="conversation-empty">{loaded?t.empty:t.notLoaded}</p>:<ul className="conversation-document-list">{versions.map(v=><li key={v.id}><details><summary>{provenance(v)}</summary><pre>{v.text}</pre>{v.truncated&&<p className="limitation-note">{t.truncated}</p>}</details><Button variant="outline" disabled={!canCite||citedIds.includes(v.id)} onClick={()=>onCite(v.id)}>{t.cite}</Button></li>)}</ul>}
     {!canCite&&<p className="limitation-note conversation-panel-note">{t.createThread}</p>}
-    {citedIds.length>0&&<div className="conversation-citations"><h3>{t.cited}</h3><ul>{citedIds.map(id=>{const v=cited.find(item=>item.id===id);return <li key={id}>{v?<details><summary>{provenance(v)}</summary><pre>{v.text}</pre>{v.truncated&&<p>{t.truncated}</p>}</details>:<span>{loading?t.loading:t.missing}</span>}</li>;})}</ul></div>}
+    {citedIds.length>0&&<div className="conversation-citations"><h3>{t.cited}</h3><ul>{citedIds.map(id=>{const v=cited.find(item=>item.id===id);return <li key={id}>{v?<details><summary>{provenance(v)}</summary><pre>{v.text}</pre>{v.truncated&&<p>{t.truncated}</p>}</details>:<span>{loading?t.loading:loaded?t.missing:t.notLoaded}</span>}</li>;})}</ul></div>}
   </section>;
 }
 const names:Record<ConnectorProvider,string>={gsc:"Google Search Console",firecrawl:"Firecrawl",dataforseo:"DataForSEO"};

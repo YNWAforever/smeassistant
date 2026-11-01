@@ -27,7 +27,7 @@ const path=new URL(url),q=path.searchParams,locale=path.pathname.split("/")[1],s
 const ws={slug,name:"Synthetic shop",avatarInitial:"S",locations:[{slug:"central",name:"Central"},{slug:"east",name:"East"}],defaultLocationSlug:"central",usage:{approvedDeliveries:2,allowance:3},account:{name:user,email:user+"@example.test",roleLabel:"Owner"},unreadNotifications:0,demo:false,assistant:{workspaceId:slug,locationId:branch},...(q.get("flag")!=="off"?{conversationEnabled:true}:{})};
 const actions=q.get("empty")==="1"?[]:[{id:"${ACTION}",title:"Existing synthetic task",versionId:"${VERSION}"}];
 return <><aside className="fixture-label">OFFLINE SYNTHETIC · real product components · no DB, Auth or model</aside><WorkspacePageFrame locale={locale} workspace={ws}>
-{path.pathname.endsWith("/conversation")?<ConversationView locale={locale} timezone="Asia/Singapore" workspaceSlug={slug} workspaceName={ws.name} location={branch} locationName={branch==="all"?"":branch==="central"?"Central":"East"} scope={{userId:user,workspaceId:slug,locationId:branch}} initialThreadId={q.get("thread")??undefined} actions={actions} today={{open:actions.length,drafts:actions.length,completed:2}} resources={{canManage:true}}/>:path.pathname.includes("/actions/")?<section><h1>Existing task surface</h1><p>Version {q.get("version")}</p></section>:<h1>{copy[locale].shell.nav.today}</h1>}
+{path.pathname.endsWith("/conversation")?<ConversationView locale={locale} timezone="Asia/Singapore" workspaceSlug={slug} workspaceName={ws.name} location={branch} locationName={branch==="all"?"":branch==="central"?"Central":"East"} scope={{userId:user,workspaceId:slug,locationId:branch}} initialThreadId={q.get("thread")??undefined} actions={actions} today={{open:actions.length,drafts:actions.length,completed:2}} resources={{canManage:q.get("role")!=="manager"}}/>:path.pathname.includes("/actions/")?<section><h1>Existing task surface</h1><p>Version {q.get("version")}</p></section>:<h1>{copy[locale].shell.nav.today}</h1>}
 </WorkspacePageFrame></>}
 createRoot(document.getElementById("root")).render(<App/>);`;
 let bundle = "", css = "";
@@ -153,6 +153,52 @@ async function expectReadable(page: Page, selectors: string[]) {
     });
     expect(contrasts.length, selector).toBeGreaterThan(0);
     for (const contrast of contrasts) expect.soft(contrast, selector).toBeGreaterThanOrEqual(4.5);
+  }
+}
+
+for (const locale of ["zh-HK", "en", "zh-TW"] as const) {
+  for (const role of ["manager", "owner"] as const) {
+    test(`honesty: ${locale} ${role} opening docs/search stays idle until an explicit failed load`, async ({ page, app }) => {
+      const rt = resourceCopy[locale], st = searchCopy[locale];
+      const attempts: string[] = [];
+      await page.route(/\/conversation\/(documents|search)(?:\?|$)/, async route => {
+        attempts.push(`${route.request().method()} ${new URL(route.request().url()).pathname.split("/").pop()}`);
+        await route.fulfill({ status: 503, json: { error: "unavailable" } });
+      });
+      await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation?location=central&role=${role}`);
+      const tools = page.getByRole("region", { name: conversationDesignCopy[locale].tools, exact: true });
+      await expect(tools.getByRole("heading", { name: conversationDesignCopy[locale].tools, exact: true })).toBeVisible();
+      for (const id of ["documents", "search", "sources"]) await openTool(page, id);
+      const documents = page.getByRole("region", { name: rt.documents, exact: true });
+      const search = page.getByRole("region", { name: st.title, exact: true });
+      await expect(documents.getByText(rt.notLoaded, { exact: true })).toBeVisible();
+      await expect(documents.getByText(rt.empty, { exact: true })).toHaveCount(0);
+      await expect(search.getByLabel(st.records, { exact: true })).toBeDisabled();
+      await expect(search.locator("option")).toHaveText(st.notLoaded);
+      await expect(tools.getByRole("alert")).toHaveCount(0);
+      await expect(tools.getByText(rt.states.disconnected, { exact: true })).toBeVisible();
+      if (role === "manager") {
+        await expect(documents.getByText(rt.readOnly, { exact: true })).toBeVisible();
+        await expect(documents.getByRole("button", { name: rt.save, exact: true })).toHaveCount(0);
+        await expect(search.getByRole("button", { name: st.read, exact: true })).toBeDisabled();
+      } else {
+        await expect(search.getByRole("button", { name: st.read, exact: true })).toBeEnabled();
+      }
+      for (const id of ["documents", "search"]) {
+        await page.locator(`#conversation-${id} > summary`).click();
+        await openTool(page, id);
+      }
+      await expect(tools.getByRole("alert")).toHaveCount(0);
+      expect(attempts).toEqual([]);
+      if (locale === "zh-HK" && role === "manager") {
+        await page.screenshot({ path: test.info().outputPath("honesty-idle-panels-zh-HK-manager.png"), fullPage: true });
+      }
+      await documents.getByRole("button", { name: rt.retry, exact: true }).click();
+      await expect(documents.getByRole("alert")).toHaveText(rt.failed);
+      await search.getByRole("button", { name: st.retry, exact: true }).click();
+      await expect(search.getByRole("alert")).toHaveText(st.failed);
+      expect(attempts).toEqual(["GET documents", "GET search"]);
+    });
   }
 }
 
@@ -440,7 +486,7 @@ test("Stage 2 documents cite immutable versions across refresh; source context s
   await expect(page.getByText("Document version saved",{exact:true})).toBeVisible();
   await page.getByRole("button",{name:"Cite this version",exact:true}).click();
   await expect(page.locator(".conversation-citations")).toContainText("menu.txt · v1");
-  const threadUrl=page.url();await page.reload();await openTool(page,"documents");await expect(page.locator(".conversation-citations")).toContainText("menu.txt · v1");
+  const threadUrl=page.url();await page.reload();await openTool(page,"documents");await page.getByRole("button",{name:"Refresh",exact:true}).click();await expect(page.locator(".conversation-citations")).toContainText("menu.txt · v1");
   const parentValue=await page.locator("#conversation-document-parent option").nth(1).getAttribute("value");await page.getByLabel("Add a version of",{exact:true}).selectOption(parentValue!);
   await page.getByLabel("Shop document",{exact:true}).setInputFiles({name:"menu.txt",mimeType:"text/plain",buffer:Buffer.from("Synthetic corrected menu v2")});
   await page.getByRole("button",{name:"Save document version",exact:true}).click();
@@ -508,7 +554,7 @@ test("Stage 3 synthetic gap → brief → explicit confirm → observe retains t
   await expect(panel.getByRole("row", { name: "午餐餐牌 0 3 80 100", exact: true })).toBeVisible();
   await expect(page.locator(".usage-mini strong")).toHaveText("2 / 3");
   const recordId = await panel.locator("select").inputValue();
-  await page.reload(); await openTool(page,"search"); await panel.getByLabel(searchCopy.en.records, { exact: true }).selectOption(recordId);
+  await page.reload(); await openTool(page,"search"); await panel.getByRole("button", { name: searchCopy.en.retry, exact: true }).click(); await panel.getByLabel(searchCopy.en.records, { exact: true }).selectOption(recordId);
   await expect(panel.getByText(searchCopy.en.approved, { exact: true })).toBeVisible();
   await expect(panel.getByRole("button", { name: searchCopy.en.approve, exact: true })).toHaveCount(0);
   await panel.getByRole("button", { name: searchCopy.en.refresh, exact: true }).click();

@@ -2,20 +2,61 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { ConversationDocuments, ConversationConnectors } from "./conversation-resources";
+import { resourceCopy } from "@/lib/copy-conversation-resources";
 const version={id:"v1",documentId:"d1",assetId:"a1",version:1,title:"Menu.txt",createdAt:"2026-10-27T00:00:00Z",text:"Confirmed menu text",truncated:false,sha256:"hash"};
 const props={locale:"en" as const,workspaceId:"w",locationId:"l",canManage:true};
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
+it.each(["zh-HK","en","zh-TW"] as const)("does not read documents or show a failure on initial %s panel open",async locale=>{
+  const requests=vi.fn().mockRejectedValue(new Error("offline"));
+  vi.stubGlobal("fetch",requests);
+  render(<ConversationDocuments {...props} locale={locale} canManage={false} citedIds={["saved-citation"]} canCite onCite={()=>{}}/>);
+  expect(screen.getByText(resourceCopy[locale].readOnly)).toBeInTheDocument();
+  expect(screen.queryByRole("button",{name:resourceCopy[locale].save})).not.toBeInTheDocument();
+  expect(screen.getAllByText(resourceCopy[locale].notLoaded)).toHaveLength(2);
+  expect(screen.queryByText(resourceCopy[locale].empty)).not.toBeInTheDocument();
+  expect(screen.queryByText(resourceCopy[locale].missing)).not.toBeInTheDocument();
+  await waitFor(()=>expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+  expect(requests).not.toHaveBeenCalled();
+});
+it.each(["zh-HK","en","zh-TW"] as const)("shows a real %s document load failure only after reload, then recovers to confirmed empty",async locale=>{
+  const t=resourceCopy[locale];
+  const requests=vi.fn().mockResolvedValueOnce({ok:false,json:async()=>({error:"unavailable"})}).mockResolvedValueOnce({ok:true,json:async()=>({versions:[]})});
+  vi.stubGlobal("fetch",requests);
+  render(<ConversationDocuments {...props} locale={locale} canManage={false} citedIds={[]} canCite onCite={()=>{}}/>);
+  fireEvent.click(screen.getByRole("button",{name:t.retry}));
+  expect(await screen.findByRole("alert")).toHaveTextContent(t.failed);
+  expect(screen.queryByText(t.empty)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button",{name:t.retry}));
+  expect(await screen.findByText(t.empty)).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(requests).toHaveBeenCalledTimes(2);
+  expect(requests.mock.calls.every(([,init])=>(init.method??"GET")==="GET")).toBe(true);
+});
+it("reports a real failed upload without claiming a save or loading the library",async()=>{
+  const requests=vi.fn().mockRejectedValue(new Error("offline"));
+  vi.stubGlobal("fetch",requests);
+  render(<ConversationDocuments {...props} citedIds={[]} canCite onCite={()=>{}}/>);
+  fireEvent.change(screen.getByLabelText("Shop document"),{target:{files:[new File(["menu"],"menu.txt",{type:"text/plain"})]}});
+  fireEvent.click(screen.getByRole("button",{name:"Save document version"}));
+  expect(await screen.findByRole("alert")).toHaveTextContent(resourceCopy.en.failed);
+  expect(screen.queryByText(resourceCopy.en.saved)).not.toBeInTheDocument();
+  expect(requests).toHaveBeenCalledTimes(1);
+  expect(requests.mock.calls[0][1].method).toBe("POST");
+});
 it("renders server extraction/provenance, cites the exact immutable ID, and resolves it on remount",async()=>{
   vi.stubGlobal("fetch",vi.fn().mockResolvedValue({ok:true,json:async()=>({versions:[version]})}));
   const cite=vi.fn();const view=render(<ConversationDocuments {...props} citedIds={[]} canCite onCite={cite}/>);
+  fireEvent.click(screen.getByRole("button",{name:"Refresh"}));
   fireEvent.click(await screen.findByRole("button",{name:"Cite this version"}));expect(cite).toHaveBeenCalledWith("v1");
   expect(screen.getByText("Confirmed menu text")).toBeInTheDocument();
   view.unmount();render(<ConversationDocuments {...props} citedIds={["v1"]} canCite onCite={cite}/>);
+  fireEvent.click(screen.getByRole("button",{name:"Refresh"}));
   expect(await screen.findByText("Cited documents")).toBeInTheDocument();expect((await screen.findAllByText(/Menu.txt · v1/)).length).toBeGreaterThan(0);
 });
 it("shows an unavailable citation and explains unsupported files without claiming a save",async()=>{
   vi.stubGlobal("fetch",vi.fn().mockResolvedValue({ok:true,json:async()=>({versions:[]})}));
   render(<ConversationDocuments {...props} citedIds={["missing"]} canCite onCite={()=>{}}/>);
+  fireEvent.click(screen.getByRole("button",{name:"Refresh"}));
   expect(await screen.findByText("This cited version is unavailable in this shop and location.")).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Shop document"),{target:{files:[new File(["pdf"],"menu.pdf",{type:"application/pdf"})]}});
   fireEvent.click(screen.getByRole("button",{name:"Save document version"}));
