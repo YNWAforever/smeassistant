@@ -3,7 +3,7 @@ import type { GapReason, Observation } from "./workspace/search-gap";
 
 type SearchCopy = {
   title: string; lead: string; selectLocation: string; read: string; refresh: string; loading: string; failed: string; retry: string;
-  chooseRead: string; checkedAt: string; records: string; noRecords: string; draft: string; createBrief: string; briefTitle: string; missing: string; why: string;
+  chooseRead: string; checkedAt: string; records: string; notLoaded: string; noRecords: string; draft: string; createBrief: string; briefTitle: string; missing: string; why: string;
   stepReview: string; stepFacts: string; stepDraft: string; source: string; limits: string; queries: string; query: string; impressions: string; clicks: string;
   confirmLabel: string; approve: string; approved: string; openAction: string; ownerOnly: string; observe: string; observeNote: string;
   before: string; after: string; savedAt: string; pending: string; reasons: Record<GapReason, string>; observations: Record<Observation["reason"], string>;
@@ -12,7 +12,7 @@ export const searchCopy: Record<PrototypeLocale, SearchCopy> = {
   en: {
     title: "Search gaps", lead: "Read this location’s Search Console queries, review a brief, then confirm a next task. No text is sent or published.",
     selectLocation: "Choose one location to read its website. All locations cannot supply a baseline.", read: "Read search gaps", refresh: "Read again", loading: "Reading…", failed: "This read or save is unavailable. Your saved confirmations are unchanged.", retry: "Reload saved reads",
-    chooseRead: "Choose a saved read", checkedAt: "Last checked", records: "Saved search reads", noRecords: "No saved search reads for this location.", draft: "Draft · Recommended", createBrief: "Review brief", briefTitle: "Review how your website answers these searches", missing: "These reported searches had impressions but no clicks. We have not checked whether your pages answer them.",
+    chooseRead: "Choose a saved read", checkedAt: "Last checked", records: "Saved search reads", notLoaded: "Saved search reads have not been loaded yet.", noRecords: "No saved search reads for this location.", draft: "Draft · Recommended", createBrief: "Review brief", briefTitle: "Review how your website answers these searches", missing: "These reported searches had impressions but no clicks. We have not checked whether your pages answer them.",
     why: "This is a reason to review your wording, not proof of missing content, a ranking opportunity or a Hong Kong win.",
     stepReview: "Read the listed searches and check the matching pages and their titles.", stepFacts: "Confirm the shop facts and whether the page answers the question. Do not invent prices, services or promises.", stepDraft: "Choose one page to improve. Open the task or Ask Kinnso for a draft; review and confirm any text separately before copying or sending it.",
     source: "Observed source", limits: "Only a bounded sample of up to 25 queries in 28 finalized days, filtered to the shop’s market. Hidden queries and other languages are not full coverage. Review rule: a likely Chinese-language query with at least 20 impressions and no clicks; at most five suggestions. This is a heuristic, not a measured content gap. US/English SERPs and LLM mentions are not local wins.",
@@ -24,7 +24,7 @@ export const searchCopy: Record<PrototypeLocale, SearchCopy> = {
   "zh-HK": {
     title: "搜尋有咩要補？", lead: "睇呢間分店嘅 Search Console 搜尋字，睇過建議再確認下一步。唔會自動送出或發布文字。",
     selectLocation: "請先揀一間分店，先可以讀嗰間舖嘅網站。全部分店唔可以當作比較起點。", read: "睇搜尋資料", refresh: "再讀一次", loading: "讀取中…", failed: "暫時未能讀取或儲存，已存嘅確認內容會保留。", retry: "重讀已存資料",
-    chooseRead: "揀一份已存資料", checkedAt: "最近檢查時間", records: "已存嘅搜尋資料", noRecords: "呢間分店未有已存嘅搜尋資料。", draft: "草稿 · 建議", createBrief: "睇建議草稿", briefTitle: "睇吓網站有冇答清楚呢啲搜尋", missing: "呢啲搜尋有曝光，但未有點擊。我哋未檢查你嘅網頁有冇答到佢哋。",
+    chooseRead: "揀一份已存資料", checkedAt: "最近檢查時間", records: "已存嘅搜尋資料", notLoaded: "未讀取已存嘅搜尋資料。", noRecords: "呢間分店未有已存嘅搜尋資料。", draft: "草稿 · 建議", createBrief: "睇建議草稿", briefTitle: "睇吓網站有冇答清楚呢啲搜尋", missing: "呢啲搜尋有曝光，但未有點擊。我哋未檢查你嘅網頁有冇答到佢哋。",
     why: "可以用嚟檢查網站點寫，但唔代表已證實缺少內容、排名機會，亦唔係香港成效。",
     stepReview: "睇返列出嘅搜尋字，再檢查相關網頁同標題。", stepFacts: "確認舖頭資料同網頁有冇答到問題。唔好估價錢、服務或承諾。", stepDraft: "揀一頁想改善嘅網頁。打開待辦或用「問 Kinnso」寫草稿；複製或送出前，要另外睇過同確認文字。",
     source: "實際讀到嘅來源", limits: "只係按舖頭市場篩選嘅 28 日已定稿資料，最多 25 個搜尋字。隱藏搜尋同其他語言唔代表完整覆蓋。檢查規則：疑似中文搜尋最少 20 次曝光、零點擊，最多五項。只係建議檢查，未證實網站缺少內容。美國／英文搜尋結果同 LLM 提及唔等於香港成效。",
@@ -36,7 +36,7 @@ export const searchCopy: Record<PrototypeLocale, SearchCopy> = {
   "zh-TW": {
     title: "搜尋有什麼要補？", lead: "查看這間分店的 Search Console 搜尋字，讀過建議再確認下一步。不會自動送出或發布文字。",
     selectLocation: "請先選一間分店，才能讀取那間店的網站。全部分店不能當作比較起點。", read: "查看搜尋資料", refresh: "再讀一次", loading: "讀取中…", failed: "暫時無法讀取或儲存，已存的確認內容會保留。", retry: "重讀已存資料",
-    chooseRead: "選一份已存資料", checkedAt: "最近檢查時間", records: "已存的搜尋資料", noRecords: "這間分店還沒有已存的搜尋資料。", draft: "草稿 · 建議", createBrief: "查看建議草稿", briefTitle: "看看網站有沒有回答清楚這些搜尋", missing: "這些搜尋有曝光，但沒有點擊。我們還沒檢查你的網頁是否回答了這些問題。",
+    chooseRead: "選一份已存資料", checkedAt: "最近檢查時間", records: "已存的搜尋資料", notLoaded: "尚未讀取已存的搜尋資料。", noRecords: "這間分店還沒有已存的搜尋資料。", draft: "草稿 · 建議", createBrief: "查看建議草稿", briefTitle: "看看網站有沒有回答清楚這些搜尋", missing: "這些搜尋有曝光，但沒有點擊。我們還沒檢查你的網頁是否回答了這些問題。",
     why: "可以用來檢查網站怎麼寫，但不代表已證實缺少內容、排名機會，也不是本地成效。",
     stepReview: "查看列出的搜尋字，再檢查相關網頁和標題。", stepFacts: "確認店裡資料和網頁有沒有回答問題。不要猜價格、服務或承諾。", stepDraft: "選一頁想改善的網頁。開啟待辦或用「問 Kinnso」寫草稿；複製或送出前，要另外讀過並確認文字。",
     source: "實際讀到的來源", limits: "只是依店家市場篩選的 28 天已定稿資料，最多 25 個搜尋字。隱藏搜尋和其他語言不代表完整覆蓋。檢查規則：疑似中文搜尋至少 20 次曝光、零點擊，最多五項。只是建議檢查，尚未證實網站缺少內容。美國／英文搜尋結果和 LLM 提及不等於本地成效。",

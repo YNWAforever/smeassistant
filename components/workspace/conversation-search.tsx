@@ -23,16 +23,18 @@ export function ConversationSearch(props: Props) {
 function ScopedSearch({ locale, workspaceId, locationId, workspaceSlug, locationSlug, canManage }: Props) {
   const t = searchCopy[locale], rt = resourceCopy[locale], api = `/api/workspaces/${encodeURIComponent(workspaceId)}/conversation/search`;
   const [records, setRecords] = useState<SearchRecord[]>([]), [selectedId, setSelectedId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState(false), [refresh, setRefresh] = useState(0);
+  const [loading, setLoading] = useState(false), [loaded, setLoaded] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(false), [refresh, setRefresh] = useState(0);
   const [showBrief, setShowBrief] = useState(false), [confirmed, setConfirmed] = useState(false);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
   const [observation, setObservation] = useState<{ observation: Observation; source: ConnectorContext } | null>(null);
   const active = useRef(true), locked = useRef(false);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   useEffect(() => {
+    // Opening a disclosure is not a request to read the saved library.
+    if (refresh === 0) return;
     const controller = new AbortController();
     request<{ records: SearchRecord[] }>(`${api}?location_id=${encodeURIComponent(locationId)}`, { signal: controller.signal })
-      .then(data => { if (!controller.signal.aborted) { if (!Array.isArray(data.records)) throw new Error("invalid_response"); setRecords(data.records); setLoading(false); } })
+      .then(data => { if (!controller.signal.aborted) { if (!Array.isArray(data.records)) throw new Error("invalid_response"); setRecords(data.records); setLoaded(true); setLoading(false); } })
       .catch(() => { if (!controller.signal.aborted) { setError(true); setLoading(false); } });
     return () => controller.abort();
   }, [api, locationId, refresh]);
@@ -62,7 +64,7 @@ function ScopedSearch({ locale, workspaceId, locationId, workspaceSlug, location
     {checkedAt && <p className="search-provenance">{t.checkedAt}: {new Date(checkedAt).toLocaleString(locale)}</p>}
     {!canManage && <p>{t.ownerOnly}</p>}
     <div className="conversation-field search-saved-reads"><label htmlFor="conversation-search-record">{t.records}</label>
-      <select id="conversation-search-record" value={selectedId ?? ""} disabled={busy || loading} onChange={event => choose(event.target.value)}><option value="">{records.length ? t.chooseRead : t.noRecords}</option>{records.map(row => <option key={row.id} value={row.id}>{new Date(row.createdAt).toLocaleString(locale)} · {row.approvedAt ? t.approved : t.pending}</option>)}</select>
+      <select id="conversation-search-record" value={selectedId ?? ""} disabled={busy || loading || (!loaded && records.length === 0)} onChange={event => choose(event.target.value)}><option value="">{records.length ? t.chooseRead : loaded ? t.noRecords : t.notLoaded}</option>{records.map(row => <option key={row.id} value={row.id}>{new Date(row.createdAt).toLocaleString(locale)} · {row.approvedAt ? t.approved : t.pending}</option>)}</select>
     </div>
     {selected && <article className="search-result">
       <p role="status" className="conversation-panel-state">{t.reasons[selected.gap.reason]}</p>
