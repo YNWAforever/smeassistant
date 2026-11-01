@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const replace = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 import { ConversationView, type ConversationViewProps } from "./conversation-view";
 import { conversationCopy } from "@/lib/copy-conversation";
-import { writeConversationThreads } from "@/lib/workspace/conversation-store";
+import { CONVERSATION_LIMITS, writeConversationThreads } from "@/lib/workspace/conversation-store";
 const props: ConversationViewProps = { locale: "en", timezone: "Asia/Singapore", workspaceSlug: "shop", workspaceName: "Shop", location: "branch", locationName: "Branch", scope: { userId: "u", workspaceId: "w", locationId: "l" }, initialThreadId: undefined, actions: [{ id: "a1", title: "Real work", versionId: "v1" }] };
 beforeEach(() => { localStorage.clear(); replace.mockClear(); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
@@ -14,6 +15,53 @@ async function addNote(note: string) {
   fireEvent.click(screen.getByRole("button", { name: "Save local note" }));
   await screen.findByText(note, { selector: ".conversation-note" });
 }
+it.each([
+  {
+    locale: "en",
+    privacy: ["only in this browser on this device", "do not sync to other devices", "no cloud backup", "Anyone using this browser profile can read them", "clearing site data deletes them"],
+    limits: ["Per account, workspace and location", "50 threads", "40 notes per thread", "4,000 characters per note"],
+    boundary: ["not AI replies or drafts", "not shared through linked tasks", "does not confirm work or count a delivery", "Ask Kinnso"],
+  },
+  {
+    locale: "zh-HK",
+    privacy: ["只留喺呢部裝置嘅呢個瀏覽器", "唔會同步去其他裝置", "冇雲端備份", "同一瀏覽器設定檔嘅人可以讀到", "清除網站資料會刪除筆記"],
+    limits: ["每個帳戶、工作空間同分店範圍", "50 個討論串", "每串最多 40 則筆記", "每則最多 4,000 字元"],
+    boundary: ["唔係 AI 回覆或草稿", "唔會透過連結嘅待辦分享", "儲存唔代表確認工作，唔會計作交付", "問 Kinnso"],
+  },
+  {
+    locale: "zh-TW",
+    privacy: ["只留在這台裝置的這個瀏覽器", "不會同步到其他裝置", "沒有雲端備份", "同一瀏覽器設定檔的人可以讀到", "清除網站資料會刪除筆記"],
+    limits: ["每個帳戶、工作空間和分店範圍", "50 個討論串", "每串最多 40 則筆記", "每則最多 4,000 字元"],
+    boundary: ["不是 AI 回覆或草稿", "不會透過連結的待辦分享", "儲存不代表確認工作，不計入交付", "問 Kinnso"],
+  },
+] as const)("shows $locale Park privacy, existing limits and note boundaries without opening a disclosure", async ({ locale, privacy, limits, boundary }) => {
+  const view = render(<ConversationView {...props} locale={locale} />);
+  await screen.findByLabelText(conversationCopy[locale].note);
+  const privacyNote = view.container.querySelector(".conversation-boundaries .limitation-note")!;
+  const localNote = view.container.querySelector(".conversation-local-note")!;
+  for (const text of privacy) expect(privacyNote).toHaveTextContent(text);
+  for (const text of limits) expect(localNote).toHaveTextContent(text);
+  for (const text of boundary) expect(screen.getByText(conversationCopy[locale].boundary)).toHaveTextContent(text);
+  expect(privacyNote).toBeVisible();
+  expect(localNote).toBeVisible();
+  expect(privacyNote.closest("details")).toBeNull();
+  expect(localNote.closest("details")).toBeNull();
+});
+it("documents the approved Stage C Park decision, unchanged store limits and release holds", () => {
+  const doc = readFileSync("docs/implementation/conversation-home-stage-c.md", "utf8");
+  for (const text of [
+    "Stage C = Park", "Willy Approve via Grok Master (GM) answering t299s1216",
+    "not server-private", "not deeper local ops", "not ACL cloud storage",
+    "no server copy, sync, backup or collaboration sharing",
+    "Production conversation flag still OFF", "Stage D remains held", "Today remains the default home",
+    "conversation-home-stage-1.md", "lib/workspace/conversation-store.ts", "CONVERSATION_LIMITS",
+    "conversationCopy.privacy", "conversationDesignCopy.localNote", "conversationCopy.boundary",
+    "localStorage keys", "merge algorithm", "limit values",
+  ]) expect(doc).toContain(text);
+  for (const [name, value] of Object.entries(CONVERSATION_LIMITS)) {
+    expect(doc).toContain(`| \`${name}\` | ${value.toLocaleString("en-US")} |`);
+  }
+});
 it.each(["en", "zh-HK", "zh-TW"] as const)("keeps the visible %s primary CTA honest before and after saving a local note", async locale => {
   const t = conversationCopy[locale];
   render(<ConversationView {...props} locale={locale} />);

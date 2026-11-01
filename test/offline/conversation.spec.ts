@@ -308,6 +308,36 @@ test("Today remains default and the optional switch works in every locale; exist
   await expect(page.getByRole("dialog")).toBeVisible();
 });
 
+for (const [locale, privacy, limits] of [
+  ["en", ["only in this browser on this device", "do not sync to other devices", "no cloud backup", "Anyone using this browser profile can read them", "clearing site data deletes them"], ["Per account, workspace and location", "50 threads", "40 notes per thread", "4,000 characters per note"]],
+  ["zh-HK", ["只留喺呢部裝置嘅呢個瀏覽器", "唔會同步去其他裝置", "冇雲端備份", "同一瀏覽器設定檔嘅人可以讀到", "清除網站資料會刪除筆記"], ["每個帳戶、工作空間同分店範圍", "50 個討論串", "每串最多 40 則筆記", "每則最多 4,000 字元"]],
+  ["zh-TW", ["只留在這台裝置的這個瀏覽器", "不會同步到其他裝置", "沒有雲端備份", "同一瀏覽器設定檔的人可以讀到", "清除網站資料會刪除筆記"], ["每個帳戶、工作空間和分店範圍", "50 個討論串", "每串最多 40 則筆記", "每則最多 4,000 字元"]],
+] as const) {
+  test(`Stage C Park ${locale} discloses device-only notes and limits before saving and after reload`, async ({ page, app }) => {
+    await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation?location=central`);
+    const t = conversationCopy[locale];
+    const privacyNote = page.locator(".conversation-boundaries .limitation-note").first();
+    const localNote = page.locator(".conversation-local-note");
+    for (const state of ["new", "restored"] as const) {
+      for (const text of privacy) await expect(privacyNote).toContainText(text);
+      for (const text of limits) await expect(localNote).toContainText(text);
+      await expect(privacyNote).toBeVisible();
+      await expect(localNote).toBeVisible();
+      await expect(page.getByText(t.boundary, { exact: true })).toBeVisible();
+      await expect(page.locator(".conversation-tool[open]")).toHaveCount(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      if (state === "new") {
+        await page.getByLabel(t.note, { exact: true }).fill("Stage C local note");
+        await page.getByRole("button", { name: t.save, exact: true }).click();
+        await expect(page.getByText(t.saved, { exact: true })).toBeVisible();
+        await page.reload();
+        await expect(page.locator(".conversation-note")).toHaveText("Stage C local note");
+      }
+    }
+    await expect(page.locator(".usage-mini strong")).toHaveText("2 / 3");
+  });
+}
+
 test("templates only prefill; local threads stay separate through reload and link real action/version routes", async ({ page, app }) => {
   const url = `${app.origin}/en/owner/test-shop/conversation?location=central`;
   await page.goto(url);
