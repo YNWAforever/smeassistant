@@ -6,6 +6,8 @@ import { test as base, expect, type Page } from "@playwright/test";
 import { conversationDesignCopy } from "../../lib/copy-conversation-design";
 import { resourceCopy } from "../../lib/copy-conversation-resources";
 import { conversationCopy } from "../../lib/copy-conversation";
+import { postDraftCopy } from "../../lib/copy-conversation-post-draft";
+import { POST_DRAFT_FIXTURES } from "../../lib/workspace/post-draft-fixture";
 import { searchCopy } from "../../lib/copy-search-gap";
 import { buildSearchBriefs, observeSearch, type SearchRecord } from "../../lib/workspace/search-gap";
 import { gapFixture, gscFixture } from "../fixtures/conversation-search";
@@ -635,4 +637,38 @@ test("boutique home keeps Today above the composer, filters seed-only cards and 
   }
   await page.goto(`${app.origin}/zh-HK/owner/test-shop?location=central&flag=off`);
   await expect(page.locator(".workspace-shell--conversation, .conversation-sidebar-new, .conversation-tools, .conversation-today")).toHaveCount(0);
+});
+
+test("Wave 1 post coach keeps draft → confirm → copy in-thread with no post or schedule affordance", async ({ page, app }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (text: string) => { (window as unknown as { __copied?: string }).__copied = text; } },
+    });
+  });
+  const t = postDraftCopy["zh-HK"], fixture = POST_DRAFT_FIXTURES["zh-HK"][0];
+  await page.goto(`${app.origin}/zh-HK/owner/test-shop/conversation?location=central`);
+  await page.getByRole("button", { name: t.examples.weeklyIg, exact: true }).click();
+  await page.getByRole("button", { name: t.coach.startCta, exact: true }).click();
+  const channels = page.getByRole("group", { name: t.clarify.channel.question });
+  await expect(channels.getByRole("button", { name: new RegExp(t.channel.googleBusinessProfile) })).toContainText(t.channel.notConnected);
+  await channels.getByRole("button", { name: new RegExp(t.channel.instagram) }).click();
+  await page.getByRole("button", { name: t.clarify.tone.skip, exact: true }).click();
+  await expect(page.getByRole("heading", { name: t.card.heading, exact: true })).toBeVisible();
+  await expect(page.getByText(t.card.status.draft, { exact: true })).toBeVisible();
+  await expect(page.getByText(fixture.title, { exact: true })).toBeVisible();
+  await expect(page.getByText(t.honesty.aiDraftsOnly, { exact: true })).toBeVisible();
+  await expect(page.getByText(t.card.imageSlotHint, { exact: true })).toBeVisible();
+  for (const name of [/排程/, /發佈/, /Publish/i, /Schedule/i, /Connect/i]) await expect(page.locator(".post-coach").getByRole("button", { name })).toHaveCount(0);
+  await page.getByRole("button", { name: t.confirm.primaryCta, exact: true }).click();
+  await expect(page.getByText(t.confirmed.status, { exact: true })).toBeVisible();
+  await expect(page.getByText(t.confirmed.done, { exact: true })).toBeVisible();
+  await expect(page.getByText(t.honesty.aiDraftsOnly, { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: t.actions.copy, exact: true }).click();
+  await expect(page.getByText(t.actions.copied.replace("{channel}", t.channel.instagram), { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __copied?: string }).__copied)).toBe(`${fixture.title}\n\n${fixture.body}`);
+  await page.getByRole("button", { name: t.actions.saveTodo, exact: true }).click();
+  await expect(page.getByText(t.actions.savedTodo, { exact: true })).toBeVisible();
+  const stored = await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith("kinnso:conversation-post-draft:")).map(key => localStorage.getItem(key)).join(""));
+  expect(stored).toContain(fixture.title);
 });
