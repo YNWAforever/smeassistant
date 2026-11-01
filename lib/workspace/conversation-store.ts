@@ -70,3 +70,47 @@ export function saveConversationChanges(storage: ConversationStorage, scope: Con
   const result = writeConversationThreads(storage, scope, threads);
   return result === "saved" ? { status: "saved", threads } : { status: result };
 }
+
+export interface LocalConfirmedPostDraft {
+  id: string;
+  title: string;
+  body: string;
+  channel: string | null;
+  confirmedAt: string;
+}
+export const POST_DRAFT_LIMITS = { drafts: 20, titleLength: 140, bodyLength: 4000 } as const;
+
+function postDraftScopeKey(scope: ConversationScope): string {
+  return `kinnso:conversation-post-draft:v1:${JSON.stringify([scope.userId, scope.workspaceId, scope.locationId])}`;
+}
+function validPostDraft(value: unknown): value is LocalConfirmedPostDraft {
+  if (!value || typeof value !== "object") return false;
+  const draft = value as Record<string, unknown>;
+  return shortText(draft.id, 100)
+    && shortText(draft.title, POST_DRAFT_LIMITS.titleLength)
+    && shortText(draft.body, POST_DRAFT_LIMITS.bodyLength)
+    && (draft.channel === null || shortText(draft.channel, 100))
+    && typeof draft.confirmedAt === "string" && Number.isFinite(Date.parse(draft.confirmedAt));
+}
+export function readConfirmedPostDrafts(storage: ConversationStorage, scope: ConversationScope): LocalConfirmedPostDraft[] {
+  if (!validScope(scope)) return [];
+  try {
+    const raw = storage.getItem(postDraftScopeKey(scope));
+    if (raw === null) return [];
+    if (raw.length > CONVERSATION_LIMITS.bytes) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || !("version" in parsed) || parsed.version !== 1 || !("drafts" in parsed) || !Array.isArray(parsed.drafts) || parsed.drafts.length > POST_DRAFT_LIMITS.drafts || !parsed.drafts.every(validPostDraft)) return [];
+    return parsed.drafts;
+  } catch {
+    return [];
+  }
+}
+export function saveConfirmedPostDraft(storage: ConversationStorage, scope: ConversationScope, draft: LocalConfirmedPostDraft): "saved" | "unavailable" | "invalid" {
+  if (!validScope(scope) || !validPostDraft(draft)) return "invalid";
+  const latest = readConfirmedPostDrafts(storage, scope);
+  const drafts = [draft, ...latest.filter(item => item.id !== draft.id)].slice(0, POST_DRAFT_LIMITS.drafts);
+  const raw = JSON.stringify({ version: 1, drafts });
+  if (raw.length > CONVERSATION_LIMITS.bytes) return "invalid";
+  try { storage.setItem(postDraftScopeKey(scope), raw); return "saved"; }
+  catch { return "unavailable"; }
+}

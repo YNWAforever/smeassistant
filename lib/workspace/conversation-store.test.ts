@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { conversationScopeKey, saveConversationChanges, readConversationThreads, writeConversationThreads, type ConversationScope, type LocalThread } from "./conversation-store";
+import { conversationScopeKey, readConfirmedPostDrafts, saveConfirmedPostDraft, saveConversationChanges, readConversationThreads, writeConversationThreads, type ConversationScope, type LocalConfirmedPostDraft, type LocalThread } from "./conversation-store";
 
 const scope: ConversationScope = { userId: "u", workspaceId: "w", locationId: "l" };
 const thread: LocalThread = { id: "t1", title: "First note", notes: ["First note"], actionIds: ["a1"], createdAt: "2026-10-27T00:00:00.000Z", updatedAt: "2026-10-27T00:00:00.000Z" };
@@ -65,4 +65,24 @@ it("persists document version references without document or private action cont
   const raw=storage.setItem.mock.calls[0][1];expect(JSON.parse(raw).threads[0].documentVersionIds).toEqual(["version-one"]);
   storage.getItem.mockReturnValue(raw);expect(readConversationThreads(storage,scope).threads[0].documentVersionIds).toEqual(["version-one"]);
   expect(saveConversationChanges(storage,scope,[{...thread,documentVersionIds:Array(21).fill("v")}]).status).toBe("invalid");
+});
+
+describe("browser-local confirmed post drafts", () => {
+  const draft: LocalConfirmedPostDraft = { id: "d1", title: "本週末營業時間", body: "星期六 11:00 – 19:00", channel: "instagram", confirmedAt: "2026-11-02T00:00:00.000Z" };
+  it("saves and lists confirmed drafts only in the same scope without touching local note threads", () => {
+    const storage = memory();
+    writeConversationThreads(storage, scope, [thread]);
+    expect(saveConfirmedPostDraft(storage, scope, draft)).toBe("saved");
+    expect(readConfirmedPostDrafts(storage, scope)).toEqual([draft]);
+    expect(readConversationThreads(storage, scope).threads).toEqual([thread]);
+    expect(readConfirmedPostDrafts(storage, { ...scope, userId: "other" })).toEqual([]);
+  });
+  it("keeps one record per id and refuses malformed drafts", () => {
+    const storage = memory();
+    saveConfirmedPostDraft(storage, scope, draft);
+    saveConfirmedPostDraft(storage, scope, { ...draft, title: "Updated" });
+    expect(readConfirmedPostDrafts(storage, scope)).toEqual([{ ...draft, title: "Updated" }]);
+    expect(saveConfirmedPostDraft(storage, scope, { ...draft, body: "" })).toBe("invalid");
+    expect(saveConfirmedPostDraft(storage, scope, { ...draft, confirmedAt: "not-a-date" })).toBe("invalid");
+  });
 });
