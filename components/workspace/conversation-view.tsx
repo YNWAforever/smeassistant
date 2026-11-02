@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, ArrowUp, FileText, Globe, ListChecks, Megaphone, MessageSquare, MessagesSquare, Paperclip, PenLine, Plug, Plus, Search, Store } from "lucide-react";
 import { ConversationDocuments, ConversationConnectors } from "./conversation-resources";
 import { ConversationSearch } from "./conversation-search";
+import { PostDraftCoach, type ConfirmedPostDraft } from "./post-draft-coach";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { conversationCopy } from "@/lib/copy-conversation";
 import { conversationDesignCopy, type ConversationCategory } from "@/lib/copy-conversation-design";
 import { searchCopy } from "@/lib/copy-search-gap";
 import { openConversationTool, useConversationNavigation } from "./conversation-navigation";
-import { CONVERSATION_LIMITS, conversationScopeKey, readConversationThreads, saveConversationChanges, type ConversationSave, type ConversationScope, type LocalThread } from "@/lib/workspace/conversation-store";
+import { CONVERSATION_LIMITS, conversationScopeKey, readConversationThreads, saveConfirmedPostDraft, saveConversationChanges, type ConversationSave, type ConversationScope, type LocalThread } from "@/lib/workspace/conversation-store";
 import { formatDateTime } from "@/lib/workspace/format";
 import type { TemplateKey } from "@/lib/workspace/templates";
 
@@ -130,6 +131,13 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
     if ((selected.documentVersionIds?.length ?? 0) >= 20) { setSaveError("limit"); return; }
     persist({ ...selected, documentVersionIds: [...(selected.documentVersionIds ?? []), id], updatedAt: new Date().toISOString() });
   }
+  function savePostDraft(draft: ConfirmedPostDraft) {
+    try {
+      return saveConfirmedPostDraft(window.localStorage, scope, draft) === "saved" ? "saved" as const : "failed" as const;
+    } catch {
+      return "failed" as const;
+    }
+  }
   return <div className="conversation-page">
     <header className="conversation-intro">
       <span className="conversation-eyebrow">{d.eyebrow}</span><h1>{t.title}</h1><p>{t.lead}</p>
@@ -144,6 +152,7 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
       <section className="conversation-work" aria-label={t.switchLabel}>
         {local.status === "corrupt" && <p role="alert">{t.corrupt}</p>}
         {(saveError || local.status === "unavailable") && <p role="alert">{saveError === "limit" ? t.limit : t.unavailable}</p>}
+        <PostDraftCoach key={`${locale}-${conversationScopeKey(scope)}`} locale={locale} onSaveTodo={savePostDraft} />
         <section className="conversation-today" aria-label={d.today}>
           <div className="conversation-section-heading"><h2><ListChecks aria-hidden="true" />{d.today}</h2><Link href={`${base}?${locationQuery}`}>{d.fullToday}<ArrowRight aria-hidden="true" /></Link></div>
           {today ? <><dl>{([[d.open, today.open], [d.awaiting, today.drafts], [d.completed, today.completed]] as const).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><p>{d.effort}</p></> : <p>{d.todayUnavailable}</p>}
