@@ -222,9 +222,9 @@ describe("GET /api/oauth/google/callback", () => {
 
 it("GSC callback is gated, scope-checked and does not replace GBP",async()=>{
   mocks.verifyState.mockReturnValue({...STATE,provider:"google_gsc"});
-  vi.stubEnv("CONVERSATION_HOME_ENABLED","true");vi.stubEnv("VERCEL_ENV","production");
+  vi.stubEnv("CONVERSATION_HOME_ENABLED","false");vi.stubEnv("VERCEL_ENV","production");
   expect((await GET(request("?code=c&state=s"))).status).toBe(404);
-  vi.stubEnv("VERCEL_ENV","preview");tables({role:"owner"});
+  vi.stubEnv("VERCEL_ENV","preview");vi.stubEnv("CONVERSATION_HOME_ENABLED","true");tables({role:"owner"});
   mocks.getUser.mockResolvedValue({data:{user:{id:"u",email:"owner@example.test"}}});
   mocks.exchangeCode.mockResolvedValue({...TOKENS,scopes:["https://www.googleapis.com/auth/webmasters.readonly"]});
   mocks.replaceGsc.mockResolvedValue("gsc-connection");mocks.replaceGoogleConnection.mockClear();
