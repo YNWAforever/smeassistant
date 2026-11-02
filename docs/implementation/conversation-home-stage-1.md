@@ -6,9 +6,9 @@ Today remains the default workspace URL. When enabled, a Today / Start work swit
 
 ## Enable locally or in an explicitly chosen Preview
 
-Set the server-only variable `CONVERSATION_HOME_ENABLED=true` and restart the app. A local `NODE_ENV=development` or `test` enables it; on Vercel, only `VERCEL_ENV=preview` or `development` permits it. `VERCEL_ENV=production` always disables it. Unknown hosted environments, a Vercel deployment with missing `VERCEL_ENV`, an unclassified local environment, and other flag spellings all fail closed. A Preview production build (`NODE_ENV=production`, `VERCEL_ENV=preview`) is supported.
+Set the server-only variable `CONVERSATION_HOME_ENABLED=true` and restart the app. A local `NODE_ENV=development` or `test` enables it; on Vercel, `VERCEL_ENV` in `{preview, development, production}` permits it. Production still requires the flag to be exactly `true`: `VERCEL_ENV=production` without that value disables it. Unknown hosted environments, a Vercel deployment with missing `VERCEL_ENV`, an unclassified local environment, and other flag spellings all fail closed. A Preview production build (`NODE_ENV=production`, `VERCEL_ENV=preview`) is supported.
 
-No hosted configuration is changed by this implementation. Keep Production OFF. With the flag OFF, the optional shell prop and switch markup are omitted and the conversation route returns 404. There is no new home redirect or navigation destination.
+This gate change implements Willy's Path A Approve via Grok Master answering t425s1959: Production may be enabled only through the exact server-only flag, while default-home remains unchanged. No hosted configuration is changed by this implementation; setting the Production flag remains post-merge Emma ops. With the flag OFF, the optional shell prop and switch markup are omitted and the conversation route returns 404. There is no new home redirect or navigation destination.
 
 ## What is saved
 
