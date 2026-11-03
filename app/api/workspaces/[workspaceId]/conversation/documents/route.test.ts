@@ -24,10 +24,14 @@ beforeEach(() => {
 });
 
 describe("gated document endpoint", () => {
-  it.each(["flag", "production"])("returns 404 before auth, multipart reads or storage with %s off", async kind => {
-    if (kind === "flag") vi.stubEnv("CONVERSATION_HOME_ENABLED", "false"); else vi.stubEnv("VERCEL_ENV", "production");
+  it("returns 404 before auth, multipart reads or storage when the flag is off", async () => {
+    vi.stubEnv("CONVERSATION_HOME_ENABLED", "false");
     expect((await get()).status).toBe(404); expect((await post()).status).toBe(404);
     expect(mocks.auth).not.toHaveBeenCalled(); expect(mocks.upload).not.toHaveBeenCalled(); expect(mocks.list).not.toHaveBeenCalled();
+  });
+  it("allows Production when the flag is exactly true", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    expect((await get()).status).toBe(200);
   });
   it("requires an exact UUID/all scope and bounded valid citation IDs", async () => {
     for (const query of ["", "location_id=no", "location_id=all&location_id=all", "location_id=all&ids=no", `location_id=all&ids=${Array.from({ length: 51 }, () => versionId).join(",")}`]) expect((await get(query)).status).toBe(400);

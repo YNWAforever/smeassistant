@@ -153,8 +153,8 @@ describe("GET /api/oauth/google/start", () => {
   });
 });
 
-it("GSC is hidden before identity work when the conversation flag is off or production", async()=>{
-  vi.stubEnv("CONVERSATION_HOME_ENABLED","true");vi.stubEnv("VERCEL_ENV","production");mocks.getUser.mockClear();
+it("GSC is hidden before identity work when the conversation flag is off", async()=>{
+  vi.stubEnv("CONVERSATION_HOME_ENABLED","false");vi.stubEnv("VERCEL_ENV","production");mocks.getUser.mockClear();
   expect((await GET(request("?provider=gsc"))).status).toBe(404);expect(mocks.getUser).not.toHaveBeenCalled();vi.unstubAllEnvs();
 });
 it("an owner starts a separately signed read-only GSC flow in Preview",async()=>{

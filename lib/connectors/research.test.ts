@@ -30,7 +30,7 @@ afterEach(() => { vi.useRealTimers(); });
 
 describe("paid research gates", () => {
   it.each([
-    { CONVERSATION_HOME_ENABLED: "false" }, { VERCEL_ENV: "production" }, { VERCEL_ENV: "unknown" }, { VERCEL: "1" }, { NODE_ENV: "production" }, { CONVERSATION_FIRECRAWL_ENABLED: "1" },
+    { CONVERSATION_HOME_ENABLED: "false" }, { VERCEL_ENV: "production", CONVERSATION_HOME_ENABLED: "false" }, { VERCEL_ENV: "production", CONVERSATION_HOME_ENABLED: "1" }, { VERCEL_ENV: "unknown" }, { VERCEL: "1" }, { NODE_ENV: "production" }, { CONVERSATION_FIRECRAWL_ENABLED: "1" },
     { FIRECRAWL_API_KEY: "" }, { CONVERSATION_RESEARCH_WORKSPACE_MONTHLY_USD: "NaN" },
     { CONVERSATION_RESEARCH_ACCOUNT_MONTHLY_USD: "0" }, { FIRECRAWL_MAX_CALL_USD: "" },
     { CONVERSATION_RESEARCH_ACCOUNT_ID: "" }, { CONVERSATION_RESEARCH_PRICING_VERIFIED: "false" },

@@ -18,9 +18,9 @@ beforeEach(() => {
   mocks.append.mockImplementation(async (scope, gap, brief) => ({ id, ...scope, gap, brief, approvedAt: null, actionId: null }));
 });
 afterEach(() => vi.unstubAllEnvs());
-it("fails closed before auth and all network/storage work in Production or flag OFF", async () => {
+it("fails closed before auth and all network/storage work when the flag is off", async () => {
   for (const env of ["production", "preview"]) {
-    vi.stubEnv("VERCEL_ENV", env); if (env === "preview") vi.stubEnv("CONVERSATION_HOME_ENABLED", "false");
+    vi.stubEnv("VERCEL_ENV", env); vi.stubEnv("CONVERSATION_HOME_ENABLED", "false");
     expect((await get()).status).toBe(404);
     for (const operation of ["read", "approve", "observe"]) expect((await post({ operation, id, confirmed: true })).status).toBe(404);
   }

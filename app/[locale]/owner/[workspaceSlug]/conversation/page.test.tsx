@@ -15,11 +15,19 @@ beforeEach(() => {
   mocks.actions.mockResolvedValue({ actions: [{ id: "a1", title: { en: "Real action" }, latestVersion: { id: "v1" } }], hasMore: false });
 });
 afterEach(() => vi.unstubAllEnvs());
-it("returns not found before reading workspace data when flag is off or Production", async () => {
-  await expect(Page(props)).rejects.toThrow("not_found");
-  vi.stubEnv("CONVERSATION_HOME_ENABLED", "true"); vi.stubEnv("VERCEL_ENV", "production");
+it("returns not found before reading workspace data when flag is off", async () => {
   await expect(Page(props)).rejects.toThrow("not_found");
   expect(mocks.load).not.toHaveBeenCalled(); expect(mocks.actions).not.toHaveBeenCalled(); expect(mocks.brief).not.toHaveBeenCalled();
+});
+it("returns not found in Production unless the flag is exactly true", async () => {
+  vi.stubEnv("VERCEL_ENV", "production"); vi.stubEnv("CONVERSATION_HOME_ENABLED", "false");
+  await expect(Page(props)).rejects.toThrow("not_found");
+  expect(mocks.load).not.toHaveBeenCalled(); expect(mocks.actions).not.toHaveBeenCalled(); expect(mocks.brief).not.toHaveBeenCalled();
+});
+it("loads the conversation route in Production when the flag is exactly true", async () => {
+  vi.stubEnv("VERCEL_ENV", "production"); vi.stubEnv("CONVERSATION_HOME_ENABLED", "true");
+  await Page(props);
+  expect(mocks.load).toHaveBeenCalledWith(props);
 });
 it("loads membership-scoped actions and passes only reference labels plus the account/workspace/location scope", async () => {
   vi.stubEnv("CONVERSATION_HOME_ENABLED", "true");
