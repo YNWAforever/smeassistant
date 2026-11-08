@@ -111,7 +111,8 @@ test.describe("Conversation Studio", () => {
     await signIn(page, environment, merchant, "owner");
     await page.goto(`/en/owner/${merchant.slug}/conversation`);
 
-    // The workbench stays the local-notes surface.
+    // The workbench is server-first; reveal the browser-only notes to create one.
+    await page.getByRole("button", { name: "Browser-only notes" }).click();
     await page.getByLabel("Your note").fill("First local note");
     await page.getByRole("button", { name: "Save local note" }).click();
     await expect(page.locator(".conversation-note").first()).toContainText("First local note");
@@ -129,6 +130,7 @@ test.describe("Conversation Studio", () => {
     await signIn(page, environment, merchant, "owner");
     await page.goto(`/en/owner/${merchant.slug}/conversation`);
 
+    await page.getByRole("button", { name: "Browser-only notes" }).click();
     await page.getByLabel("Your note").fill("First local note");
     await page.getByRole("button", { name: "Save local note" }).click();
     await expect(page.locator(".conversation-note").first()).toContainText("First local note");

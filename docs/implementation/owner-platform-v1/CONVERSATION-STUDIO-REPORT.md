@@ -121,6 +121,14 @@ The workbench and the Studio still keep two thread stores in this release: brows
 - **UI:** new `StudioEvidencePicker` in the Studio composer — opens a panel of workbench documents and approved briefs for the selected location, lets the owner select up to five, shows removable chips, disables at the cap, and is disabled while streaming/off a single location. Five new trilingual strings.
 - **Tests:** messages-route contract 35/35 (including brief approval/localization, missing/foreign, combined caps), picker component 3/3, prompt fence/cap, repository parser for both citation kinds, Docker integration 11/11, Studio browser acceptance 4/4. Typecheck and lint clean; build green; JS budget unchanged (`/conversation` 254/300 KB, Studio 249/300 KB). Full unit suite 6840/6841 with one unrelated mail-signature flake that passes in isolation.
 
+### 1.11 v1.1 slice 2: server-first conversation workbench (2026-11-09)
+
+- **Persistent discussions are primary.** With the Studio enabled, the workbench renders the persistent Studio discussion list before the browser-only note UI. It has a “New discussion” link into the Studio beside “Open Studio”.
+- **Browser-only notes are explicit.** The local thread pane, note composer and templates are hidden until the owner presses “Browser-only notes (N)”; a short hint explains they stay in this browser. A `?thread=` deep link opens legacy notes automatically, and the existing import bridge (single + bulk) remains inside the revealed section.
+- **Studio off is unchanged.** When `CONVERSATION_STUDIO_ENABLED` is unset, the workbench renders exactly the previous local-notes surface.
+- **Copy:** three new trilingual keys (`legacyNotes`, `legacyHint`, `newPersistent`).
+- **Verified:** conversation-view component tests 20/20 (including persistent-first + reveal), build green, JS budget unchanged (`/conversation` 254/300 KB, Studio 248/300 KB), Studio browser acceptance 4/4 with the new reveal step. Full unit suite result recorded with the PR.
+
 ### Bug caught by visual verification (pre-integration branch)
 
 The pre-integration e2e/screenshot round exposed two issues that text assertions missed: `buildShellWorkspace` accepted `studioEnabled` but did not copy it into `ShellWorkspace` (the page rendered while nav stayed hidden), and the fixture returned classifier JSON as answer prose. The fixture fix (real SSE + prose) and the no-raw-JSON assertion are kept; the shell flag forwarding became obsolete under Path A, which mounts the entry in the conversation workbench instead of the shell nav.

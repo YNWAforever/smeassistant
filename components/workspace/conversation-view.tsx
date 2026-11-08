@@ -86,6 +86,10 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkImportError, setBulkImportError] = useState(false);
   const [bulkImportDone, setBulkImportDone] = useState(false);
+  // Server-first workbench: persistent discussions are primary; browser-only
+  // notes stay available behind an explicit reveal (and via ?thread= links).
+  const [legacyOpen, setLegacyOpen] = useState(Boolean(initialThreadId));
+  const showLocal = !studioEnabled || legacyOpen;
   const [category, setCategory] = useState<ConversationCategory>("all");
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const pendingIds = useRef(new Set<string>());
@@ -226,7 +230,7 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
           <div className="conversation-section-heading"><h2><ListChecks aria-hidden="true" />{d.today}</h2><Link href={`${base}?${locationQuery}`}>{d.fullToday}<ArrowRight aria-hidden="true" /></Link></div>
           {today ? <><dl>{([[d.open, today.open], [d.awaiting, today.drafts], [d.completed, today.completed]] as const).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><p>{d.effort}</p></> : <p>{d.todayUnavailable}</p>}
         </section>
-        {missing ? <p role="status">{t.missing}</p> : <>
+        {showLocal && (missing ? <p role="status">{t.missing}</p> : <>
           {selected && <section className="conversation-notes" aria-label={selected.title}>
             <header className="conversation-thread-heading"><span><MessagesSquare aria-hidden="true" />{d.local}</span><time dateTime={selected.updatedAt}>{formatDateTime(selected.updatedAt, locale, timezone)}</time><h2>{selected.title}</h2></header>
             <div className="conversation-note-stack">{selected.notes.map((note, index) => <p className="conversation-note" key={index}>{note}</p>)}</div>
@@ -261,17 +265,14 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
             })}</div>
             <p className="conversation-template-hint">{t.templateHint}</p>
           </section>}
-        </>}
+        </>)}
         <section className="conversation-continue" aria-label={t.continueWork}>
           <div className="conversation-section-heading"><h2>{t.continueWork}</h2><Link href={`${base}/actions?${locationQuery}`}>{t.allActions}<ArrowRight aria-hidden="true" /></Link></div>
           {actions.length === 0 ? <p className="conversation-empty">{t.noActions}</p> : <ul>{actions.slice(0, 6).map(action => <li key={action.id}><span><Link href={actionHref(action)}>{action.title}</Link><small>{action.versionId ? d.savedVersion : t.openAction}</small></span>{action.versionId ? <Link className="conversation-continue-link" href={actionHref(action, true)}>{t.openVersion}<ArrowRight aria-hidden="true" /></Link> : <Link className="conversation-continue-link" href={actionHref(action)}>{d.continue}<ArrowRight aria-hidden="true" /></Link>}</li>)}</ul>}
         </section>
-        <section id="conversation-recent" className="conversation-threads" aria-label={t.threads}>
-          <div className="conversation-section-heading"><h2>{d.recent}</h2><Button variant="outline" onClick={() => selectThread()}><Plus aria-hidden="true" />{t.newThread}</Button></div>
-          {local.threads.length === 0 ? <p className="conversation-empty">{t.empty}</p> : <ul>{local.threads.map(thread => <li key={thread.id}><MessagesSquare aria-hidden="true" /><button type="button" className={selectedId === thread.id ? "is-active" : ""} aria-label={thread.title} aria-pressed={selectedId === thread.id} onClick={() => selectThread(thread.id)}><span>{thread.title}</span><small>{d.local} · <time dateTime={thread.updatedAt}>{formatDateTime(thread.updatedAt, locale, timezone)}</time></small></button><ArrowRight aria-hidden="true" /></li>)}</ul>}
-        </section>
         {studioEnabled && <section className="conversation-threads conversation-persistent" aria-label={d.persistent}>
           <div className="conversation-section-heading"><h2>{d.persistent}</h2><div className="conversation-persistent-actions">
+            <Link href={`${base}/conversation/studio?${locationQuery}`}>{d.newPersistent}</Link>
             {unimportedLocal.length > 0 && <Button type="button" size="sm" variant="outline" onClick={() => void importAllToStudio()} disabled={bulkImporting}>{bulkImporting ? d.importingAll : `${d.importAll} (${unimportedLocal.length})`}</Button>}
             <Link href={`${base}/conversation/studio?${locationQuery}`}>{studioText(locale).header.openStudio}</Link>
           </div></div>
@@ -279,6 +280,17 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
           {bulkImportDone && <p role="status">{d.importAllDone}</p>}
           {studioConversations?.length ? <ul>{studioConversations.map(conversation => <li key={conversation.id}><MessagesSquare aria-hidden="true" /><Link href={`${base}/conversation/studio?chat=${encodeURIComponent(conversation.id)}&${locationQuery}`}><span>{conversation.title || studioText(locale).rail.untitled}</span><small><time dateTime={conversation.lastMessageAt}>{formatDateTime(conversation.lastMessageAt, locale, timezone)}</time></small></Link><ArrowRight aria-hidden="true" /></li>)}</ul> : <p className="conversation-empty">{d.persistentEmpty}</p>}
         </section>}
+        {studioEnabled && !legacyOpen ? (
+          <section id="conversation-recent" className="conversation-threads conversation-legacy" aria-label={d.legacyNotes}>
+            <div className="conversation-section-heading"><h2>{d.legacyNotes} ({local.threads.length})</h2><Button type="button" variant="outline" size="sm" onClick={() => setLegacyOpen(true)}>{d.legacyNotes}</Button></div>
+            <p className="conversation-legacy-hint">{d.legacyHint}</p>
+          </section>
+        ) : (
+          <section id="conversation-recent" className="conversation-threads" aria-label={t.threads}>
+            <div className="conversation-section-heading"><h2>{d.recent}</h2><Button variant="outline" onClick={() => selectThread()}><Plus aria-hidden="true" />{t.newThread}</Button></div>
+            {local.threads.length === 0 ? <p className="conversation-empty">{t.empty}</p> : <ul>{local.threads.map(thread => <li key={thread.id}><MessagesSquare aria-hidden="true" /><button type="button" className={selectedId === thread.id ? "is-active" : ""} aria-label={thread.title} aria-pressed={selectedId === thread.id} onClick={() => selectThread(thread.id)}><span>{thread.title}</span><small>{d.local} · <time dateTime={thread.updatedAt}>{formatDateTime(thread.updatedAt, locale, timezone)}</time></small></button><ArrowRight aria-hidden="true" /></li>)}</ul>}
+          </section>
+        )}
         {resources && <section className="conversation-tools" aria-label={d.tools}>
           <h2>{d.tools}</h2><p className="conversation-tool-hint">{d.toolHint}</p>
           <details id="conversation-search" className="conversation-tool"><summary><Search aria-hidden="true" />{searchCopy[locale].title}</summary><ConversationSearch locale={locale} workspaceId={scope.workspaceId} locationId={scope.locationId} workspaceSlug={workspaceSlug} locationSlug={location} canManage={resources.canManage} /></details>
