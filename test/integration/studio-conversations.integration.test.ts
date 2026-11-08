@@ -219,6 +219,7 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Conversation Studio persis
       actorId,
       title: "Local idea",
       notes: ["First note", "Second note"],
+      documents: [{ documentVersionId: "11111111-1111-4111-8111-111111111111", title: "Shop facts.pdf", truncated: false }],
     });
     expect(result.messageCount).toBe(2);
     expect(result.conversation).toMatchObject({ workspace_id: workspaceId, created_by: actorId, title: "Local idea", status: "active" });
@@ -227,6 +228,11 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Conversation Studio persis
       [1, "user", "First note", actorId],
       [2, "user", "Second note", actorId],
     ]);
+    expect(messages[0].parts).toEqual([
+      { kind: "text", text: "First note" },
+      { kind: "citation", refs: [{ documentVersionId: "11111111-1111-4111-8111-111111111111", title: "Shop facts.pdf", truncated: false }] },
+    ]);
+    expect(messages[1].parts).toEqual([{ kind: "text", text: "Second note" }]);
   });
 
   it("bulk-imports several browser-local threads in one transaction", async () => {

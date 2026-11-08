@@ -17,6 +17,7 @@ import {
   studioTurnKind,
   STUDIO_PROMPT_VERSION,
   type StudioClassification,
+  type StudioDocumentContext,
   type StudioTurnKind,
 } from "./prompt";
 import {
@@ -24,6 +25,7 @@ import {
   STUDIO_MESSAGE_MAX,
   STUDIO_TITLE_MAX,
   type StudioConversation,
+  type StudioCitationRef,
   type StudioErrorCode,
   type StudioMessage,
   type StudioMessagePart,
@@ -101,6 +103,14 @@ export interface StudioTurnInput {
   db: StudioTurnStore;
   /** `buildStudioBriefing` result: authorised rows and the rendered system block. */
   briefing: StudioBriefingResult;
+  /** Documents the owner attached to this turn (convergence slice 3). */
+  documents?: StudioCitationRef[];
+  /**
+   * Re-reads authorised document text for the turns being answered. The route
+   * injects it so the orchestrator never imports a database or storage module;
+   * a failure degrades to a normal grounded answer.
+   */
+  loadDocuments?: (ids: string[]) => Promise<StudioDocumentContext[]>;
   llm: StudioTurnLlm;
   liveAssistant?: StudioTurnLiveAssistant;
   emit: StudioTurnEmit;
@@ -214,18 +224,35 @@ export async function runStudioTurn(input: StudioTurnInput): Promise<StudioTurnR
 
     // History is read before the new turn is appended so the model sees the
     // conversation up to (not including) this message.
-    let history: ReturnType<typeof historyOf> = [];
+    let historyMessages: StudioMessage[] = [];
     if (db.listMessages) {
       try {
-        history = historyOf(await db.listMessages({ workspaceId, actorId, conversationId, limit: STUDIO_HISTORY_TURNS }));
+        historyMessages = await db.listMessages({ workspaceId, actorId, conversationId, limit: STUDIO_HISTORY_TURNS });
       } catch {
         // A history read failure is not worth failing a turn the owner just
         // asked for; the briefing alone still grounds the answer.
-        history = [];
+        historyMessages = [];
       }
+    }
+    const history = historyOf(historyMessages);
+    // Documents attached to an earlier turn (an imported local thread or an
+    // explicit citation) are re-read from the same authorised scope each turn,
+    // so a document revoked in the workbench cannot be replayed from the thread.
+    const citationIds = [...new Set([
+      ...historyMessages.flatMap((message) => message.parts.flatMap((part) => (
+        part.kind === "citation" ? part.refs.map((ref) => ref.documentVersionId) : []
+      ))),
+      ...(input.documents?.map((document) => document.documentVersionId) ?? []),
+    ])].slice(0, 8);
+    let documents: StudioDocumentContext[] = [];
+    if (input.loadDocuments && citationIds.length) {
+      try { documents = await input.loadDocuments(citationIds); } catch { documents = []; }
     }
 
     await emitter.send({ type: "status", stage: "reading" });
+
+    const userParts: StudioMessagePart[] = [{ kind: "text", text }];
+    if (input.documents?.length) userParts.push({ kind: "citation", refs: input.documents });
 
     let userMessage: StudioMessage;
     try {
@@ -235,7 +262,7 @@ export async function runStudioTurn(input: StudioTurnInput): Promise<StudioTurnR
         conversationId,
         role: "user",
         content: text,
-        parts: [{ kind: "text", text }],
+        parts: userParts,
         titleSuggestion: titleSuggestion(text),
       })).message;
     } catch (error) {
@@ -287,7 +314,7 @@ export async function runStudioTurn(input: StudioTurnInput): Promise<StudioTurnR
 
     if (classification.intent === "answer") {
       return await executeAnswer({
-        input, emitter, db, conversationId, workspaceId, actorId, locale, text, history,
+        input, emitter, db, conversationId, workspaceId, actorId, locale, text, history, documents,
         classification, evidenceById, cost, copy,
       });
     }
@@ -363,6 +390,7 @@ async function persistAndEmit(
 interface AnswerInput extends ExecuteCommon {
   text: string;
   history: Array<{ role: "user" | "assistant"; content: string }>;
+  documents: StudioDocumentContext[];
   classification: Extract<StudioClassification, { intent: "answer" }>;
 }
 
@@ -374,6 +402,7 @@ async function executeAnswer(args: AnswerInput): Promise<StudioTurnResult> {
     systemBriefing: input.briefing.systemBriefing,
     history: args.history,
     message: args.text,
+    documents: args.documents,
   });
   let outcome: LLMStreamOutcome;
   try {

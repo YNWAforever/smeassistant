@@ -12,6 +12,7 @@ import { conversationStudioEnabled } from "@/lib/studio/flag";
 import { STUDIO_MESSAGE_MAX, STUDIO_TITLE_MAX } from "@/lib/studio/types";
 import { conversationHomeEnabled } from "@/lib/workspace/conversation-flag";
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
+import { ConversationDocumentError, listConversationDocuments } from "@/lib/workspace/conversation-documents";
 import {
   authFailure,
   optionalUuid,
@@ -55,7 +56,8 @@ export async function POST(request: Request): Promise<Response> {
     return studioError("invalid_input");
   }
   let totalNotes = 0;
-  const threads: Array<{ title: string; notes: string[] }> = [];
+  const threads: Array<{ title: string; notes: string[]; documentVersionIds: string[] }> = [];
+  const documentIds = new Set<string>();
   for (const raw of body.threads) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return studioError("invalid_input");
     const thread = raw as Record<string, unknown>;
@@ -64,15 +66,36 @@ export async function POST(request: Request): Promise<Response> {
     if (!Array.isArray(thread.notes) || thread.notes.length < 1) return studioError("invalid_input");
     const notes = thread.notes.map((note) => (typeof note === "string" ? note.trim() : ""));
     if (notes.some((note) => note.length < 1 || note.length > STUDIO_MESSAGE_MAX)) return studioError("invalid_input");
+    const rawDocumentIds = thread.documentVersionIds;
+    if (rawDocumentIds !== undefined && (!Array.isArray(rawDocumentIds) || rawDocumentIds.length > 5)) return studioError("invalid_input");
+    const ids = rawDocumentIds === undefined ? [] : (rawDocumentIds as unknown[]).map((id) => optionalUuid(id));
+    if (ids.some((id) => id === null) || new Set(ids).size !== ids.length) return studioError("invalid_input");
+    for (const id of ids) documentIds.add(id as string);
     totalNotes += notes.length;
-    threads.push({ title, notes });
+    threads.push({ title, notes, documentVersionIds: ids as string[] });
   }
-  if (totalNotes > STUDIO_IMPORT_MAX_TOTAL_NOTES) return studioError("invalid_input");
+  if (totalNotes > STUDIO_IMPORT_MAX_TOTAL_NOTES || documentIds.size > 50) return studioError("invalid_input");
 
   const auth = await authorizationOrUnavailable(() => authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager" }));
   if (!auth) return studioError("unavailable");
   if (!auth.ok) return authFailure(auth);
   if (locationId && !inLocationScope(auth.membership, locationId)) return studioError("not_found");
+
+  const documentsById = new Map<string, { documentVersionId: string; title: string; truncated: boolean }>();
+  if (documentIds.size) {
+    try {
+      const versions = await listConversationDocuments(
+        { workspaceId: auth.membership.workspaceId, locationId: locationId ?? null },
+        [...documentIds],
+      );
+      for (const version of versions) {
+        documentsById.set(version.id, { documentVersionId: version.id, title: version.title, truncated: version.truncated });
+      }
+    } catch (error) {
+      if (error instanceof ConversationDocumentError) return studioError(error.code === "document_not_found" ? "not_found" : "invalid_input");
+      return studioError("unavailable");
+    }
+  }
 
   const decision = await enforceRateLimit({
     req: request,
@@ -87,7 +110,11 @@ export async function POST(request: Request): Promise<Response> {
       workspaceId: auth.membership.workspaceId,
       actorId: auth.user.id,
       locationId: locationId ?? null,
-      threads,
+      threads: threads.map((thread) => ({
+        title: thread.title,
+        notes: thread.notes,
+        documents: thread.documentVersionIds.map((id) => documentsById.get(id)).filter((document) => document !== undefined),
+      })),
     });
     await recordNeonEvent({
       workspaceId: auth.membership.workspaceId,

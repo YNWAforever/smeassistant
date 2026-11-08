@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import type { PrototypeLocale } from "@/lib/copy"
 import { nextStepHref } from "@/lib/assistant/next-step"
 import { studioText } from "@/lib/studio/copy"
-import type { StudioArtifactPart, StudioEvidencePart, StudioMessage, StudioMessagePart, StudioNextStepPart, StudioTextPart } from "@/lib/studio/types"
+import type { StudioArtifactPart, StudioCitationPart, StudioEvidencePart, StudioMessage, StudioMessagePart, StudioNextStepPart, StudioTextPart } from "@/lib/studio/types"
 import type { EvidenceReference } from "@/lib/pocket-assistant/contracts"
 
 import { StudioArtifactCard } from "./artifact-card"
@@ -45,6 +45,9 @@ function textPart(part: StudioMessagePart): StudioTextPart | null {
 function evidencePart(part: StudioMessagePart): StudioEvidencePart | null {
   return part.kind === "evidence" ? part : null
 }
+function citationPart(part: StudioMessagePart): StudioCitationPart | null {
+  return part.kind === "citation" ? part : null
+}
 function artifactPart(part: StudioMessagePart): StudioArtifactPart | null {
   return part.kind === "artifact" ? part : null
 }
@@ -80,6 +83,7 @@ export function StudioMessageBubble({
 
   const prose: ReactNode[] = []
   const evidence: EvidenceReference[][] = []
+  const citations: StudioCitationPart[] = []
   const artifacts: StudioArtifactPart[] = []
   const nextSteps: ReactNode[] = []
   const warnings: { code: string; text: string }[] = []
@@ -93,6 +97,11 @@ export function StudioMessageBubble({
     const chips = evidencePart(part)
     if (chips) {
       evidence.push(chips.refs)
+      continue
+    }
+    const citation = citationPart(part)
+    if (citation) {
+      citations.push(citation)
       continue
     }
     const artifact = artifactPart(part)
@@ -136,6 +145,16 @@ export function StudioMessageBubble({
         {evidence.map((refs, index) => (
           <StudioEvidenceChips key={`evidence-${index}`} locale={locale} title={t.message.evidence} refs={refs} />
         ))}
+        {citations.length > 0 && (
+          <section className="studio-citations" aria-label={t.message.documents}>
+            <p className="studio-citations-label">{t.message.documents}</p>
+            <ul>
+              {citations.flatMap((citation) => citation.refs).map((ref) => (
+                <li key={ref.documentVersionId}>{ref.title}{ref.truncated ? " …" : ""}</li>
+              ))}
+            </ul>
+          </section>
+        )}
         {artifacts.map((artifact, index) => (
           <StudioArtifactCard
             key={`artifact-${artifact.actionId}-${index}`}

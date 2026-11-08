@@ -137,6 +137,7 @@ describe("POST /api/studio/conversations/import", () => {
       locationId: LOCATION_ID,
       title: "Local idea",
       notes: ["First note", "Second note"],
+      documents: [],
     });
     expect(mocks.recordNeonEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: "conversation.imported",

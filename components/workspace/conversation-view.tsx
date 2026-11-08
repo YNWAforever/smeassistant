@@ -152,6 +152,7 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
       locationId: scope.locationId === "all" ? null : scope.locationId,
       title: selected.title,
       notes: selected.notes,
+      documentVersionIds: selected.documentVersionIds?.slice(0, 5),
     });
     setImporting(false);
     if (result.ok) {
@@ -171,7 +172,11 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
     setBulkImportDone(false);
     const result = await importStudioConversationsBulk(scope.workspaceId, {
       locationId: scope.locationId === "all" ? null : scope.locationId,
-      threads: unimportedLocal.map(thread => ({ title: thread.title, notes: thread.notes })),
+      threads: unimportedLocal.map(thread => ({
+        title: thread.title,
+        notes: thread.notes,
+        documentVersionIds: thread.documentVersionIds?.slice(0, 5),
+      })),
     });
     setBulkImporting(false);
     if (!result.ok) {

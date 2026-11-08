@@ -466,8 +466,9 @@ describe("studioRepository.importConversation (convergence bridge)", () => {
     expect(String(calls[0][0])).toContain("INSERT INTO studio_conversations");
     expect(calls[0][1]).toEqual([WORKSPACE, LOCATION, ACTOR, "Local idea"]);
     expect(String(calls[1][0])).toContain("INSERT INTO studio_messages");
-    expect(calls[1][1]).toEqual([CONVERSATION, WORKSPACE, 1, ACTOR, "First note"]);
-    expect(calls[2][1]).toEqual([CONVERSATION, WORKSPACE, 2, ACTOR, "Second note"]);
+    expect(calls[1][1].slice(0, 5)).toEqual([CONVERSATION, WORKSPACE, 1, ACTOR, "First note"]);
+    expect(JSON.parse(calls[1][1][5])).toEqual([{ kind: "text", text: "First note" }]);
+    expect(calls[2][1].slice(0, 5)).toEqual([CONVERSATION, WORKSPACE, 2, ACTOR, "Second note"]);
     expect(String(calls[3][0])).toContain("UPDATE studio_conversations");
   });
 
@@ -596,6 +597,42 @@ describe("wire mappers", () => {
     ]);
     expect(toStudioMessage({ ...MESSAGE_ROW, parts: "{not json" } as never).parts).toEqual([]);
     expect(toStudioMessage({ ...MESSAGE_ROW, parts: { kind: "text" } } as never).parts).toEqual([]);
+  });
+
+  it("parses a persisted citation part and drops malformed refs", () => {
+    const message = toStudioMessage({
+      ...MESSAGE_ROW,
+      parts: [
+        { kind: "citation", refs: [
+          { documentVersionId: "doc-1", title: "Shop facts.pdf", truncated: true },
+          { documentVersionId: "doc-2" },
+          { title: "No id" },
+        ] },
+      ],
+    } as never);
+    expect(message.parts).toEqual([{ kind: "citation", refs: [{ documentVersionId: "doc-1", title: "Shop facts.pdf", truncated: true }] }]);
+  });
+
+  it("attaches cited documents to the opening imported message only", async () => {
+    const first = conversationRow({ id: CONVERSATION, title: "Local idea" });
+    transactionQuery
+      .mockResolvedValueOnce({ rows: [first] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [first] });
+    await studioRepository().importConversation({
+      workspaceId: WORKSPACE,
+      actorId: ACTOR,
+      title: "Local idea",
+      notes: ["First note", "Second note"],
+      documents: [{ documentVersionId: "doc-1", title: "Shop facts.pdf", truncated: false }],
+    });
+    const calls = transactionQuery.mock.calls;
+    expect(JSON.parse(calls[1][1][5])).toEqual([
+      { kind: "text", text: "First note" },
+      { kind: "citation", refs: [{ documentVersionId: "doc-1", title: "Shop facts.pdf", truncated: false }] },
+    ]);
+    expect(JSON.parse(calls[2][1][5])).toEqual([{ kind: "text", text: "Second note" }]);
   });
 
   it("drops an unknown stored intent rather than widening the wire union", () => {

@@ -62,6 +62,7 @@ export type StudioCopy = {
     reviewVersion: string
     openAction: string
     evidence: string
+    documents: string
     artifactReady: string
     warnings: string
     retry: string
@@ -180,6 +181,7 @@ const en: StudioCopy = {
     openAction: "Open action",
     evidence: "Evidence used",
     artifactReady: "Draft ready for review",
+    documents: "Attached documents",
     warnings: "Before you use this",
     retry: "Try again",
   },
@@ -289,6 +291,7 @@ const zhHK: StudioCopy = {
     openAction: "開啟行動",
     evidence: "引用的證據",
     artifactReady: "草稿已準備好審閱",
+    documents: "已附加文件",
     warnings: "使用前請注意",
     retry: "再試一次",
   },
@@ -398,6 +401,7 @@ const zhTW: StudioCopy = {
     openAction: "開啟行動",
     evidence: "引用的證據",
     artifactReady: "草稿已準備好審閱",
+    documents: "已附加文件",
     warnings: "使用前請注意",
     retry: "再試一次",
   },

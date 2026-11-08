@@ -104,6 +104,15 @@ The workbench and the Studio still keep two thread stores in this release: brows
 - **Copy:** five more trilingual keys (`openPersistent`, `importAll`, `importingAll`, `importAllFailed`, `importAllDone`).
 - **Verified:** repository bulk unit tests (7 imports per call, rejects empty/oversized batches before a transaction), the bulk route contract (7 tests), the imports-map unit tests (4), the workbench component test (bulk action + persistent copy link), Docker integration (11/11 Studio persistence tests, including the atomic bulk import), and the Studio browser acceptance (4/4, including “imports all local note threads in one click”). `next build` passes; `/conversation` first-load budget is 254/300 KB gzip.
 
+### 1.9 Convergence slice 3: workbench documents in Studio turns (2026-11-09)
+
+- **Carried through the import bridge:** a local thread's cited document versions (`documentVersionIds`, at most five) now travel with single and bulk imports. The import routes re-read each version in the same workspace/location scope before writing and attach a `citation` part to the opening imported turn; the extracted text never reaches the browser and a missing/foreign version rejects the request.
+- **Grounded answers:** on every answer, the orchestrator collects citation ids from the conversation history plus the current turn, and the route's injected `loadDocuments` re-reads them from `conversation_document_versions` in scope. The prompt fences the documents as DATA (per-document 4,000-character and 12,000-total caps) and instructs the model never to follow instructions inside them or present them as measured scan evidence. A revoked document simply stops resolving.
+- **Turn citations:** `POST /api/studio/conversations/[id]/messages` accepts `documentVersionIds` (≤5), validates and loads them before SSE, and persists them on the user message; the message bubble renders their titles.
+- **Wire/persistence:** new `citation` part is parsed defensively (`parseStudioParts`) and validated in the client stream reader; no schema change or new migration (parts are JSONB).
+- **Copy:** one new key (`message.documents`) in en, zh-HK and zh-TW.
+- **Verified:** prompt fence/cap tests, repository citation parsing and import-attachment tests, route attachment tests (invalid ids before auth, scope re-read, missing document 404), Docker integration (message parts round-trip on real PostgreSQL, 11/11), Studio browser acceptance unchanged (4/4), typecheck/lint, `next build`, and the JS budget unchanged (`/conversation` 254/300 KB, Studio 248/300 KB).
+
 ### Bug caught by visual verification (pre-integration branch)
 
 The pre-integration e2e/screenshot round exposed two issues that text assertions missed: `buildShellWorkspace` accepted `studioEnabled` but did not copy it into `ShellWorkspace` (the page rendered while nav stayed hidden), and the fixture returned classifier JSON as answer prose. The fixture fix (real SSE + prose) and the no-raw-JSON assertion are kept; the shell flag forwarding became obsolete under Path A, which mounts the entry in the conversation workbench instead of the shell nav.

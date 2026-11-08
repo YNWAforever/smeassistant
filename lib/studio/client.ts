@@ -152,13 +152,14 @@ export async function createStudioConversation(
  */
 export async function importStudioConversation(
   workspaceId: string,
-  input: { locationId?: string | null; title: string; notes: string[] },
+  input: { locationId?: string | null; title: string; notes: string[]; documentVersionIds?: string[] },
 ): Promise<StudioClientResult<StudioConversation>> {
   const body = {
     workspaceId,
     ...(input.locationId ? { locationId: input.locationId } : {}),
     title: input.title,
     notes: input.notes,
+    ...(input.documentVersionIds?.length ? { documentVersionIds: input.documentVersionIds.slice(0, 5) } : {}),
   }
   const result = await request<{ conversation?: unknown }>("/api/studio/conversations/import", { method: "POST", body })
   if (!result.ok) return result
@@ -174,12 +175,19 @@ export async function importStudioConversation(
  */
 export async function importStudioConversationsBulk(
   workspaceId: string,
-  input: { locationId?: string | null; threads: Array<{ title: string; notes: string[] }> },
+  input: {
+    locationId?: string | null
+    threads: Array<{ title: string; notes: string[]; documentVersionIds?: string[] }>
+  },
 ): Promise<StudioClientResult<{ conversations: StudioConversation[]; messageCount: number }>> {
   const body = {
     workspaceId,
     ...(input.locationId ? { locationId: input.locationId } : {}),
-    threads: input.threads,
+    threads: input.threads.map((thread) => ({
+      title: thread.title,
+      notes: thread.notes,
+      ...(thread.documentVersionIds?.length ? { documentVersionIds: thread.documentVersionIds.slice(0, 5) } : {}),
+    })),
   }
   const result = await request<{ conversations?: unknown; messageCount?: unknown }>("/api/studio/conversations/import-bulk", { method: "POST", body })
   if (!result.ok) return result

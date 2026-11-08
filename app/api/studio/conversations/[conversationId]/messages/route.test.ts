@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   runStudioTurn: vi.fn(),
   acquireStudioTurnLock: vi.fn(),
   recordNeonEvent: vi.fn(),
+  listConversationDocuments: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", async (importOriginal) => ({
@@ -59,6 +60,16 @@ vi.mock("@/lib/studio/turn-lock", () => ({ acquireStudioTurnLock: (...args: unkn
 vi.mock("@/lib/workspace/audit", () => ({
   recordNeonEvent: (...args: unknown[]) => mocks.recordNeonEvent(...args),
   ipHashFor: () => "ip-hash-fixture",
+}));
+vi.mock("@/lib/workspace/conversation-documents", () => ({
+  ConversationDocumentError: class ConversationDocumentError extends Error {
+    code: string;
+    constructor(code: string) {
+      super(code);
+      this.code = code;
+    }
+  },
+  listConversationDocuments: (...args: unknown[]) => mocks.listConversationDocuments(...args),
 }));
 
 const row = {
@@ -110,6 +121,7 @@ beforeEach(() => {
   mocks.buildStudioBriefing.mockResolvedValue(briefingStub);
   mocks.acquireStudioTurnLock.mockResolvedValue(async () => {});
   mocks.recordNeonEvent.mockResolvedValue(undefined);
+  mocks.listConversationDocuments.mockResolvedValue([]);
   mocks.runStudioTurn.mockImplementation(async (input: { emit: (event: StudioStreamEvent) => Promise<void> | void }) => {
     await input.emit({ type: "status", stage: "reading" });
     await input.emit({ type: "user", message: userMessage });
@@ -149,6 +161,8 @@ describe("flag and request shape", () => {
     ["blank text", { workspaceId: WORKSPACE_ID, text: "   " }],
     ["too long", { workspaceId: WORKSPACE_ID, text: "x".repeat(4001) }],
     ["malformed location", { workspaceId: WORKSPACE_ID, text: "hello", locationId: "../x" }],
+    ["malformed document id", { workspaceId: WORKSPACE_ID, text: "hello", documentVersionIds: ["nope"] }],
+    ["too many documents", { workspaceId: WORKSPACE_ID, text: "hello", documentVersionIds: Array.from({ length: 6 }, (_, index) => `0000000${index}-0000-4000-8000-000000000000`) }],
   ])("rejects %s with 400 before auth", async (_label, payload) => {
     const request = new Request(`https://app.test/api/studio/conversations/${CONVERSATION_ID}/messages?locale=en`, {
       method: "POST",
@@ -168,6 +182,45 @@ describe("flag and request shape", () => {
     const badLocale = await send(body(), "locale=fr");
     expect(badLocale.status).toBe(400);
     expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
+  });
+});
+
+describe("attached workbench documents", () => {
+  const DOCUMENT_ID = "88888888-8888-4888-8888-888888888888";
+
+  it("re-reads the document in scope and passes only its refs and text to the turn", async () => {
+    mocks.listConversationDocuments.mockResolvedValue([{
+      id: DOCUMENT_ID,
+      title: "Shop facts.pdf",
+      text: "Opening hours: 09:00-18:00",
+      truncated: false,
+    }]);
+    const res = await send(body({ documentVersionIds: [DOCUMENT_ID] }));
+    expect(res.status).toBe(200);
+    await frames(res);
+    expect(mocks.listConversationDocuments).toHaveBeenCalledWith(
+      { workspaceId: WORKSPACE_ID, locationId: LOCATION_ID },
+      [DOCUMENT_ID],
+    );
+    const input = mocks.runStudioTurn.mock.calls[0][0] as {
+      documents: unknown;
+      loadDocuments: (ids: string[]) => Promise<unknown>;
+    };
+    expect(input.documents).toEqual([{ documentVersionId: DOCUMENT_ID, title: "Shop facts.pdf", truncated: false }]);
+    await expect(input.loadDocuments([DOCUMENT_ID])).resolves.toEqual([{
+      documentVersionId: DOCUMENT_ID,
+      title: "Shop facts.pdf",
+      text: "Opening hours: 09:00-18:00",
+      truncated: false,
+    }]);
+  });
+
+  it("rejects a missing document before the stream", async () => {
+    const { ConversationDocumentError } = await import("@/lib/workspace/conversation-documents");
+    mocks.listConversationDocuments.mockRejectedValueOnce(new ConversationDocumentError("document_not_found"));
+    const res = await send(body({ documentVersionIds: [DOCUMENT_ID] }));
+    expect(res.status).toBe(404);
+    expect(mocks.runStudioTurn).not.toHaveBeenCalled();
   });
 });
 
