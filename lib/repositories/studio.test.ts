@@ -445,6 +445,55 @@ describe("studioRepository.appendMessage", () => {
   });
 });
 
+describe("studioRepository.importConversation (convergence bridge)", () => {
+  it("creates the conversation and every local note as user turns in one transaction", async () => {
+    transactionQuery
+      .mockResolvedValueOnce({ rows: [conversationRow({ id: CONVERSATION, title: "Local idea" })] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [conversationRow({ id: CONVERSATION, title: "Local idea" })] });
+
+    const result = await studioRepository().importConversation({
+      workspaceId: WORKSPACE,
+      actorId: ACTOR,
+      locationId: LOCATION,
+      title: "Local idea",
+      notes: ["First note", "Second note", "   "],
+    });
+
+    expect(result.messageCount).toBe(2);
+    const calls = transactionQuery.mock.calls;
+    expect(String(calls[0][0])).toContain("INSERT INTO studio_conversations");
+    expect(calls[0][1]).toEqual([WORKSPACE, LOCATION, ACTOR, "Local idea"]);
+    expect(String(calls[1][0])).toContain("INSERT INTO studio_messages");
+    expect(calls[1][1]).toEqual([CONVERSATION, WORKSPACE, 1, ACTOR, "First note"]);
+    expect(calls[2][1]).toEqual([CONVERSATION, WORKSPACE, 2, ACTOR, "Second note"]);
+    expect(String(calls[3][0])).toContain("UPDATE studio_conversations");
+  });
+
+  it("rejects an empty import without opening a transaction", async () => {
+    await expect(studioRepository().importConversation({
+      workspaceId: WORKSPACE,
+      actorId: ACTOR,
+      title: "Empty",
+      notes: ["   "],
+    })).rejects.toThrow("studio_import_empty");
+    expect(transactionQuery).not.toHaveBeenCalled();
+  });
+
+  it("rejects a location outside the workspace without inserting anything", async () => {
+    transactionQuery.mockResolvedValueOnce({ rows: [] });
+    await expect(studioRepository().importConversation({
+      workspaceId: WORKSPACE,
+      actorId: ACTOR,
+      locationId: LOCATION,
+      title: "Moved shop",
+      notes: ["note"],
+    })).rejects.toMatchObject({ name: "StudioLocationNotFoundError" });
+    expect(transactionQuery).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("wire mappers", () => {
   it("maps a conversation row to the camelCase contract", () => {
     expect(toStudioConversation(conversationRow({ location_id: LOCATION }) as unknown as Parameters<typeof toStudioConversation>[0])).toEqual({

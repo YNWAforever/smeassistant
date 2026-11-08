@@ -107,6 +107,24 @@ test.describe("Conversation Studio", () => {
     expect(sql(environment.db, `select count(*) from output_versions where workspace_id='${merchant.workspaceId}';`)).toBe("0");
   });
 
+  test("promotes a browser-local note thread into a persistent Studio conversation", async ({ page, merchant, environment }) => {
+    await signIn(page, environment, merchant, "owner");
+    await page.goto(`/en/owner/${merchant.slug}/conversation`);
+
+    // The workbench stays the local-notes surface.
+    await page.getByLabel("Your note").fill("First local note");
+    await page.getByRole("button", { name: "Save local note" }).click();
+    await expect(page.locator(".conversation-note").first()).toContainText("First local note");
+
+    // The convergence bridge imports the notes as opening user turns.
+    await page.getByRole("button", { name: "Continue in Studio" }).click();
+    await expect(page).toHaveURL(new RegExp(`/conversation/studio\\?.*chat=`));
+    await expect(page.locator(".studio-message-user").first()).toContainText("First local note");
+    const conversationId = new URL(page.url()).searchParams.get("chat")!;
+    expect(sql(environment.db, `select count(*) from studio_messages where conversation_id='${conversationId}';`)).toBe("1");
+    expect(sql(environment.db, `select count(*) from studio_conversations where id='${conversationId}' and workspace_id='${merchant.workspaceId}';`)).toBe("1");
+  });
+
   test("conversations are private per member: a teammate in the same workspace starts with an empty rail", async ({ page, merchant, environment }) => {
     await setModelScript(environment);
     await signIn(page, environment, merchant, "owner");

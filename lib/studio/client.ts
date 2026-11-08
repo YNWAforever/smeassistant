@@ -145,6 +145,28 @@ export async function createStudioConversation(
   return { ok: true, data: conversation }
 }
 
+/**
+ * Convergence bridge: promote a browser-local workbench thread into a
+ * persistent Studio conversation. The local copy is untouched; the server
+ * imports the notes as the conversation's opening user turns.
+ */
+export async function importStudioConversation(
+  workspaceId: string,
+  input: { locationId?: string | null; title: string; notes: string[] },
+): Promise<StudioClientResult<StudioConversation>> {
+  const body = {
+    workspaceId,
+    ...(input.locationId ? { locationId: input.locationId } : {}),
+    title: input.title,
+    notes: input.notes,
+  }
+  const result = await request<{ conversation?: unknown }>("/api/studio/conversations/import", { method: "POST", body })
+  if (!result.ok) return result
+  const conversation = isRecord(result.data) ? result.data.conversation : null
+  if (!isStudioConversation(conversation)) return { ok: false, status: 201, code: "unavailable", error: "invalid_response" }
+  return { ok: true, data: conversation }
+}
+
 export async function readStudioConversation(
   workspaceId: string,
   conversationId: string,

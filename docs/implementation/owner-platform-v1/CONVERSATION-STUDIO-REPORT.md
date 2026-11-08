@@ -86,6 +86,16 @@ The Studio acceptance suite was also exercised against a real Docker PostgreSQL 
 - **Gateway smoke check.** `corepack pnpm smoke:studio` performs the two production call shapes (strict-JSON classifier + streamed plain-text answer), reports every check and exits non-zero on failure; without a configured key it prints `SKIPPED` and exits 0.
 - **Hosted cut-over runbook.** `CONVERSATION-STUDIO-CUTOVER.md` orders target confirmation, journal check, `apply-0021.sql`, flag-off deploy, conversation-workbench enablement, Studio flag-on, the 15-point hosted acceptance, evidence queries and rollback.
 
+### 1.7 Convergence slice: browser-local notes → persistent Studio threads (2026-11-09)
+
+The workbench and the Studio still keep two thread stores in this release: browser-local notes (`lib/workspace/conversation-store.ts`) and server `studio_*` conversations. This slice adds the first bridge without removing the local store, so no owner data is migrated or deleted implicitly.
+
+- **Workbench list:** when both flags are on, `/conversation` server-loads the member's latest 8 persistent Studio discussions and shows them beside the local threads with links into `/conversation/studio?chat=…`.
+- **Continue in Studio:** a selected local thread has a one-click bridge that calls `POST /api/studio/conversations/import`. The route validates both flags, membership (manager floor), location scope and body limits, applies a new `studio_import` rate limit (20/hour/user), and imports in one transaction: create the conversation, insert each local note as an ordered `user` message (max 40 notes, 4,000 chars each), then touch `last_message_at`. The local thread is untouched; the owner can delete local site data without affecting the server copy.
+- **Audit:** a new `conversation.imported` event records the workspace/location, conversation id, actor and `{surface:"conversation", notes: n}` only — never the note text.
+- **Copy:** five new keys in `lib/copy-conversation-design.ts` for en, zh-HK and zh-TW.
+- **Verified:** `studioRepository.importConversation` unit tests (30 total repo tests), the import route contract (7 tests: flag-off before auth/SQL, body validation, scope, audit without text, 404/429/503), the workbench component test (persistent list + bridge), the Docker integration test (ordered user turns on real PostgreSQL, 10/10), and the Studio browser acceptance (3/3, including “promote a local note thread into a persistent Studio conversation”). `next build` passes and the `/conversation` first-load budget is 253/300 KB gzip.
+
 ### Bug caught by visual verification (pre-integration branch)
 
 The pre-integration e2e/screenshot round exposed two issues that text assertions missed: `buildShellWorkspace` accepted `studioEnabled` but did not copy it into `ShellWorkspace` (the page rendered while nav stayed hidden), and the fixture returned classifier JSON as answer prose. The fixture fix (real SSE + prose) and the no-raw-JSON assertion are kept; the shell flag forwarding became obsolete under Path A, which mounts the entry in the conversation workbench instead of the shell nav.

@@ -1,4 +1,22 @@
 @layer screens {
+  /* Workbench convergence bridge. */
+  .conversation-studio-bridge {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 0;
+  }
+  .conversation-persistent {
+    margin-top: 18px;
+  }
+  .conversation-persistent ul a {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+  }
+
   /* Conversation-workbench entry into the persistent Studio mode. */
   .conversation-studio-entry {
     display: inline-flex;

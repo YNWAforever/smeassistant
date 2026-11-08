@@ -212,6 +212,23 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Conversation Studio persis
     expect(older.map((message) => message.seq)).toEqual([2, 3]);
   });
 
+  it("imports a browser-local thread as ordered user turns in one transaction", async () => {
+    const { workspaceId, actorId, repo } = await setup();
+    const result = await repo.importConversation({
+      workspaceId,
+      actorId,
+      title: "Local idea",
+      notes: ["First note", "Second note"],
+    });
+    expect(result.messageCount).toBe(2);
+    expect(result.conversation).toMatchObject({ workspace_id: workspaceId, created_by: actorId, title: "Local idea", status: "active" });
+    const messages = await repo.listMessages({ workspaceId, actorId, conversationId: result.conversation.id });
+    expect(messages.map((message) => [message.seq, message.role, message.content, message.author_id])).toEqual([
+      [1, "user", "First note", actorId],
+      [2, "user", "Second note", actorId],
+    ]);
+  });
+
   it("cascades content with the conversation, the workspace and the creator, and nulls a removed location", async () => {
     const workspaceId = await workspace();
     const actorId = await member();
