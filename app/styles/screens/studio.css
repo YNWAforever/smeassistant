@@ -67,6 +67,14 @@
     color: var(--muted-foreground, inherit);
     margin: 0;
   }
+  .conversation-legacy {
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+  .conversation-legacy-hint {
+    margin: 4px 0 0;
+    font-size: 12px;
+  }
 
   .studio-citations {
     border-top: 1px solid var(--border);

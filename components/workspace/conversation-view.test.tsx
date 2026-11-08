@@ -120,6 +120,9 @@ it("shows persistent Studio discussions and the continue bridge when the Studio 
     studioConversations={[{ id: "c1", title: "Persistent idea", lastMessageAt: "2026-11-09T00:00:00Z" }]}
   />);
   expect(await screen.findByText("Persistent discussions")).toBeInTheDocument();
+  expect(screen.queryByLabelText("Your note")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Browser-only notes" }));
+  expect(await screen.findByLabelText("Your note")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: /Persistent idea/ })).toHaveAttribute(
     "href",
     "/en/owner/shop/conversation/studio?chat=c1&location=branch",
@@ -140,6 +143,7 @@ it("imports all local threads and links each one to its persistent copy", async 
   vi.stubGlobal("fetch", fetchMock);
 
   render(<ConversationView {...props} studioEnabled />);
+  fireEvent.click(await screen.findByRole("button", { name: "Browser-only notes" }));
   await screen.findByLabelText("Your note");
   await addNote("First note");
   fireEvent.click(screen.getByRole("button", { name: "New thread" }));
