@@ -18,6 +18,7 @@ import {
 } from "@/lib/studio/client"
 import { studioText } from "@/lib/studio/copy"
 import type {
+  StudioCitationRef,
   StudioContextSummary,
   StudioConversation,
   StudioMessage,
@@ -30,6 +31,7 @@ import { StudioComposer } from "./composer"
 import { StudioContextPanel } from "./context-panel"
 import { StudioConversationRail } from "./conversation-rail"
 import { StudioEmptyState } from "./empty-state"
+import { StudioEvidencePicker } from "./evidence-picker"
 import { StudioMessageThread, type StudioThreadError } from "./message-thread"
 import { studioBlockedText, studioErrorText } from "./studio-errors"
 
@@ -131,6 +133,7 @@ export function StudioView({
   const [loadingConversation, setLoadingConversation] = useState(false)
   const [locationSlug, setLocationSlug] = useState(initialLocationSlug)
   const [draftText, setDraftText] = useState("")
+  const [evidence, setEvidence] = useState<StudioCitationRef[]>([])
   const [optimisticUser, setOptimisticUser] = useState<StudioMessage | null>(null)
   const [pending, setPending] = useState<{ stage: StudioStreamStage | null; text: string } | null>(null)
   const [streaming, setStreaming] = useState(false)
@@ -251,10 +254,17 @@ export function StudioView({
     let userSeq = baseSeq
     let deliveredUser = false
 
+    const documentVersionIds = evidence.filter((ref) => ref.source === "document").map((ref) => ref.documentVersionId)
+    const searchBriefIds = evidence.filter((ref) => ref.source === "search_brief").map((ref) => ref.searchBriefId)
     const result = await streamStudioMessage(
       workspaceId,
       conversationId,
-      { text: content, ...(locationId ? { locationId } : {}) },
+      {
+        text: content,
+        ...(locationId ? { locationId } : {}),
+        ...(documentVersionIds.length ? { documentVersionIds } : {}),
+        ...(searchBriefIds.length ? { searchBriefIds } : {}),
+      },
       {
         signal: controller.signal,
         locale,
@@ -533,6 +543,14 @@ export function StudioView({
           )}
 
           {role === "viewer" && <p className="studio-role-note">{t.notices.viewer}</p>}
+          <StudioEvidencePicker
+            locale={locale}
+            workspaceId={workspaceId}
+            locationId={locationId}
+            selected={evidence}
+            onChange={setEvidence}
+            disabled={composerDisabled}
+          />
           <StudioComposer
             locale={locale}
             value={draftText}

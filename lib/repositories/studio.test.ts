@@ -599,18 +599,22 @@ describe("wire mappers", () => {
     expect(toStudioMessage({ ...MESSAGE_ROW, parts: { kind: "text" } } as never).parts).toEqual([]);
   });
 
-  it("parses a persisted citation part and drops malformed refs", () => {
+  it("parses persisted document and search-brief citations and drops malformed refs", () => {
     const message = toStudioMessage({
       ...MESSAGE_ROW,
       parts: [
         { kind: "citation", refs: [
           { documentVersionId: "doc-1", title: "Shop facts.pdf", truncated: true },
+          { source: "search_brief", searchBriefId: "brief-1", title: "Review queries", truncated: false },
           { documentVersionId: "doc-2" },
           { title: "No id" },
         ] },
       ],
     } as never);
-    expect(message.parts).toEqual([{ kind: "citation", refs: [{ documentVersionId: "doc-1", title: "Shop facts.pdf", truncated: true }] }]);
+    expect(message.parts).toEqual([{ kind: "citation", refs: [
+      { source: "document", documentVersionId: "doc-1", title: "Shop facts.pdf", truncated: true },
+      { source: "search_brief", searchBriefId: "brief-1", title: "Review queries", truncated: false },
+    ] }]);
   });
 
   it("attaches cited documents to the opening imported message only", async () => {
@@ -625,12 +629,12 @@ describe("wire mappers", () => {
       actorId: ACTOR,
       title: "Local idea",
       notes: ["First note", "Second note"],
-      documents: [{ documentVersionId: "doc-1", title: "Shop facts.pdf", truncated: false }],
+      documents: [{ source: "document", documentVersionId: "doc-1", title: "Shop facts.pdf", truncated: false }],
     });
     const calls = transactionQuery.mock.calls;
     expect(JSON.parse(calls[1][1][5])).toEqual([
       { kind: "text", text: "First note" },
-      { kind: "citation", refs: [{ documentVersionId: "doc-1", title: "Shop facts.pdf", truncated: false }] },
+      { kind: "citation", refs: [{ source: "document", documentVersionId: "doc-1", title: "Shop facts.pdf", truncated: false }] },
     ]);
     expect(JSON.parse(calls[2][1][5])).toEqual([{ kind: "text", text: "Second note" }]);
   });

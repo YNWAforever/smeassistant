@@ -150,7 +150,7 @@ export function StudioMessageBubble({
             <p className="studio-citations-label">{t.message.documents}</p>
             <ul>
               {citations.flatMap((citation) => citation.refs).map((ref) => (
-                <li key={ref.documentVersionId}>{ref.title}{ref.truncated ? " …" : ""}</li>
+                <li key={`${ref.source}:${ref.source === "document" ? ref.documentVersionId : ref.searchBriefId}`}>{ref.title}{ref.truncated ? " …" : ""}</li>
               ))}
             </ul>
           </section>

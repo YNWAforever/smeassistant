@@ -26,6 +26,8 @@ Blocked on explicit owner authorization to flip the flag. Everything below can p
 
 ### P1.1 — Studio evidence picker (next PR)
 
+Status: **implemented locally on `feat/studio-v1.1-evidence-picker`** (documents + approved search briefs; picker UI; route/prompt/tests). PR pending CI.
+
 Owners can attach workbench **documents and approved search briefs** directly in the Studio, without first importing a local thread.
 
 - Types: extend the citation part to `source: "document" | "search_brief"` (legacy document-only parts parse unchanged).

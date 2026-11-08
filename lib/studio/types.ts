@@ -88,16 +88,14 @@ export type StudioNextStepPart = { kind: "next_step"; step: AssistantNextStep }
 export type StudioWarningPart = { kind: "warning"; code: string; text: string }
 
 /**
- * A workbench document the owner attached to a turn (convergence slice 3).
- * The persisted part carries only the authorised identity and title: the
- * extracted text stays in `conversation_document_versions` and is re-read with
- * the same scope for each answer, so a revoked document cannot be replayed.
+ * A workbench item the owner attached to a turn (convergence slice 3, extended
+ * in v1.1): a document version or an approved search brief. The persisted part
+ * carries only the authorised identity and title: the text is re-read with the
+ * same scope for each answer, so a revoked document cannot be replayed.
  */
-export type StudioCitationRef = {
-  documentVersionId: string
-  title: string
-  truncated: boolean
-}
+export type StudioCitationRef =
+  | { source: "document"; documentVersionId: string; title: string; truncated: boolean }
+  | { source: "search_brief"; searchBriefId: string; title: string; truncated: boolean }
 
 export type StudioCitationPart = { kind: "citation"; refs: StudioCitationRef[] }
 
@@ -170,6 +168,10 @@ export type StudioRenameConversationRequest = {
 export type StudioSendMessageRequest = {
   text: string
   locationId?: string | null
+  /** Workbench document versions attached to this turn (≤5). */
+  documentVersionIds?: string[]
+  /** Approved search briefs attached to this turn (≤3). */
+  searchBriefIds?: string[]
 }
 
 export const studioStreamStages = ["reading", "thinking", "drafting", "finishing"] as const

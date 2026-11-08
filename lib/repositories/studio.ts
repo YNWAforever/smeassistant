@@ -456,18 +456,19 @@ export function parseStudioParts(value: unknown): StudioMessagePart[] {
         }
         break;
       case "citation": {
-        const refs = Array.isArray(record.refs)
-          ? record.refs
-              .map((ref) => asRecord(ref))
-              .filter((ref): ref is Record<string, unknown> => Boolean(ref))
-              .filter((ref) => typeof ref.documentVersionId === "string" && typeof ref.title === "string")
-              .slice(0, 8)
-              .map((ref): StudioCitationRef => ({
-                documentVersionId: ref.documentVersionId as string,
-                title: ref.title as string,
-                truncated: ref.truncated === true,
-              }))
-          : [];
+        const refs: StudioCitationRef[] = [];
+        for (const raw of Array.isArray(record.refs) ? record.refs : []) {
+          const ref = asRecord(raw);
+          if (!ref || typeof ref.title !== "string") continue;
+          const truncated = ref.truncated === true;
+          if (ref.source === "search_brief" && typeof ref.searchBriefId === "string") {
+            refs.push({ source: "search_brief", searchBriefId: ref.searchBriefId, title: ref.title, truncated });
+          } else if (typeof ref.documentVersionId === "string") {
+            // Legacy parts written before v1.1 have no `source`; they are documents.
+            refs.push({ source: "document", documentVersionId: ref.documentVersionId, title: ref.title, truncated });
+          }
+          if (refs.length >= 8) break;
+        }
         if (refs.length) parts.push({ kind: "citation", refs });
         break;
       }

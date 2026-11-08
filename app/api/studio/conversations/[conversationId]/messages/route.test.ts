@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
   acquireStudioTurnLock: vi.fn(),
   recordNeonEvent: vi.fn(),
   listConversationDocuments: vi.fn(),
+  findSearchBrief: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", async (importOriginal) => ({
@@ -70,6 +71,9 @@ vi.mock("@/lib/workspace/conversation-documents", () => ({
     }
   },
   listConversationDocuments: (...args: unknown[]) => mocks.listConversationDocuments(...args),
+}));
+vi.mock("@/lib/repositories/conversation-search", () => ({
+  conversationSearchRepository: () => ({ find: (...args: unknown[]) => mocks.findSearchBrief(...args) }),
 }));
 
 const row = {
@@ -122,6 +126,7 @@ beforeEach(() => {
   mocks.acquireStudioTurnLock.mockResolvedValue(async () => {});
   mocks.recordNeonEvent.mockResolvedValue(undefined);
   mocks.listConversationDocuments.mockResolvedValue([]);
+  mocks.findSearchBrief.mockResolvedValue(null);
   mocks.runStudioTurn.mockImplementation(async (input: { emit: (event: StudioStreamEvent) => Promise<void> | void }) => {
     await input.emit({ type: "status", stage: "reading" });
     await input.emit({ type: "user", message: userMessage });
@@ -163,6 +168,9 @@ describe("flag and request shape", () => {
     ["malformed location", { workspaceId: WORKSPACE_ID, text: "hello", locationId: "../x" }],
     ["malformed document id", { workspaceId: WORKSPACE_ID, text: "hello", documentVersionIds: ["nope"] }],
     ["too many documents", { workspaceId: WORKSPACE_ID, text: "hello", documentVersionIds: Array.from({ length: 6 }, (_, index) => `0000000${index}-0000-4000-8000-000000000000`) }],
+    ["malformed brief id", { workspaceId: WORKSPACE_ID, text: "hello", searchBriefIds: ["nope"] }],
+    ["too many briefs", { workspaceId: WORKSPACE_ID, text: "hello", searchBriefIds: ["11111111-1111-4111-8111-111111111111","22222222-2222-4222-8222-222222222222","33333333-3333-4333-8333-333333333333","44444444-4444-4444-8444-444444444444"] }],
+    ["more than five combined", { workspaceId: WORKSPACE_ID, text: "hello", documentVersionIds: ["11111111-1111-4111-8111-111111111111","22222222-2222-4222-8222-222222222222","33333333-3333-4333-8333-333333333333"], searchBriefIds: ["44444444-4444-4444-8444-444444444444","55555555-5555-4555-8555-555555555555","66666666-6666-4666-8666-666666666666"] }],
   ])("rejects %s with 400 before auth", async (_label, payload) => {
     const request = new Request(`https://app.test/api/studio/conversations/${CONVERSATION_ID}/messages?locale=en`, {
       method: "POST",
@@ -185,10 +193,11 @@ describe("flag and request shape", () => {
   });
 });
 
-describe("attached workbench documents", () => {
+describe("attached workbench evidence", () => {
   const DOCUMENT_ID = "88888888-8888-4888-8888-888888888888";
+  const BRIEF_ID = "99999999-9999-4999-8999-999999999999";
 
-  it("re-reads the document in scope and passes only its refs and text to the turn", async () => {
+  it("re-reads a document in scope and passes only its refs and text to the turn", async () => {
     mocks.listConversationDocuments.mockResolvedValue([{
       id: DOCUMENT_ID,
       title: "Shop facts.pdf",
@@ -203,23 +212,47 @@ describe("attached workbench documents", () => {
       [DOCUMENT_ID],
     );
     const input = mocks.runStudioTurn.mock.calls[0][0] as {
-      documents: unknown;
-      loadDocuments: (ids: string[]) => Promise<unknown>;
+      evidenceRefs: unknown;
+      loadEvidence: (refs: unknown[]) => Promise<unknown>;
     };
-    expect(input.documents).toEqual([{ documentVersionId: DOCUMENT_ID, title: "Shop facts.pdf", truncated: false }]);
-    await expect(input.loadDocuments([DOCUMENT_ID])).resolves.toEqual([{
-      documentVersionId: DOCUMENT_ID,
+    expect(input.evidenceRefs).toEqual([{ source: "document", documentVersionId: DOCUMENT_ID, title: "Shop facts.pdf", truncated: false }]);
+    await expect(input.loadEvidence([{ source: "document", documentVersionId: DOCUMENT_ID, title: "Shop facts.pdf", truncated: false }])).resolves.toEqual([{
+      source: "document",
+      id: DOCUMENT_ID,
       title: "Shop facts.pdf",
       text: "Opening hours: 09:00-18:00",
       truncated: false,
     }]);
   });
 
-  it("rejects a missing document before the stream", async () => {
+  it("loads an approved search brief and grounds the turn with its localized text", async () => {
+    mocks.findSearchBrief.mockResolvedValue({
+      id: BRIEF_ID,
+      approvedAt: "2026-11-09T00:00:00Z",
+      brief: {
+        en: { title: "Review queries", missing: "Review queries", why: "Trust", steps: ["Ask for reviews"], citation: "GSC" },
+        "zh-HK": { title: "評論查詢", missing: "評論查詢", why: "信任", steps: ["邀請評論"], citation: "GSC" },
+        "zh-TW": { title: "評論查詢", missing: "評論查詢", why: "信任", steps: ["邀請評論"], citation: "GSC" },
+      },
+    });
+    const res = await send(body({ searchBriefIds: [BRIEF_ID] }));
+    expect(res.status).toBe(200);
+    await frames(res);
+    expect(mocks.findSearchBrief).toHaveBeenCalledWith({ workspaceId: WORKSPACE_ID, locationId: LOCATION_ID }, BRIEF_ID);
+    const input = mocks.runStudioTurn.mock.calls[0][0] as { evidenceRefs: unknown[] };
+    expect(input.evidenceRefs).toEqual([{ source: "search_brief", searchBriefId: BRIEF_ID, title: "Review queries", truncated: false }]);
+  });
+
+  it("rejects a missing document or unapproved/foreign brief before the stream", async () => {
     const { ConversationDocumentError } = await import("@/lib/workspace/conversation-documents");
     mocks.listConversationDocuments.mockRejectedValueOnce(new ConversationDocumentError("document_not_found"));
-    const res = await send(body({ documentVersionIds: [DOCUMENT_ID] }));
-    expect(res.status).toBe(404);
+    expect((await send(body({ documentVersionIds: [DOCUMENT_ID] }))).status).toBe(404);
+
+    mocks.findSearchBrief.mockResolvedValueOnce(null);
+    expect((await send(body({ searchBriefIds: [BRIEF_ID] }))).status).toBe(404);
+
+    mocks.findSearchBrief.mockResolvedValueOnce({ id: BRIEF_ID, approvedAt: null, brief: null });
+    expect((await send(body({ searchBriefIds: [BRIEF_ID] }))).status).toBe(404);
     expect(mocks.runStudioTurn).not.toHaveBeenCalled();
   });
 });

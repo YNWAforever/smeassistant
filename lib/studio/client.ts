@@ -414,6 +414,8 @@ export async function streamStudioMessage(
         workspaceId,
         text: body.text,
         ...(body.locationId ? { locationId: body.locationId } : {}),
+        ...(body.documentVersionIds?.length ? { documentVersionIds: body.documentVersionIds } : {}),
+        ...(body.searchBriefIds?.length ? { searchBriefIds: body.searchBriefIds } : {}),
       }),
       ...(handlers.signal ? { signal: handlers.signal } : {}),
     })

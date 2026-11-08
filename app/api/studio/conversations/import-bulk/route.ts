@@ -81,7 +81,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!auth.ok) return authFailure(auth);
   if (locationId && !inLocationScope(auth.membership, locationId)) return studioError("not_found");
 
-  const documentsById = new Map<string, { documentVersionId: string; title: string; truncated: boolean }>();
+  const documentsById = new Map<string, { source: "document"; documentVersionId: string; title: string; truncated: boolean }>();
   if (documentIds.size) {
     try {
       const versions = await listConversationDocuments(
@@ -89,7 +89,7 @@ export async function POST(request: Request): Promise<Response> {
         [...documentIds],
       );
       for (const version of versions) {
-        documentsById.set(version.id, { documentVersionId: version.id, title: version.title, truncated: version.truncated });
+        documentsById.set(version.id, { source: "document", documentVersionId: version.id, title: version.title, truncated: version.truncated });
       }
     } catch (error) {
       if (error instanceof ConversationDocumentError) return studioError(error.code === "document_not_found" ? "not_found" : "invalid_input");

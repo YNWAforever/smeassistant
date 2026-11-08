@@ -49,6 +49,17 @@ export type StudioCopy = {
     hint: string
     tooLong: string
   }
+  evidence: {
+    title: string
+    hint: string
+    empty: string
+    loading: string
+    failed: string
+    remove: string
+    limit: string
+    documents: string
+    briefs: string
+  }
   status: { reading: string; thinking: string; drafting: string; finishing: string }
   message: {
     you: string
@@ -118,6 +129,18 @@ export function formatStudioCopy(template: string, values: Record<string, string
 }
 
 const en: StudioCopy = {
+  evidence: {
+    title: "Evidence",
+    hint: "Choose a location to attach documents and approved search briefs.",
+    empty: "No documents or approved search briefs for this location.",
+    loading: "Loading evidence…",
+    failed: "Could not load evidence.",
+    remove: "Remove",
+    limit: "Up to 5 items",
+    documents: "Documents",
+    briefs: "Search briefs",
+  },
+
   nav: { label: "Studio", aria: "Conversation studio" },
   rail: {
     title: "Conversations",
@@ -228,6 +251,18 @@ const en: StudioCopy = {
 }
 
 const zhHK: StudioCopy = {
+  evidence: {
+    title: "證據",
+    hint: "選擇一個分店，先可以附加文件同已確認搜尋簡報。",
+    empty: "呢個分店未有文件或已確認搜尋簡報。",
+    loading: "載入證據中…",
+    failed: "未能載入證據。",
+    remove: "移除",
+    limit: "最多 5 項",
+    documents: "文件",
+    briefs: "搜尋簡報",
+  },
+
   nav: { label: "對話工作台", aria: "對話工作台" },
   rail: {
     title: "對話",
@@ -338,6 +373,18 @@ const zhHK: StudioCopy = {
 }
 
 const zhTW: StudioCopy = {
+  evidence: {
+    title: "證據",
+    hint: "選擇一個分店，才能附加文件和已確認搜尋簡報。",
+    empty: "這個分店沒有文件或已確認搜尋簡報。",
+    loading: "載入證據中…",
+    failed: "未能載入證據。",
+    remove: "移除",
+    limit: "最多 5 項",
+    documents: "文件",
+    briefs: "搜尋簡報",
+  },
+
   nav: { label: "對話工作台", aria: "對話工作台" },
   rail: {
     title: "對話",
