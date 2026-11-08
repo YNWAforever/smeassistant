@@ -271,7 +271,7 @@ describe("ContextualAssistant Continue here (P4.3)", () => {
 });
 
 describe("fixed question lists (P4.3, T1-c)", () => {
-  const SURFACES: AssistantSurface[] = ["sample", "report", "home", "actions", "action", "create", "insights", "assets", "rescan", "workspace"];
+  const SURFACES: AssistantSurface[] = ["sample", "report", "home", "actions", "action", "create", "insights", "assets", "rescan", "workspace", "studio"];
   it("covers every surface", () => {
     expect(Object.keys(surfaceQuestions).sort()).toEqual([...SURFACES].sort());
   });

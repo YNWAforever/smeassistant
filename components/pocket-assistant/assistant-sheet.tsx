@@ -64,6 +64,10 @@ export const surfaceQuestions: Record<AssistantSurface, DemoQuestionId[]> = {
   assets: ["asset_next_step", "generate_social", "generate_menu"],
   rescan: ["rescan_validation", "explain_limits"],
   workspace: ["explain_priority", "compare_priorities", "explain_insights"],
+  // Never rendered: the Studio owns its own conversation UI and does not mount
+  // the sheet. The key exists so the surface union stays exhaustive, and the
+  // fixed list still obeys the "contextual intents are suggestions only" rule.
+  studio: ["explain_priority", "explain_change", "explain_insights"],
 }
 
 type ContextualIntentId = AssistantSuggestion["intentId"]
@@ -338,7 +342,7 @@ export function ContextualAssistant({
               <SheetTitle>{copy[locale].shell.assistant.name}</SheetTitle>
             </div>
           </div>
-          <SheetDescription>{fill(t.description, { surface: t.surfaces[surface] })}</SheetDescription>
+          <SheetDescription>{fill(t.description, { surface: (t.surfaces as Record<string, string>)[surface] ?? t.surfaces.workspace })}</SheetDescription>
           <ol className="assistant-flow" aria-label={t.flowLabel}>
             {t.flow.map((item, index) => <li key={item}><span>{index + 1}</span>{item}</li>)}
           </ol>

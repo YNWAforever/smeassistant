@@ -96,7 +96,7 @@ export function usagePercent(approvedDeliveries: number, allowance: number | nul
 export function buildShellWorkspace(
   context: WorkspaceContext,
   locale: PrototypeLocale,
-  extras: { urgentActions?: number } = {},
+  extras: { urgentActions?: number; studioEnabled?: boolean } = {},
 ): ShellWorkspace {
   const { workspace, locations, usage, unreadNotifications, membership, account } = context;
   const locationId = defaultLocationId(locations);
@@ -113,6 +113,9 @@ export function buildShellWorkspace(
     ...(extras.urgentActions !== undefined ? { urgentActions: extras.urgentActions } : {}),
     // P4.1: shipped dark. Omitted (not false) when off, and never on a demo workspace.
     ...(!workspace.isDemo && offerPromotionsEnabled() ? { offersEnabled: true } : {}),
+    // Conversation Studio: the shell shows the nav entry and the "Open Studio"
+    // top-bar entry only when the layout resolved CONVERSATION_STUDIO_ENABLED.
+    ...(extras.studioEnabled === true ? { studioEnabled: true } : {}),
     // Real shells always carry the ids the topbar assistant needs for live mode (§3.8).
     assistant: { workspaceId: workspace.id, ...(locationId ? { locationId } : {}) },
   };

@@ -12,6 +12,7 @@ import { copy, type PrototypeLocale } from "@/lib/copy";
 import { resourceCopy } from "@/lib/copy-conversation-resources";
 import { conversationCopy } from "@/lib/copy-conversation";
 import { conversationDesignCopy, type ConversationCategory } from "@/lib/copy-conversation-design";
+import { studioText } from "@/lib/studio/copy";
 import { searchCopy } from "@/lib/copy-search-gap";
 import { openConversationTool, useConversationNavigation } from "./conversation-navigation";
 import { CONVERSATION_LIMITS, conversationScopeKey, readConversationThreads, saveConfirmedPostDraft, saveConversationChanges, type ConversationSave, type ConversationScope, type LocalThread } from "@/lib/workspace/conversation-store";
@@ -43,6 +44,8 @@ export interface ConversationViewProps {
   today?: ConversationToday;
   resources?: { canManage: boolean };
   connectionOutcome?: string;
+  /** Persistent, model-backed Studio mode (CONVERSATION_STUDIO_ENABLED). */
+  studioEnabled?: boolean;
 }
 
 const subscribeToHydration = () => () => {};
@@ -55,7 +58,7 @@ export function ConversationView(props: ConversationViewProps) {
   return hydrated ? <ScopedConversation key={conversationScopeKey(props.scope)} {...props} /> : <p role="status">{conversationCopy[props.locale].loading}</p>;
 }
 
-function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, location, locationName, scope, initialThreadId, actions, today, resources, connectionOutcome }: ConversationViewProps) {
+function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, location, locationName, scope, initialThreadId, actions, today, resources, connectionOutcome, studioEnabled }: ConversationViewProps) {
   const t = conversationCopy[locale];
   const d = conversationDesignCopy[locale];
   const navigation = useConversationNavigation();
@@ -146,6 +149,7 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
         <span><Globe aria-hidden="true" />{d.language}</span>
         {resources && <><button type="button" onClick={() => openConversationTool("conversation-documents")}><Paperclip aria-hidden="true" />{d.documents}</button><button type="button" onClick={() => openConversationTool("conversation-sources")}><Plug aria-hidden="true" />{d.sources}</button></>}
       </div>
+      {studioEnabled && <Link className="conversation-studio-entry" href={`/${locale}/owner/${workspaceSlug}/conversation/studio?${locationQuery}`}><MessagesSquare aria-hidden="true" />{studioText(locale).header.openStudio}<ArrowRight aria-hidden="true" /></Link>}
     </header>
     {resources && connectionOutcome && <p role="status">{connectionOutcome === "ok" ? resourceCopy[locale].oauthConnected : connectionOutcome === "declined" ? resourceCopy[locale].oauthDeclined : resourceCopy[locale].oauthFailed}</p>}
     <div className="conversation-layout">

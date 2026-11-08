@@ -32,6 +32,7 @@ export type RateLimitScope =
   | "asset_upload"
   | "assistant_run"
   | "assistant_suggestions"
+  | "studio_message"
   | "preview_draft"
   | "rescan"
   | "brand_update"
@@ -130,6 +131,13 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   assistant_run: { limit: 60, windowSeconds: 60 * 60 },
   // GET /api/assistant/suggestions (P4.3): a cheap read-only fetch per sheet open or surface change, per user.
   assistant_suggestions: { limit: 120, windowSeconds: 60 * 60 },
+  // POST /api/studio/conversations/[id]/messages (Conversation Studio, design
+  // §9): 60 turns an hour per member, keyed on the session user plus the
+  // source-IP HMAC. A turn costs at least one model call, so this is a
+  // runaway-cost guard sized for a conversational pace, not an abuse boundary
+  // (membership, location scope and the per-conversation turn lock are the
+  // boundaries).
+  studio_message: { limit: 60, windowSeconds: 60 * 60 },
   // POST /api/start/[slug]/preview (P4.5): unsaved review-reply preview drafts, 5 a day per source IP, fail-closed.
   preview_draft: { limit: 5, windowSeconds: 60 * 60 * 24 },
   // POST /api/workspaces/[id]/rescan (CLAUDE.md §3.2.3, Phase 6): keyed on the

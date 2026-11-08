@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import type { Pool } from "pg";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { additionalFunctions, additionalIndexes, additionalTriggers, catalogQueries, changedFunctions, verifyCatalog } from "./catalog";
+import { additionalFunctions, additionalIndexes, additionalTables, additionalTriggers, catalogQueries, changedFunctions, studioColumns, studioConstraints, studioIndexes, verifyCatalog } from "./catalog";
 
 vi.mock("node:fs/promises", () => ({ readFile: vi.fn() }));
 
@@ -21,10 +21,10 @@ const revisionIndexes=[{tablename:'brand_revisions',indexname:'brand_revisions_h
 function metadataPool(options: { version?: number; notNullRows?: Row[]; nullable?: boolean; changedCheck?: boolean } = {}) {
   const version = options.version ?? 180006;
   const metadata: Record<string, Row[]> = {
-    tables: [...legacy.tables, { name: "app_users", rls: true }, { name: "auth_identities", rls: true },{name:'brand_revisions',rls:true},...resourceTables.map(name=>({name,rls:true}))],
-    columns: [...revisionColumns,{ ...column, is_nullable: options.nullable ? "YES" : "NO" }],
-    constraints: [constraint("oauth_connections","oauth_connections_provider_check","c", "CHECK ((provider = ANY (ARRAY['instagram'::text, 'google_gbp'::text, 'ga4'::text, 'google_gsc'::text])))"),...revisionConstraints,options.changedCheck ? { ...check, definition: "CHECK ((timezone <> 'UTC'::text))" } : check, ...(version >= 180000 ? [notNull,...revisionNotNull].map(c=>({table_name:c.table_name,name:`${c.column_name}_not_null`,type:'n',definition:`NOT NULL ${c.column_name}`})) : [])],
-    indexes: [...revisionIndexes,...additionalIndexes],
+    tables: [...legacy.tables, { name: "app_users", rls: true }, { name: "auth_identities", rls: true },{name:'brand_revisions',rls:true},...resourceTables.map(name=>({name,rls:true})),...additionalTables.map(name=>({name,rls:true}))],
+    columns: [...revisionColumns,{ ...column, is_nullable: options.nullable ? "YES" : "NO" },...studioColumns],
+    constraints: [constraint("oauth_connections","oauth_connections_provider_check","c", "CHECK ((provider = ANY (ARRAY['instagram'::text, 'google_gbp'::text, 'ga4'::text, 'google_gsc'::text])))"),...revisionConstraints,...studioConstraints,options.changedCheck ? { ...check, definition: "CHECK ((timezone <> 'UTC'::text))" } : check, ...(version >= 180000 ? [notNull,...revisionNotNull].map(c=>({table_name:c.table_name,name:`${c.column_name}_not_null`,type:'n',definition:`NOT NULL ${c.column_name}`})) : [])],
+    indexes: [...revisionIndexes,...additionalIndexes.filter(index => !index.indexname.startsWith("studio_")),...studioIndexes],
     triggers: additionalTriggers.map(name => ({ name })),
     functions: [...additionalFunctions, ...changedFunctions].map(name => ({ name })),
     enums: [],
@@ -36,7 +36,7 @@ function metadataPool(options: { version?: number; notNullRows?: Row[]; nullable
     else if (sql.includes("server_version_num")) rows = [{ version }];
     else if (sql.includes("attnotnull")) rows = [...revisionNotNull,notNull].map(({table_name,column_name})=>({table_name,column_name}));
     else if (sql.includes("k.contype='n'")) rows = [...revisionNotNull,...(options.notNullRows ?? [notNull])];
-    else if (sql.includes("FROM pg_policies")) rows = [...["workspaces", "app_users", "auth_identities"].map(tablename => ({ tablename, roles: ["sme_app_runtime"], cmd: "ALL", qual: "true", with_check: "true" })),{tablename:'brand_revisions',roles:['sme_app_runtime'],cmd:'INSERT',qual:null,with_check:'true'},{tablename:'brand_revisions',roles:['sme_app_runtime'],cmd:'SELECT',qual:'true',with_check:null},...resourceTables.flatMap(tablename=>(tablename==='conversation_document_versions'?['INSERT','SELECT']:['INSERT','SELECT','UPDATE']).map(cmd=>({tablename,roles:['sme_app_runtime'],cmd,qual:cmd==='INSERT'?null:'true',with_check:cmd==='SELECT'?null:'true'})))];
+    else if (sql.includes("FROM pg_policies")) rows = [...["workspaces", "app_users", "auth_identities"].map(tablename => ({ tablename, roles: ["sme_app_runtime"], cmd: "ALL", qual: "true", with_check: "true" })),{tablename:'brand_revisions',roles:['sme_app_runtime'],cmd:'INSERT',qual:null,with_check:'true'},{tablename:'brand_revisions',roles:['sme_app_runtime'],cmd:'SELECT',qual:'true',with_check:null},...resourceTables.flatMap(tablename=>(tablename==='conversation_document_versions'?['INSERT','SELECT']:['INSERT','SELECT','UPDATE']).map(cmd=>({tablename,roles:['sme_app_runtime'],cmd,qual:cmd==='INSERT'?null:'true',with_check:cmd==='SELECT'?null:'true'}))),...additionalTables.map(tablename=>({tablename,roles:['sme_app_runtime'],cmd:'ALL',qual:'true',with_check:'true'}))];
     else if(sql.includes("role_table_grants") && (sql.includes("table_name='brand_revisions'")||sql.includes("table_name='conversation_document_versions'"))) rows=[{privilege_type:'INSERT'},{privilege_type:'SELECT'}];
     else if (sql.includes("role_table_grants") || sql.includes("aclexplode")) rows = [];
     else if (sql.startsWith("SELECT count(*) AS count FROM public.")) rows = [{ count: "0" }];
@@ -50,10 +50,10 @@ beforeEach(() => { vi.mocked(readFile).mockResolvedValue(JSON.stringify(legacy))
 
 describe("T-19 PostgreSQL NOT NULL catalog compatibility", () => {
   it("accepts the unchanged PostgreSQL 16 representation", async () => {
-    await expect(verifyCatalog(metadataPool({ version: 160014 }).pool)).resolves.toMatchObject({ constraints: 9, seededRows: 0 });
+    await expect(verifyCatalog(metadataPool({ version: 160014 }).pool)).resolves.toMatchObject({ constraints: 26, seededRows: 0 });
   });
   it("accepts PostgreSQL 18 only after validating its redundant NOT NULL metadata", async () => {
-    await expect(verifyCatalog(metadataPool().pool)).resolves.toMatchObject({ constraints: 9, notNullConstraints: 6, seededRows: 0 });
+    await expect(verifyCatalog(metadataPool().pool)).resolves.toMatchObject({ constraints: 26, notNullConstraints: 6, seededRows: 0 });
   });
   it.each([
     ["missing constraint", []],

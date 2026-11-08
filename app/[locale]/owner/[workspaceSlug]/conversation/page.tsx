@@ -3,6 +3,7 @@ import { ConversationView } from "@/components/workspace/conversation-view";
 import { conversationCopy } from "@/lib/copy-conversation";
 import { normaliseLocale } from "@/lib/copy";
 import { conversationHomeEnabled } from "@/lib/workspace/conversation-flag";
+import { conversationStudioEnabled } from "@/lib/studio/flag";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { getHomeBrief, listActions } from "@/lib/workspace/queries-pages";
 
@@ -25,6 +26,7 @@ export default async function ConversationRoute(props: OwnerPageProps) {
     scope={{ userId: page.membership.userId, workspaceId: page.ctx.workspace.id, locationId: location?.id ?? "all" }}
     connectionOutcome={page.query.connector === "gsc" ? page.query.connected : undefined}
     resources={{ canManage: page.membership.role === "owner" }}
+    studioEnabled={conversationStudioEnabled()}
     initialThreadId={page.query.thread}
     today={brief ? { open: brief.openActionCount ?? brief.openActions.length, drafts: brief.month.awaitingApproval, completed: brief.month.completed } : undefined}
     actions={result.actions.map(action => ({ id: action.id, title: action.title[page.locale] ?? action.title.en, ...(action.latestVersion ? { versionId: action.latestVersion.id } : {}) }))}

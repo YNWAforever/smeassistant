@@ -307,3 +307,278 @@ export async function llmComplete(prompt: string, opts: LLMOptions = {}): Promis
   const outcome = await llmCompleteDetailed(prompt, opts);
   return outcome.ok ? outcome.result : null;
 }
+
+// ---------------------------------------------------------------------------
+// Multi-message chat and streaming (Conversation Studio, design §6.3)
+//
+// Additive on purpose: `llmComplete`/`llmCompleteDetailed` are untouched so
+// every existing caller keeps byte-compatible behaviour. The two helpers below
+// speak the same OpenAI-compatible gateway, with the same configuration
+// resolution, error mapping, usage reading and timeouts.
+// ---------------------------------------------------------------------------
+
+export const LLM_CHAT_ROLES = ["system", "user", "assistant"] as const;
+
+/** One OpenAI-compatible chat message. Content is always plain text here. */
+export interface LLMChatMessage {
+  role: (typeof LLM_CHAT_ROLES)[number];
+  content: string;
+}
+
+const MAX_TIMEOUT_MS = 55_000;
+
+function chatHeaders(apiKey: string, usingOpenCodeBase: boolean, opts: LLMOptions): Record<string, string> {
+  return {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    "HTTP-Referer": REFERER,
+    "User-Agent": USER_AGENT,
+    ...(usingOpenCodeBase ? { "x-opencode-session": opts.sessionId ?? crypto.randomUUID() } : {}),
+  };
+}
+
+function chatBody(model: string, messages: LLMChatMessage[], opts: LLMOptions, usingOpenCodeBase: boolean, stream: boolean) {
+  return {
+    model,
+    // Only the documented role/content pair is forwarded: nothing caller-shaped
+    // (no tool calls, no names) can leak into a provider request.
+    messages: messages.map((message) => ({ role: message.role, content: message.content })),
+    max_tokens: opts.maxTokens ?? 1000,
+    temperature: opts.temperature ?? 0.5,
+    ...(stream ? { stream: true } : {}),
+    ...(opts.jsonMode ? { response_format: { type: "json_object" } } : {}),
+    ...(usingOpenCodeBase && model === "longcat-2.5-preview-free" && opts.jsonMode ? { thinking: { type: "disabled" } } : {}),
+  };
+}
+
+/**
+ * The multi-turn sibling of `llmCompleteDetailed`: same gateway, same error
+ * mapping and usage shape, but it forwards an ordered message array instead of
+ * wrapping one prompt in a user message.
+ */
+export async function llmChatDetailed(messages: LLMChatMessage[], opts: LLMOptions = {}): Promise<LLMOutcome> {
+  if (pauseState().ai) {
+    logPauseRefusal("llm");
+    return { ok: false, code: "ai_paused", retryable: false };
+  }
+  const { apiKey, baseUrl, model, configured, usingOpenCodeBase } = resolveLLMConfig();
+  if (!configured || !apiKey) {
+    console.error("[llm] unavailable", { category: "provider_unconfigured" });
+    return { ok: false, code: "provider_unconfigured", retryable: false };
+  }
+
+  const request = (signal: AbortSignal) => fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: chatHeaders(apiKey, usingOpenCodeBase, opts),
+    body: JSON.stringify(chatBody(model, messages, opts, usingOpenCodeBase, false)),
+    signal,
+  });
+  if (opts.onUsageObservation) return trackedCompletion(request, opts);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 20000);
+  let abort: () => void = () => {};
+  const interrupted = new Promise<never>((_resolve, reject) => {
+    abort = () => reject(new DOMException("Request deadline exceeded", "AbortError"));
+    controller.signal.addEventListener("abort", abort, { once: true });
+  });
+
+  try {
+    const resp = await Promise.race([request(controller.signal), interrupted]);
+    if (!resp.ok) {
+      // The body is never read: it can echo the prompt.
+      console.error("[llm] API error", { status: resp.status });
+      const status = resp.status;
+      const rawRetry = resp.headers?.get("retry-after");
+      const retrySeconds = rawRetry && /^\d+$/.test(rawRetry) ? Number(rawRetry) : rawRetry ? Math.ceil((Date.parse(rawRetry) - Date.now()) / 1000) : NaN;
+      return {
+        ok: false,
+        status,
+        code: status === 401 || status === 403 ? "provider_auth_failed" : status === 429 ? "provider_rate_limited" : "provider_unavailable",
+        retryable: status === 429 || status >= 500,
+        ...(status === 429 && Number.isFinite(retrySeconds) && retrySeconds >= 0 && retrySeconds <= 3600 ? { retryAfterSeconds: retrySeconds } : {}),
+      };
+    }
+
+    let data: unknown;
+    try { data = await Promise.race([resp.json(), interrupted]); }
+    catch (error) {
+      if (controller.signal.aborted) throw error;
+      return { ok: false, code: "invalid_provider_response", retryable: false };
+    }
+    const choices = data && typeof data === "object" ? (data as { choices?: unknown }).choices : undefined;
+    const first: unknown = Array.isArray(choices) ? choices[0] : undefined;
+    const message = first && typeof first === "object" ? (first as { message?: unknown }).message : undefined;
+    const content = message && typeof message === "object" ? (message as { content?: unknown }).content : undefined;
+    const usage = readUsage(data);
+    if (typeof content !== "string") return { ok: false, code: "invalid_provider_response", retryable: false, usage };
+    const text = content.trim();
+    return text ? { ok: true, result: { text, usage } } : { ok: false, code: "no_model_output", retryable: false, usage };
+  } catch (err) {
+    const name = typeof (err as { name?: unknown } | null)?.name === "string" ? (err as { name: string }).name : "unknown";
+    console.error("[llm] request failed", { error: name });
+    return { ok: false, code: controller.signal.aborted || name === "AbortError" ? "timeout" : "network_error", retryable: true };
+  } finally {
+    clearTimeout(timeout);
+    controller.signal.removeEventListener("abort", abort);
+  }
+}
+
+/** A stream failure before or after the first token, distinguished by `text`. */
+export type LLMStreamFailureCode = LLMFailureCode | "stream_interrupted";
+
+export type LLMStreamOutcome =
+  | { ok: true; result: LLMResult; streamed: boolean }
+  | {
+      ok: false;
+      code: LLMStreamFailureCode;
+      retryable: boolean;
+      status?: number;
+      retryAfterSeconds?: number;
+      usage?: LLMUsage;
+      usagePending?: boolean;
+      /** What arrived before the stream broke; the orchestrator stores it visibly. */
+      text?: string;
+      streamed?: boolean;
+    };
+
+interface StreamFrame {
+  done: boolean;
+  text: string | null;
+  usage: LLMUsage | null;
+}
+
+/**
+ * One SSE `data:` line from an OpenAI-compatible stream. Anything that is not a
+ * content frame, a usage frame or `[DONE]` is a comment/keep-alive and ignored —
+ * a malformed frame must not break an otherwise healthy answer.
+ */
+function parseStreamFrame(line: string): StreamFrame | null {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("data:")) return null;
+  const data = trimmed.slice(5).trim();
+  if (!data) return null;
+  if (data === "[DONE]") return { done: true, text: null, usage: null };
+  let payload: unknown;
+  try { payload = JSON.parse(data); } catch { return null; }
+  if (!payload || typeof payload !== "object") return null;
+  const choices = (payload as { choices?: unknown }).choices;
+  const first: unknown = Array.isArray(choices) ? choices[0] : undefined;
+  const delta = first && typeof first === "object" ? (first as { delta?: unknown }).delta : undefined;
+  const message = first && typeof first === "object" ? (first as { message?: unknown }).message : undefined;
+  const deltaContent = delta && typeof delta === "object" ? (delta as { content?: unknown }).content : undefined;
+  const messageContent = message && typeof message === "object" ? (message as { content?: unknown }).content : undefined;
+  const content = typeof deltaContent === "string" ? deltaContent : typeof messageContent === "string" ? messageContent : null;
+  const usageRaw = (payload as { usage?: unknown }).usage;
+  const usage = usageRaw && typeof usageRaw === "object" ? readUsage(payload) : null;
+  if (content === null && usage === null) return null;
+  return { done: false, text: content, usage };
+}
+
+/**
+ * Streaming sibling of `llmChatDetailed` (design §6.3).
+ *
+ * Calls `onDelta` per content fragment and resolves the concatenated text and
+ * usage. A stream that fails **before the first token** falls back once to the
+ * non-streaming call; after the first token the partial text is returned with
+ * `code: "stream_interrupted"` so the caller can store what did arrive and
+ * label it honestly. `onDelta` is best-effort: a disconnected client must not
+ * turn a provider answer into a failed request.
+ */
+export async function llmChatStreamDetailed(
+  messages: LLMChatMessage[],
+  opts: LLMOptions,
+  onDelta: (text: string) => void,
+): Promise<LLMStreamOutcome> {
+  if (pauseState().ai) {
+    logPauseRefusal("llm");
+    return { ok: false, code: "ai_paused", retryable: false, streamed: true };
+  }
+  const { apiKey, baseUrl, model, configured, usingOpenCodeBase } = resolveLLMConfig();
+  if (!configured || !apiKey) {
+    console.error("[llm] unavailable", { category: "provider_unconfigured" });
+    return { ok: false, code: "provider_unconfigured", retryable: false, streamed: true };
+  }
+
+  const controller = new AbortController();
+  const timeoutMs = Math.min(opts.timeoutMs ?? 20_000, MAX_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutFailure = (): LLMStreamOutcome => ({ ok: false, code: "timeout", retryable: false, usagePending: true, streamed: true });
+
+  // The one non-streaming retry, only while nothing has been shown to the owner.
+  const fallback = async (): Promise<LLMStreamOutcome> => {
+    clearTimeout(timeout);
+    const outcome = await llmChatDetailed(messages, { ...opts, timeoutMs });
+    return outcome.ok
+      ? { ok: true, result: outcome.result, streamed: false }
+      : { ...outcome, streamed: false };
+  };
+
+  try {
+    let resp: Response;
+    try {
+      resp = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: chatHeaders(apiKey, usingOpenCodeBase, opts),
+        body: JSON.stringify(chatBody(model, messages, opts, usingOpenCodeBase, true)),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (controller.signal.aborted) return timeoutFailure();
+      void error;
+      return await fallback();
+    }
+    if (!resp.ok) return await fallback();
+    const body = resp.body;
+    if (!body) return await fallback();
+
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let text = "";
+    let usage: LLMUsage = { inputTokens: null, outputTokens: null };
+    let sawToken = false;
+    let finished = false;
+
+    const consume = (line: string) => {
+      const frame = parseStreamFrame(line);
+      if (!frame) return;
+      if (frame.done) { finished = true; return; }
+      if (frame.usage) usage = frame.usage;
+      if (frame.text !== null && frame.text !== "") {
+        sawToken = true;
+        text += frame.text;
+        try { onDelta(frame.text); } catch { /* the reader went away; keep the text */ }
+      }
+    };
+
+    try {
+      while (!finished) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let index = buffer.indexOf("\n");
+        while (index >= 0) {
+          consume(buffer.slice(0, index).replace(/\r$/, ""));
+          buffer = buffer.slice(index + 1);
+          if (finished) break;
+          index = buffer.indexOf("\n");
+        }
+      }
+      if (!finished && buffer.trim()) consume(buffer);
+    } catch (error) {
+      if (controller.signal.aborted) return timeoutFailure();
+      void error;
+      // A broken transport after a token is a partial answer, not a silent one.
+      return sawToken
+        ? { ok: false, code: "stream_interrupted", retryable: false, text, usage, streamed: true }
+        : await fallback();
+    }
+
+    const trimmed = text.trim();
+    if (!trimmed) return sawToken ? { ok: false, code: "no_model_output", retryable: false, usage, streamed: true } : await fallback();
+    return { ok: true, result: { text: trimmed, usage }, streamed: true };
+  } finally {
+    clearTimeout(timeout);
+  }
+}

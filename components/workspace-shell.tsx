@@ -90,7 +90,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
   const current = destinationFor(pathname, base)
   const isNewAction = pathname === `${base}/actions/new`
   const isActionDetail = !isNewAction && pathname.startsWith(`${base}/actions/`)
-  const isConversation = workspace.conversationEnabled && pathname === `${base}/conversation`
+  const isConversation = workspace.conversationEnabled && (pathname === `${base}/conversation` || pathname.startsWith(`${base}/conversation/`))
   const workspaceSection = isConversation ? d.discussion : isNewAction ? t.context.newAction : isActionDetail ? t.context.review : t.nav[current ?? "today"]
   const assistantSurface: AssistantSurface = isNewAction
     ? "create"
