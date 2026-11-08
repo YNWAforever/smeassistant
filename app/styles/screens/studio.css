@@ -1,4 +1,73 @@
 @layer screens {
+  .studio-evidence {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 0 8px;
+  }
+  .studio-evidence-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .studio-evidence-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 240px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px;
+  }
+  .studio-evidence-chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .studio-evidence-chip svg {
+    width: 12px;
+    height: 12px;
+    flex: none;
+  }
+  .studio-evidence-chip button {
+    display: inline-flex;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    color: inherit;
+  }
+  .studio-evidence-panel {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 12px;
+    max-height: 220px;
+    overflow: auto;
+  }
+  .studio-evidence-panel ul {
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0;
+    display: grid;
+    gap: 4px;
+  }
+  .studio-evidence-panel label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .studio-evidence-group {
+    font-weight: 700;
+    margin: 6px 0 4px;
+  }
+  .studio-evidence-limit {
+    color: var(--muted-foreground, inherit);
+    margin: 0;
+  }
+
   .studio-citations {
     border-top: 1px solid var(--border);
     padding-top: 8px;

@@ -3,7 +3,7 @@ import { StudioLocationNotFoundError, studioRepository, toStudioConversation } f
 import { authorizationOrUnavailable } from "@/lib/security/authorization-boundary";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { conversationStudioEnabled } from "@/lib/studio/flag";
-import { STUDIO_MESSAGE_MAX, STUDIO_TITLE_MAX } from "@/lib/studio/types";
+import { STUDIO_MESSAGE_MAX, STUDIO_TITLE_MAX, type StudioCitationRef } from "@/lib/studio/types";
 import { conversationHomeEnabled } from "@/lib/workspace/conversation-flag";
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
 import { ConversationDocumentError, listConversationDocuments } from "@/lib/workspace/conversation-documents";
@@ -70,13 +70,13 @@ export async function POST(request: Request): Promise<Response> {
   if (!auth.ok) return authFailure(auth);
   if (locationId && !inLocationScope(auth.membership, locationId)) return studioError("not_found");
 
-  let documents: Array<{ documentVersionId: string; title: string; truncated: boolean }> = [];
+  let documents: StudioCitationRef[] = [];
   if (documentVersionIds.length) {
     try {
       documents = (await listConversationDocuments(
         { workspaceId: auth.membership.workspaceId, locationId: locationId ?? null },
         documentVersionIds as string[],
-      )).map((version) => ({ documentVersionId: version.id, title: version.title, truncated: version.truncated }));
+      )).map((version) => ({ source: "document" as const, documentVersionId: version.id, title: version.title, truncated: version.truncated }));
     } catch (error) {
       if (error instanceof ConversationDocumentError) return studioError(error.code === "document_not_found" ? "not_found" : "invalid_input");
       return studioError("unavailable");

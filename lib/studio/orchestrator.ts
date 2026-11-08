@@ -17,7 +17,7 @@ import {
   studioTurnKind,
   STUDIO_PROMPT_VERSION,
   type StudioClassification,
-  type StudioDocumentContext,
+  type StudioEvidenceContext,
   type StudioTurnKind,
 } from "./prompt";
 import {
@@ -103,14 +103,14 @@ export interface StudioTurnInput {
   db: StudioTurnStore;
   /** `buildStudioBriefing` result: authorised rows and the rendered system block. */
   briefing: StudioBriefingResult;
-  /** Documents the owner attached to this turn (convergence slice 3). */
-  documents?: StudioCitationRef[];
+  /** Workbench items the owner attached to this turn (documents/briefs). */
+  evidenceRefs?: StudioCitationRef[];
   /**
-   * Re-reads authorised document text for the turns being answered. The route
+   * Re-reads authorised evidence text for the turns being answered. The route
    * injects it so the orchestrator never imports a database or storage module;
    * a failure degrades to a normal grounded answer.
    */
-  loadDocuments?: (ids: string[]) => Promise<StudioDocumentContext[]>;
+  loadEvidence?: (refs: StudioCitationRef[]) => Promise<StudioEvidenceContext[]>;
   llm: StudioTurnLlm;
   liveAssistant?: StudioTurnLiveAssistant;
   emit: StudioTurnEmit;
@@ -235,24 +235,29 @@ export async function runStudioTurn(input: StudioTurnInput): Promise<StudioTurnR
       }
     }
     const history = historyOf(historyMessages);
-    // Documents attached to an earlier turn (an imported local thread or an
-    // explicit citation) are re-read from the same authorised scope each turn,
-    // so a document revoked in the workbench cannot be replayed from the thread.
-    const citationIds = [...new Set([
-      ...historyMessages.flatMap((message) => message.parts.flatMap((part) => (
-        part.kind === "citation" ? part.refs.map((ref) => ref.documentVersionId) : []
-      ))),
-      ...(input.documents?.map((document) => document.documentVersionId) ?? []),
-    ])].slice(0, 8);
-    let documents: StudioDocumentContext[] = [];
-    if (input.loadDocuments && citationIds.length) {
-      try { documents = await input.loadDocuments(citationIds); } catch { documents = []; }
+    // Documents and search briefs attached to an earlier turn are re-read from
+    // the same authorised scope each turn, so a revoked item cannot be replayed
+    // from the thread.
+    const evidenceRefs = new Map<string, StudioCitationRef>();
+    const refKey = (ref: StudioCitationRef): string =>
+      ref.source === "document" ? `document:${ref.documentVersionId}` : `search_brief:${ref.searchBriefId}`;
+    for (const message of historyMessages) {
+      for (const part of message.parts) {
+        if (part.kind !== "citation") continue;
+        for (const ref of part.refs) if (!evidenceRefs.has(refKey(ref))) evidenceRefs.set(refKey(ref), ref);
+      }
+    }
+    for (const ref of input.evidenceRefs ?? []) if (!evidenceRefs.has(refKey(ref))) evidenceRefs.set(refKey(ref), ref);
+    const evidenceToLoad = [...evidenceRefs.values()].slice(0, 8);
+    let documents: StudioEvidenceContext[] = [];
+    if (input.loadEvidence && evidenceToLoad.length) {
+      try { documents = await input.loadEvidence(evidenceToLoad); } catch { documents = []; }
     }
 
     await emitter.send({ type: "status", stage: "reading" });
 
     const userParts: StudioMessagePart[] = [{ kind: "text", text }];
-    if (input.documents?.length) userParts.push({ kind: "citation", refs: input.documents });
+    if (input.evidenceRefs?.length) userParts.push({ kind: "citation", refs: input.evidenceRefs });
 
     let userMessage: StudioMessage;
     try {
@@ -390,7 +395,7 @@ async function persistAndEmit(
 interface AnswerInput extends ExecuteCommon {
   text: string;
   history: Array<{ role: "user" | "assistant"; content: string }>;
-  documents: StudioDocumentContext[];
+  documents: StudioEvidenceContext[];
   classification: Extract<StudioClassification, { intent: "answer" }>;
 }
 

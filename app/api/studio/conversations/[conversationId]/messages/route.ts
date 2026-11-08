@@ -1,6 +1,7 @@
 import { authorizeWorkspaceRequest, inLocationScope } from "@/lib/auth";
 import { AssistantAccessError } from "@/lib/assistant/errors";
 import { artifactRepository } from "@/lib/repositories/artifacts";
+import { conversationSearchRepository } from "@/lib/repositories/conversation-search";
 import { studioRepository } from "@/lib/repositories/studio";
 import { checkAiBudget, type AiBudgetDecision } from "@/lib/budgets/ai";
 import { authorizationOrUnavailable } from "@/lib/security/authorization-boundary";
@@ -9,10 +10,12 @@ import { buildStudioBriefing } from "@/lib/studio/context";
 import { isRetryableStudioError, studioErrorMessage } from "@/lib/studio/errors";
 import { conversationStudioEnabled } from "@/lib/studio/flag";
 import { runStudioTurn } from "@/lib/studio/orchestrator";
+import type { StudioEvidenceContext } from "@/lib/studio/prompt";
 import { acquireStudioTurnLock } from "@/lib/studio/turn-lock";
-import { STUDIO_MESSAGE_MAX, type StudioErrorCode, type StudioStreamEvent } from "@/lib/studio/types";
+import { STUDIO_MESSAGE_MAX, type StudioCitationRef, type StudioErrorCode, type StudioStreamEvent } from "@/lib/studio/types";
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
 import { ConversationDocumentError, listConversationDocuments } from "@/lib/workspace/conversation-documents";
+import type { SearchBrief } from "@/lib/workspace/search-gap";
 import {
   STUDIO_SSE_HEADERS,
   authFailure,
@@ -89,6 +92,15 @@ export async function POST(
   if (documentVersionIds.some((id) => id === null) || new Set(documentVersionIds).size !== documentVersionIds.length) {
     return studioError("invalid_input");
   }
+  const rawBriefIds = body.searchBriefIds;
+  if (rawBriefIds !== undefined && (!Array.isArray(rawBriefIds) || rawBriefIds.length > 3)) return studioError("invalid_input");
+  const searchBriefIds = rawBriefIds === undefined
+    ? []
+    : (rawBriefIds as unknown[]).map((id) => optionalUuid(id));
+  if (searchBriefIds.some((id) => id === null) || new Set(searchBriefIds).size !== searchBriefIds.length) {
+    return studioError("invalid_input");
+  }
+  if (documentVersionIds.length + searchBriefIds.length > 5) return studioError("invalid_input");
 
   const auth = await authorizationOrUnavailable(() => authorizeWorkspaceRequest({ id: workspaceId }));
   if (!auth) return studioError("unavailable");
@@ -120,29 +132,71 @@ export async function POST(
   // for; the repository enforces that, and this restates it for the audit row.
   if (conversation.workspace_id !== membership.workspaceId) return jsonStatus("not_found");
 
-  // Attached workbench documents are re-read here, in the same workspace and
-  // location scope as the conversation; the extracted text never travels
-  // through the browser and a missing/foreign version is rejected before SSE.
+  // Attached workbench evidence (documents and approved search briefs) is
+  // re-read here, in the same workspace/location scope as the conversation; the
+  // text never travels through the browser and a missing/foreign item is
+  // rejected before SSE.
   const documentScope = { workspaceId: membership.workspaceId, locationId: effectiveLocationId ?? null };
-  let documents: Array<{ documentVersionId: string; title: string; text: string; truncated: boolean }> = [];
-  if (documentVersionIds.length) {
+  const briefLocale = locale;
+  const evidenceCache = new Map<string, StudioEvidenceContext>();
+  const evidenceKey = (ref: StudioCitationRef): string =>
+    ref.source === "document" ? `document:${ref.documentVersionId}` : `search_brief:${ref.searchBriefId}`;
+
+  const searchBriefText = (brief: SearchBrief): string => [
+    brief.title,
+    `Missing: ${brief.missing}`,
+    `Why it matters: ${brief.why}`,
+    "Steps:",
+    ...brief.steps.map((step, index) => `${index + 1}. ${step}`),
+    `Citation: ${brief.citation}`,
+  ].join("\n");
+
+  async function loadEvidence(refs: StudioCitationRef[]): Promise<StudioEvidenceContext[]> {
+    const documentIds = [...new Set(refs.filter((ref) => ref.source === "document").map((ref) => ref.documentVersionId))];
+    const briefIds = [...new Set(refs.filter((ref) => ref.source === "search_brief").map((ref) => ref.searchBriefId))];
+    const loaded: StudioEvidenceContext[] = [];
+    if (documentIds.length) {
+      const versions = await listConversationDocuments(documentScope, documentIds);
+      const byId = new Map(versions.map((version) => [version.id, version]));
+      for (const id of documentIds) {
+        const version = byId.get(id);
+        if (!version) throw new ConversationDocumentError("document_not_found");
+        loaded.push({ source: "document", id: version.id, title: version.title, text: version.text, truncated: version.truncated });
+      }
+    }
+    if (briefIds.length) {
+      if (!effectiveLocationId) throw new Error("studio_search_brief_scope_missing");
+      if (!briefLocale) throw new Error("studio_search_brief_locale_missing");
+      const repository = conversationSearchRepository();
+      for (const id of briefIds) {
+        const record = await repository.find({ workspaceId: membership.workspaceId, locationId: effectiveLocationId }, id);
+        const brief = record?.approvedAt && record.brief ? record.brief[briefLocale] : null;
+        if (!brief) throw new Error("studio_search_brief_not_found");
+        loaded.push({ source: "search_brief", id, title: brief.title, text: searchBriefText(brief), truncated: false });
+      }
+    }
+    for (const context of loaded) evidenceCache.set(`${context.source}:${context.id}`, context);
+    return loaded;
+  }
+
+  const evidenceRequests: StudioCitationRef[] = [
+    ...(documentVersionIds as string[]).map((id): StudioCitationRef => ({ source: "document", documentVersionId: id, title: "", truncated: false })),
+    ...(searchBriefIds as string[]).map((id): StudioCitationRef => ({ source: "search_brief", searchBriefId: id, title: "", truncated: false })),
+  ];
+  let evidenceRefs: StudioCitationRef[] = [];
+  if (evidenceRequests.length) {
     try {
-      documents = (await listConversationDocuments(documentScope, documentVersionIds as string[])).map((version) => ({
-        documentVersionId: version.id,
-        title: version.title,
-        text: version.text,
-        truncated: version.truncated,
-      }));
+      const loaded = await loadEvidence(evidenceRequests);
+      evidenceRefs = loaded.map((context) => context.source === "document"
+        ? { source: "document", documentVersionId: context.id, title: context.title, truncated: context.truncated }
+        : { source: "search_brief", searchBriefId: context.id, title: context.title, truncated: context.truncated });
     } catch (error) {
       if (error instanceof ConversationDocumentError) return studioError(error.code === "document_not_found" ? "not_found" : "invalid_input");
+      if (error instanceof Error && error.message === "studio_search_brief_not_found") return studioError("not_found");
+      if (error instanceof Error && error.message === "studio_search_brief_scope_missing") return studioError("invalid_input");
       return jsonStatus("unavailable");
     }
   }
-  const citationRefs = documents.map((document) => ({
-    documentVersionId: document.documentVersionId,
-    title: document.title,
-    truncated: document.truncated,
-  }));
 
   let release: Awaited<ReturnType<typeof acquireStudioTurnLock>>;
   try {
@@ -192,15 +246,11 @@ export async function POST(
           locationId: effectiveLocationId,
           db: studioTurnStore(repository),
           briefing,
-          documents: citationRefs,
-          loadDocuments: async (ids) => {
-            const versions = await listConversationDocuments(documentScope, ids);
-            return versions.map((version) => ({
-              documentVersionId: version.id,
-              title: version.title,
-              text: version.text,
-              truncated: version.truncated,
-            }));
+          evidenceRefs,
+          loadEvidence: async (refs) => {
+            const missing = refs.filter((ref) => !evidenceCache.has(evidenceKey(ref)));
+            if (missing.length) await loadEvidence(missing);
+            return refs.map((ref) => evidenceCache.get(evidenceKey(ref))).filter((context): context is StudioEvidenceContext => Boolean(context));
           },
           llm: studioTurnLlm(),
           emit,

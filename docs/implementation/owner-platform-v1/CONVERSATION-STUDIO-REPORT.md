@@ -113,6 +113,14 @@ The workbench and the Studio still keep two thread stores in this release: brows
 - **Copy:** one new key (`message.documents`) in en, zh-HK and zh-TW.
 - **Verified:** prompt fence/cap tests, repository citation parsing and import-attachment tests, route attachment tests (invalid ids before auth, scope re-read, missing document 404), Docker integration (message parts round-trip on real PostgreSQL, 11/11), Studio browser acceptance unchanged (4/4), typecheck/lint, `next build`, and the JS budget unchanged (`/conversation` 254/300 KB, Studio 248/300 KB).
 
+### 1.10 v1.1 slice 1: Studio evidence picker — documents and approved search briefs (2026-11-09)
+
+- **Wire contract:** `StudioCitationRef` is now a discriminated union (`document` | `search_brief`); legacy persisted document refs parse unchanged. `StudioSendMessageRequest` accepts `documentVersionIds` (≤5) and `searchBriefIds` (≤3, ≤5 combined).
+- **Server grounding:** `POST /api/studio/conversations/[id]/messages` re-reads every selected item in workspace/location scope before SSE. Documents come from `conversation_document_versions`; briefs come from `conversation_search_briefs` and must be approved and localized (`brief[locale]`). Missing/foreign/unapproved items are 404; a brief without a single-location scope is 400. Citation refs persist on the user message and every later answer re-reads them through the injected `loadEvidence` callback.
+- **Prompt:** `fenceEvidence` fences documents and briefs as DATA (4,000 chars/item, 12,000 total) with per-item labels; the system prompt keeps them out of “measured scan evidence”.
+- **UI:** new `StudioEvidencePicker` in the Studio composer — opens a panel of workbench documents and approved briefs for the selected location, lets the owner select up to five, shows removable chips, disables at the cap, and is disabled while streaming/off a single location. Five new trilingual strings.
+- **Tests:** messages-route contract 35/35 (including brief approval/localization, missing/foreign, combined caps), picker component 3/3, prompt fence/cap, repository parser for both citation kinds, Docker integration 11/11, Studio browser acceptance 4/4. Typecheck and lint clean; build green; JS budget unchanged (`/conversation` 254/300 KB, Studio 249/300 KB). Full unit suite 6840/6841 with one unrelated mail-signature flake that passes in isolation.
+
 ### Bug caught by visual verification (pre-integration branch)
 
 The pre-integration e2e/screenshot round exposed two issues that text assertions missed: `buildShellWorkspace` accepted `studioEnabled` but did not copy it into `ShellWorkspace` (the page rendered while nav stayed hidden), and the fixture returned classifier JSON as answer prose. The fixture fix (real SSE + prose) and the no-raw-JSON assertion are kept; the shell flag forwarding became obsolete under Path A, which mounts the entry in the conversation workbench instead of the shell nav.

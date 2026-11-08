@@ -3,7 +3,7 @@ import { DRAFT_AGENTS } from "@/lib/assistant/live";
 import { nextStepKinds } from "@/lib/pocket-assistant/contracts";
 import {
   fenceBriefing,
-  fenceDocuments,
+  fenceEvidence,
   fenceOwnerMessage,
   isStudioDraftIntent,
   parseStudioClassification,
@@ -198,26 +198,34 @@ describe("studio prompt contract", () => {
     expect(studioTurnKind({ intent: "explain", intentId: "explain_change", actionId: null, versionId: null, evidenceIds: [], nextStep: null })).toBe("explain");
   });
 
-  it("fences owner-attached documents as data and keeps their text in the system prompt", () => {
+  it("fences attached documents and search briefs as data and keeps their text in the system prompt", () => {
     const text = `Opening hours: 09:00-18:00 ${"x".repeat(5_000)}`;
-    const fenced = fenceDocuments([{ documentVersionId: "doc-1", title: "Shop facts.pdf", text, truncated: false }]);
+    const fenced = fenceEvidence([
+      { source: "document", id: "doc-1", title: "Shop facts.pdf", text, truncated: false },
+      { source: "search_brief", id: "brief-1", title: "Review queries", text: "Missing: review queries", truncated: false },
+    ]);
     expect(fenced).toContain("Shop facts.pdf");
     expect(fenced).toContain("Opening hours: 09:00-18:00");
-    expect(fenced).toContain("<<<STUDIO_DOCUMENTS>>>");
+    expect(fenced).toContain("search brief: Review queries");
+    expect(fenced).toContain("<<<STUDIO_EVIDENCE>>>");
     // Capped: one document never exceeds its 4,000-character slice.
-    expect(fenced.length).toBeLessThan(6_000);
+    expect(fenced.length).toBeLessThan(6_500);
 
     const messages = studioAnswerMessages({
       locale: "en",
       systemBriefing: "BRIEFING",
       history: [],
       message: "What are the hours?",
-      documents: [{ documentVersionId: "doc-1", title: "Shop facts.pdf", text: "Opening hours: 09:00-18:00", truncated: false }],
+      documents: [
+        { source: "document", id: "doc-1", title: "Shop facts.pdf", text: "Opening hours: 09:00-18:00", truncated: false },
+        { source: "search_brief", id: "brief-1", title: "Review queries", text: "Missing: review queries", truncated: false },
+      ],
     });
     expect(messages[0].role).toBe("system");
     expect(messages[0].content).toContain("BRIEFING");
-    expect(messages[0].content).toContain("<<<STUDIO_DOCUMENTS>>>");
+    expect(messages[0].content).toContain("<<<STUDIO_EVIDENCE>>>");
     expect(messages[0].content).toContain("Opening hours: 09:00-18:00");
+    expect(messages[0].content).toContain("Missing: review queries");
     expect(messages[0].content).not.toContain("<<<STUDIO_OWNER_MESSAGE>>>");
   });
 });
