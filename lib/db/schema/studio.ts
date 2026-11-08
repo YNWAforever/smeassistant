@@ -74,3 +74,22 @@ export const studioMessages = pgTable("studio_messages", {
   index("studio_messages_conversation_seq_idx").using("btree", sql.raw("conversation_id, seq")),
   pgPolicy("server_application", { for: "all", to: "sme_app_runtime", using: sql`true`, withCheck: sql`true` }),
 ]).enableRLS();
+
+// Shared-conversation membership added by 0022 (v1.1 P1.3).
+export const studioConversationMembers = pgTable("studio_conversation_members", {
+  conversationId: uuid("conversation_id").notNull(),
+  workspaceId: uuid("workspace_id").notNull(),
+  userId: uuid("user_id").notNull(),
+  role: text("role").notNull().default(sql.raw("'editor'::text")),
+  addedBy: uuid("added_by"),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().default(sql.raw("now()")),
+}, t => [
+  check("studio_conversation_members_role_check", sql.raw("(role = ANY (ARRAY['editor'::text, 'viewer'::text]))")),
+  foreignKey({ name: "studio_conversation_members_conversation_id_fkey", columns: [t.conversationId], foreignColumns: [((): AnyPgColumn => studioConversations.id)()] }).onDelete("cascade"),
+  foreignKey({ name: "studio_conversation_members_workspace_id_fkey", columns: [t.workspaceId], foreignColumns: [((): AnyPgColumn => workspaces.id)()] }).onDelete("cascade"),
+  foreignKey({ name: "studio_conversation_members_user_id_fkey", columns: [t.userId], foreignColumns: [((): AnyPgColumn => appUsers.id)()] }).onDelete("cascade"),
+  foreignKey({ name: "studio_conversation_members_added_by_fkey", columns: [t.addedBy], foreignColumns: [((): AnyPgColumn => appUsers.id)()] }).onDelete("set null"),
+  primaryKey({ name: "studio_conversation_members_pkey", columns: [t.conversationId, t.userId] }),
+  index("studio_conversation_members_user_idx").using("btree", sql.raw("workspace_id, user_id, created_at DESC")),
+  pgPolicy("server_application", { for: "all", to: "sme_app_runtime", using: sql`true`, withCheck: sql`true` }),
+]).enableRLS();

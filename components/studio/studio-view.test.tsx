@@ -34,7 +34,7 @@ const conversationA: StudioConversation = {
   locationId: null,
   createdAt: "2026-11-08T09:00:00.000Z",
   updatedAt: "2026-11-08T10:00:00.000Z",
-  lastMessageAt: "2026-11-08T10:00:00.000Z",
+  lastMessageAt: "2026-11-08T10:00:00.000Z", accessRole: "owner", shared: false,
 }
 
 const conversationB: StudioConversation = {
@@ -44,7 +44,7 @@ const conversationB: StudioConversation = {
   locationId: null,
   createdAt: "2026-11-07T09:00:00.000Z",
   updatedAt: "2026-11-07T10:00:00.000Z",
-  lastMessageAt: "2026-11-07T10:00:00.000Z",
+  lastMessageAt: "2026-11-07T10:00:00.000Z", accessRole: "owner", shared: false,
 }
 
 function userMessage(seq: number, content: string, conversation = conversationA): StudioMessage {

@@ -38,6 +38,30 @@ export type StudioLocale = PrototypeLocale
 export const studioConversationStatuses = ["active", "archived"] as const
 export type StudioConversationStatus = (typeof studioConversationStatuses)[number]
 
+export const studioConversationAccessRoles = ["owner", "editor", "viewer"] as const
+export type StudioConversationAccessRole = (typeof studioConversationAccessRoles)[number]
+
+export const studioConversationMemberRoles = ["editor", "viewer"] as const
+export type StudioConversationMemberRole = (typeof studioConversationMemberRoles)[number]
+
+export type StudioConversationMember = {
+  conversationId: string
+  userId: string
+  role: StudioConversationMemberRole
+  email: string
+  addedBy: string | null
+  createdAt: string
+}
+
+export type StudioShareCandidate = { userId: string; email: string; workspaceRole: string }
+
+export type StudioConversationMembersResponse = {
+  members: StudioConversationMember[]
+  candidates: StudioShareCandidate[]
+  canManage: boolean
+  accessRole: StudioConversationAccessRole
+}
+
 export type StudioConversation = {
   id: string
   /** Empty until the first message derives one; the client shows a localised fallback. */
@@ -47,6 +71,10 @@ export type StudioConversation = {
   createdAt: string
   updatedAt: string
   lastMessageAt: string
+  /** The caller's access to this conversation (creator = owner). */
+  accessRole: StudioConversationAccessRole
+  /** True when the caller is not the creator. */
+  shared: boolean
 }
 
 export const studioMessageRoles = ["user", "assistant"] as const

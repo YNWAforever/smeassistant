@@ -16,6 +16,7 @@ import {
   STUDIO_TITLE_MAX,
   type StudioArtifactPart,
   type StudioConversation,
+  type StudioConversationAccessRole,
   type StudioConversationStatus,
   type StudioMessage,
   type StudioMessagePart,
@@ -82,6 +83,22 @@ export class StudioConversationArchivedError extends StudioRepositoryError {
   }
 }
 
+/** The caller is a read-only member of a shared conversation. */
+export class StudioConversationForbiddenError extends StudioRepositoryError {
+  constructor() {
+    super("studio_conversation_forbidden");
+    this.name = "StudioConversationForbiddenError";
+  }
+}
+
+/** The share target is not an accepted member of this workspace. */
+export class StudioShareTargetNotMemberError extends StudioRepositoryError {
+  constructor() {
+    super("studio_share_target_not_member");
+    this.name = "StudioShareTargetNotMemberError";
+  }
+}
+
 /** A conversation cannot be attached to a location outside its own workspace. */
 export class StudioLocationNotFoundError extends StudioRepositoryError {
   constructor() {
@@ -105,6 +122,8 @@ export type StudioConversationRow = {
   created_at: string;
   updated_at: string;
   last_message_at: string;
+  /** Access of the requesting actor; absent on create/import returns (owner). */
+  access_role?: StudioConversationAccessRole;
 };
 
 export type StudioMessageRow = {
@@ -188,6 +207,26 @@ export type StudioImportBulkInput = {
 export type StudioImportBulkResult = {
   conversations: StudioConversationRow[];
   messageCount: number;
+};
+
+/** A shared conversation member (v1.1 P1.3). */
+export type StudioConversationMemberRole = "editor" | "viewer";
+
+export type StudioConversationMemberRow = {
+  conversation_id: string;
+  workspace_id: string;
+  user_id: string;
+  role: StudioConversationMemberRole;
+  added_by: string | null;
+  /** ISO-8601 UTC, formatted by the query. */
+  created_at: string;
+  /** Display label for the share UI; never used for authorization. */
+  user_email: string;
+};
+
+export type StudioAddConversationMemberInput = StudioConversationRef & {
+  userId: string;
+  role: StudioConversationMemberRole;
 };
 
 export const STUDIO_IMPORT_MAX_THREADS = 25;
@@ -481,6 +520,7 @@ export function parseStudioParts(value: unknown): StudioMessagePart[] {
 
 /** Map a persisted conversation row to the wire contract. */
 export function toStudioConversation(row: StudioConversationRow): StudioConversation {
+  const accessRole: StudioConversationAccessRole = row.access_role ?? "owner";
   return {
     id: row.id,
     title: row.title,
@@ -489,6 +529,8 @@ export function toStudioConversation(row: StudioConversationRow): StudioConversa
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastMessageAt: row.last_message_at,
+    accessRole,
+    shared: accessRole !== "owner",
   };
 }
 
@@ -516,9 +558,14 @@ export function studioRepository(client?: Executor, transaction: StudioTransacti
       return operation(async () =>
         (
           await db().query<StudioConversationRow>(
-            `SELECT ${conversationColumns("c.")} FROM studio_conversations c
-             WHERE c.workspace_id=$1 AND c.created_by=$2 AND c.status='active'
-              AND ($3::uuid IS NULL OR c.location_id=$3 OR c.location_id IS NULL)
+            `SELECT ${conversationColumns("c.")},
+                    CASE WHEN c.created_by=$2 THEN 'owner' ELSE sm.role END AS access_role
+             FROM studio_conversations c
+             LEFT JOIN studio_conversation_members sm
+               ON sm.conversation_id=c.id AND sm.workspace_id=$1 AND sm.user_id=$2
+             WHERE c.workspace_id=$1 AND c.status='active'
+               AND (c.created_by=$2 OR sm.user_id IS NOT NULL)
+               AND ($3::uuid IS NULL OR c.location_id=$3 OR c.location_id IS NULL)
              ORDER BY c.last_message_at DESC,c.id DESC LIMIT $4`,
             [input.workspaceId, input.actorId, input.locationId ?? null, limit],
           )
@@ -536,8 +583,13 @@ export function studioRepository(client?: Executor, transaction: StudioTransacti
       return operation(async () => {
         const row = (
           await db().query<StudioConversationRow>(
-            `SELECT ${conversationColumns()} FROM studio_conversations
-             WHERE id=$1 AND workspace_id=$2 AND created_by=$3`,
+            `SELECT ${conversationColumns("c.")},
+                    CASE WHEN c.created_by=$3 THEN 'owner' ELSE sm.role END AS access_role
+             FROM studio_conversations c
+             LEFT JOIN studio_conversation_members sm
+               ON sm.conversation_id=c.id AND sm.workspace_id=$2 AND sm.user_id=$3
+             WHERE c.id=$1 AND c.workspace_id=$2
+               AND (c.created_by=$3 OR sm.user_id IS NOT NULL)`,
             [input.conversationId, input.workspaceId, input.actorId],
           )
         ).rows[0];
@@ -662,6 +714,137 @@ export function studioRepository(client?: Executor, transaction: StudioTransacti
     },
 
     /**
+     * Members of a conversation the caller can already see (creator or member).
+     * A foreign/unknown conversation returns null so the route answers 404.
+     */
+    listConversationMembers(input: StudioConversationRef): Promise<StudioConversationMemberRow[] | null> {
+      if (!isUuid(input.conversationId)) return Promise.resolve(null);
+      return operation(async () => {
+        const visible = (
+          await db().query<{ id: string }>(
+            `SELECT c.id FROM studio_conversations c
+             WHERE c.id=$1 AND c.workspace_id=$2
+               AND (c.created_by=$3 OR EXISTS(
+                 SELECT 1 FROM studio_conversation_members me
+                 WHERE me.conversation_id=c.id AND me.workspace_id=$2 AND me.user_id=$3))`,
+            [input.conversationId, input.workspaceId, input.actorId],
+          )
+        ).rows[0];
+        if (!visible) return null;
+        return (
+          await db().query<StudioConversationMemberRow>(
+            `SELECT m.conversation_id,m.workspace_id,m.user_id,m.role,m.added_by,
+                    ${ISO_UTC("m.created_at")} AS created_at,u.email AS user_email
+             FROM studio_conversation_members m
+             JOIN app_users u ON u.id=m.user_id
+             WHERE m.conversation_id=$1 AND m.workspace_id=$2
+             ORDER BY m.created_at,m.user_id`,
+            [input.conversationId, input.workspaceId],
+          )
+        ).rows;
+      });
+    },
+
+    /**
+     * Accepted workspace members who are not the creator or an existing member:
+     * the share picker's candidate list. Null when the caller cannot see the
+     * conversation.
+     */
+    listShareCandidates(input: StudioConversationRef): Promise<Array<{ userId: string; email: string; workspaceRole: string }> | null> {
+      if (!isUuid(input.conversationId)) return Promise.resolve(null);
+      return operation(async () => {
+        const visible = (
+          await db().query<{ id: string }>(
+            `SELECT c.id FROM studio_conversations c
+             WHERE c.id=$1 AND c.workspace_id=$2
+               AND (c.created_by=$3 OR EXISTS(
+                 SELECT 1 FROM studio_conversation_members me
+                 WHERE me.conversation_id=c.id AND me.workspace_id=$2 AND me.user_id=$3))`,
+            [input.conversationId, input.workspaceId, input.actorId],
+          )
+        ).rows[0];
+        if (!visible) return null;
+        return (
+          await db().query<{ userId: string; email: string; workspaceRole: string }>(
+            `SELECT wm.user_id AS "userId",u.email AS email,wm.role AS "workspaceRole"
+             FROM workspace_members wm
+             JOIN app_users u ON u.id=wm.user_id
+             WHERE wm.workspace_id=$1 AND wm.accepted_at IS NOT NULL
+               AND wm.user_id<>$2
+               AND NOT EXISTS(
+                 SELECT 1 FROM studio_conversation_members m
+                 WHERE m.conversation_id=$3 AND m.user_id=wm.user_id)
+             ORDER BY u.email`,
+            [input.workspaceId, input.actorId, input.conversationId],
+          )
+        ).rows;
+      });
+    },
+
+    /**
+     * Share an owned conversation with an accepted workspace member. Only the
+     * creator may share; a foreign conversation is "not found", never
+     * "forbidden". Re-sharing updates the role (owner cannot be demoted here).
+     */
+    addConversationMember(input: StudioAddConversationMemberInput): Promise<StudioConversationMemberRow> {
+      if (!isUuid(input.conversationId) || !isUuid(input.userId)) {
+        return Promise.reject(new StudioConversationNotFoundError());
+      }
+      if (input.userId === input.actorId) return Promise.reject(new Error("studio_share_self"));
+      return operation(() =>
+        transaction(async (tx) => {
+          const owned = (
+            await tx.query<{ id: string }>(
+              `SELECT id FROM studio_conversations
+               WHERE id=$1 AND workspace_id=$2 AND created_by=$3 FOR UPDATE`,
+              [input.conversationId, input.workspaceId, input.actorId],
+            )
+          ).rows[0];
+          if (!owned) throw new StudioConversationNotFoundError();
+          const member = (
+            await tx.query<{ user_id: string }>(
+              `SELECT wm.user_id FROM workspace_members wm
+               WHERE wm.workspace_id=$1 AND wm.user_id=$2 AND wm.accepted_at IS NOT NULL`,
+              [input.workspaceId, input.userId],
+            )
+          ).rows[0];
+          if (!member) throw new StudioShareTargetNotMemberError();
+          return (
+            await tx.query<StudioConversationMemberRow>(
+              `INSERT INTO studio_conversation_members(conversation_id,workspace_id,user_id,role,added_by)
+               VALUES($1,$2,$3,$4,$5)
+               ON CONFLICT (conversation_id,user_id)
+               DO UPDATE SET role=EXCLUDED.role,added_by=EXCLUDED.added_by
+               RETURNING conversation_id,workspace_id,user_id,role,added_by,${ISO_UTC("created_at")} AS created_at`,
+              [input.conversationId, input.workspaceId, input.userId, input.role, input.actorId],
+            )
+          ).rows[0];
+        }),
+      );
+    },
+
+    /** Remove a shared member. Owner only; returns true when a row was removed. */
+    removeConversationMember(input: StudioConversationRef & { userId: string }): Promise<boolean> {
+      if (!isUuid(input.conversationId) || !isUuid(input.userId)) return Promise.resolve(false);
+      return operation(async () => {
+        const owned = (
+          await db().query<{ id: string }>(
+            `SELECT id FROM studio_conversations
+             WHERE id=$1 AND workspace_id=$2 AND created_by=$3`,
+            [input.conversationId, input.workspaceId, input.actorId],
+          )
+        ).rows[0];
+        if (!owned) return false;
+        const removed = await db().query(
+          `DELETE FROM studio_conversation_members
+           WHERE conversation_id=$1 AND workspace_id=$2 AND user_id=$3`,
+          [input.conversationId, input.workspaceId, input.userId],
+        );
+        return (removed.rowCount ?? 0) > 0;
+      });
+    },
+
+    /**
      * One conversation's turns, ascending seq (oldest first), `limit` newest
      * turns below `beforeSeq`. The join is the scope proof: a message is only
      * readable through a conversation this member created in this workspace.
@@ -677,8 +860,12 @@ export function studioRepository(client?: Executor, transaction: StudioTransacti
         const rows = (
           await db().query<StudioMessageRow>(
             `SELECT ${messageColumns("m.")} FROM studio_messages m
-             JOIN studio_conversations c ON c.id=m.conversation_id AND c.workspace_id=m.workspace_id AND c.created_by=$3
-             WHERE m.workspace_id=$1 AND m.conversation_id=$2 AND ($4::integer IS NULL OR m.seq < $4)
+             JOIN studio_conversations c ON c.id=m.conversation_id AND c.workspace_id=m.workspace_id
+             WHERE m.workspace_id=$1 AND m.conversation_id=$2
+               AND (c.created_by=$3 OR EXISTS(
+                 SELECT 1 FROM studio_conversation_members sm
+                 WHERE sm.conversation_id=c.id AND sm.workspace_id=$1 AND sm.user_id=$3))
+               AND ($4::integer IS NULL OR m.seq < $4)
              ORDER BY m.seq DESC LIMIT $5`,
             [input.workspaceId, input.conversationId, input.actorId, beforeSeq, limit],
           )
@@ -709,13 +896,20 @@ export function studioRepository(client?: Executor, transaction: StudioTransacti
         transaction(async (tx) => {
           const conversation = (
             await tx.query<StudioConversationRow>(
-              `SELECT ${conversationColumns()} FROM studio_conversations
-               WHERE id=$1 AND workspace_id=$2 AND created_by=$3 FOR UPDATE`,
+              `SELECT ${conversationColumns("c.")},
+                      CASE WHEN c.created_by=$3 THEN 'owner' ELSE sm.role END AS access_role
+               FROM studio_conversations c
+               LEFT JOIN studio_conversation_members sm
+                 ON sm.conversation_id=c.id AND sm.workspace_id=$2 AND sm.user_id=$3
+               WHERE c.id=$1 AND c.workspace_id=$2
+                 AND (c.created_by=$3 OR sm.user_id IS NOT NULL)
+               FOR UPDATE OF c`,
               [input.conversationId, input.workspaceId, input.actorId],
             )
           ).rows[0];
           if (!conversation) throw new StudioConversationNotFoundError();
           if (conversation.status !== "active") throw new StudioConversationArchivedError();
+          if (conversation.access_role === "viewer") throw new StudioConversationForbiddenError();
 
           const seq = (
             await tx.query<{ seq: number }>(
@@ -755,7 +949,7 @@ export function studioRepository(client?: Executor, transaction: StudioTransacti
               [input.conversationId, input.workspaceId, input.actorId, title],
             )
           ).rows[0];
-          return { message, conversation: updated };
+          return { message, conversation: { ...updated, access_role: conversation.access_role } };
         }),
       );
     },

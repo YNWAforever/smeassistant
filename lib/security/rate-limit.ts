@@ -35,6 +35,7 @@ export type RateLimitScope =
   | "studio_message"
   | "studio_import"
   | "studio_import_bulk"
+  | "studio_share"
   | "preview_draft"
   | "rescan"
   | "brand_update"
@@ -147,6 +148,8 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // POST /api/studio/conversations/import-bulk: one call promotes many local
   // threads (up to 25 threads / 400 notes), so it is limited much tighter.
   studio_import_bulk: { limit: 5, windowSeconds: 60 * 60 },
+  // Conversation sharing (v1.1 P1.3): owner-only member add/remove.
+  studio_share: { limit: 60, windowSeconds: 60 * 60 },
   // POST /api/start/[slug]/preview (P4.5): unsaved review-reply preview drafts, 5 a day per source IP, fail-closed.
   preview_draft: { limit: 5, windowSeconds: 60 * 60 * 24 },
   // POST /api/workspaces/[id]/rescan (CLAUDE.md §3.2.3, Phase 6): keyed on the

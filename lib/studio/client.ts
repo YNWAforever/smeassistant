@@ -7,6 +7,10 @@ import {
   type StudioConversation,
   type StudioConversationDetailResponse,
   type StudioConversationListResponse,
+  type StudioConversationMember,
+  type StudioShareCandidate,
+  type StudioConversationMembersResponse,
+  type StudioConversationMemberRole,
   type StudioConversationStatus,
   type StudioErrorCode,
   type StudioMessage,
@@ -196,6 +200,82 @@ export async function importStudioConversationsBulk(
     : []
   if (conversations.length !== input.threads.length) return { ok: false, status: 201, code: "unavailable", error: "invalid_response" }
   return { ok: true, data: { conversations, messageCount: typeof result.data.messageCount === "number" ? result.data.messageCount : 0 } }
+}
+
+export async function listStudioConversationMembers(
+  workspaceId: string,
+  conversationId: string,
+): Promise<StudioClientResult<StudioConversationMembersResponse>> {
+  const result = await request<{ members?: unknown; candidates?: unknown; canManage?: unknown; accessRole?: unknown }>(
+    `/api/studio/conversations/${encodeURIComponent(conversationId)}/members?workspaceId=${encodeURIComponent(workspaceId)}`,
+  )
+  if (!result.ok) return result
+  const data = result.data
+  if (!isRecord(data) || !Array.isArray(data.members) || !Array.isArray(data.candidates)) {
+    return { ok: false, status: 200, code: "unavailable", error: "invalid_response" }
+  }
+  const members = data.members
+    .filter((member): member is Record<string, unknown> => isRecord(member) && typeof member.user_id === "string" && typeof member.user_email === "string")
+    .map((member) => ({
+      conversationId: typeof member.conversation_id === "string" ? member.conversation_id : "",
+      userId: member.user_id as string,
+      role: member.role === "viewer" ? "viewer" as const : "editor" as const,
+      email: member.user_email as string,
+      addedBy: typeof member.added_by === "string" ? member.added_by : null,
+      createdAt: typeof member.created_at === "string" ? member.created_at : "",
+    }))
+  return {
+    ok: true,
+    data: {
+      members,
+      candidates: data.candidates.filter((candidate): candidate is StudioShareCandidate => (
+        isRecord(candidate) && typeof candidate.userId === "string" && typeof candidate.email === "string"
+      )),
+      canManage: data.canManage === true,
+      accessRole: data.accessRole === "editor" || data.accessRole === "viewer" ? data.accessRole : "owner",
+    },
+  }
+}
+
+export async function addStudioConversationMember(
+  workspaceId: string,
+  conversationId: string,
+  userId: string,
+  role: StudioConversationMemberRole,
+): Promise<StudioClientResult<StudioConversationMember>> {
+  const result = await request<{ member?: unknown }>(
+    `/api/studio/conversations/${encodeURIComponent(conversationId)}/members`,
+    { method: "POST", body: { workspaceId, userId, role } },
+  )
+  if (!result.ok) return result
+  const member = isRecord(result.data) ? result.data.member : null
+  if (!isRecord(member) || typeof member.user_id !== "string" || typeof member.user_email !== "string") {
+    return { ok: false, status: 201, code: "unavailable", error: "invalid_response" }
+  }
+  return {
+    ok: true,
+    data: {
+      conversationId: typeof member.conversation_id === "string" ? member.conversation_id : conversationId,
+      userId: member.user_id,
+      role: member.role === "viewer" ? "viewer" : "editor",
+      email: member.user_email,
+      addedBy: typeof member.added_by === "string" ? member.added_by : null,
+      createdAt: typeof member.created_at === "string" ? member.created_at : "",
+    },
+  }
+}
+
+export async function removeStudioConversationMember(
+  workspaceId: string,
+  conversationId: string,
+  userId: string,
+): Promise<StudioClientResult<{ removed: true }>> {
+  const result = await request<{ removed?: unknown }>(
+    `/api/studio/conversations/${encodeURIComponent(conversationId)}/members?workspaceId=${encodeURIComponent(workspaceId)}&userId=${encodeURIComponent(userId)}`,
+    { method: "DELETE" },
+  )
+  if (!result.ok) return result
+  return { ok: true, data: { removed: true } }
 }
 
 export async function readStudioConversation(

@@ -129,6 +129,14 @@ The workbench and the Studio still keep two thread stores in this release: brows
 - **Copy:** three new trilingual keys (`legacyNotes`, `legacyHint`, `newPersistent`).
 - **Verified:** conversation-view component tests 20/20 (including persistent-first + reveal), build green, JS budget unchanged (`/conversation` 254/300 KB, Studio 248/300 KB), Studio browser acceptance 4/4 with the new reveal step. Full unit suite result recorded with the PR.
 
+### 1.12 v1.1 slice 3: shared team conversations (2026-11-09)
+
+- **Migration `0022_studio_conversation_members.sql`:** additive membership table (`conversation_id` + `user_id` key, workspace/user FKs, `editor`/`viewer` role check, `added_by`, cascade/set-null deletion rules, RLS + server-only policy + grants). The journal and exact catalog are pinned; `db:verify` passes with 49 tables / 566 columns / 267 constraints / 134 indexes.
+- **Repository access model:** the creator stays owner; members see and read a conversation through `studio_conversation_members`. List/get/message reads now join the membership table; appending locks the conversation as the creator or a member, refuses `viewer` writes with the typed `StudioConversationForbiddenError`, and carries the caller's `accessRole`/`shared` on the wire contract. Rename/archive/share/remove remain owner-only.
+- **Sharing API:** `GET/POST/DELETE /api/studio/conversations/[id]/members` lists members and accepted workspace candidates, shares as `editor`/`viewer` (owner only, 60/h rate limit), removes members, and writes `conversation.shared` / `conversation.member_removed` audit rows with ids/roles only. Foreign conversations are 404.
+- **UI:** owner sees a Share action in the Studio header; the dialog lists members, lets the owner add an accepted teammate as editor/viewer or remove one. A conversation shared read-only disables the composer and explains why. Five+ trilingual strings.
+- **Tests:** repository access/sharing unit tests (39 repo tests), members-route contract 8/8, share-dialog 2/2, Docker integration 12/12 (including editor continuation, viewer refusal, remove and cross-member isolation), schema/catalog verifier, typecheck/lint, build and JS budget (`/conversation` 255/300 KB, Studio 251/300 KB).
+
 ### Bug caught by visual verification (pre-integration branch)
 
 The pre-integration e2e/screenshot round exposed two issues that text assertions missed: `buildShellWorkspace` accepted `studioEnabled` but did not copy it into `ShellWorkspace` (the page rendered while nav stayed hidden), and the fixture returned classifier JSON as answer prose. The fixture fix (real SSE + prose) and the no-raw-JSON assertion are kept; the shell flag forwarding became obsolete under Path A, which mounts the entry in the conversation workbench instead of the shell nav.
