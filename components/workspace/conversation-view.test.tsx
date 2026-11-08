@@ -113,6 +113,21 @@ it("keeps threads independent across reload, links only real actions and resets 
   expect(screen.queryByText("First private note", { selector: ".conversation-note" })).not.toBeInTheDocument();
   await screen.findByText("No local threads yet.");
 });
+it("shows persistent Studio discussions and the continue bridge when the Studio is enabled", async () => {
+  render(<ConversationView
+    {...props}
+    studioEnabled
+    studioConversations={[{ id: "c1", title: "Persistent idea", lastMessageAt: "2026-11-09T00:00:00Z" }]}
+  />);
+  expect(await screen.findByText("Persistent discussions")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Persistent idea/ })).toHaveAttribute(
+    "href",
+    "/en/owner/shop/conversation/studio?chat=c1&location=branch",
+  );
+  await addNote("Bridge this note");
+  expect(screen.getByRole("button", { name: "Continue in Studio" })).toBeInTheDocument();
+});
+
 it("discloses blocked storage honestly and keeps an unsaved note in memory", async () => {
   vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
   render(<ConversationView {...props} />); await screen.findByLabelText("Your note"); await addNote("Unsaved note");

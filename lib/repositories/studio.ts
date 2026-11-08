@@ -11,6 +11,7 @@ import { getPool } from "../db/client";
 import { withTransaction } from "../db/transaction";
 import {
   STUDIO_CONVERSATION_PAGE,
+  STUDIO_MESSAGE_MAX,
   STUDIO_MESSAGE_PAGE,
   STUDIO_TITLE_MAX,
   type StudioArtifactPart,
@@ -146,6 +147,27 @@ export type StudioCreateConversationInput = {
 };
 
 export type StudioRenameConversationInput = StudioConversationRef & { title: string };
+
+/**
+ * Convergence slice: promote a browser-local workbench thread into a persistent
+ * Studio conversation. The local thread is never deleted; its notes become the
+ * conversation's opening user turns so the owner can continue with the model.
+ */
+export type StudioImportConversationInput = {
+  workspaceId: string;
+  actorId: string;
+  locationId?: string | null;
+  title: string;
+  notes: string[];
+};
+
+export type StudioImportConversationResult = {
+  conversation: StudioConversationRow;
+  messageCount: number;
+};
+
+/** A local thread is at most 40 notes; a message is at most 4,000 characters. */
+export const STUDIO_IMPORT_MAX_NOTES = 40;
 
 export type StudioListMessagesInput = StudioConversationRef & {
   limit?: number;
@@ -437,6 +459,57 @@ export function studioRepository(client?: Executor, transaction: StudioTransacti
         if (!row) throw new StudioLocationNotFoundError();
         return row;
       });
+    },
+
+    /**
+     * Create a conversation and its opening turns in one transaction
+     * (convergence slice): each local note becomes a user message with the same
+     * ordering, so the persistent thread is a faithful continuation of the
+     * browser-local one. Validation is duplicated at the route boundary; this
+     * method also truncates defensively and never writes a partial import.
+     */
+    importConversation(input: StudioImportConversationInput): Promise<StudioImportConversationResult> {
+      const notes = Array.isArray(input.notes)
+        ? input.notes
+            .filter((note): note is string => typeof note === "string")
+            .map((note) => note.trim())
+            .filter((note) => note.length > 0)
+            .slice(0, STUDIO_IMPORT_MAX_NOTES)
+            .map((note) => Array.from(note).slice(0, STUDIO_MESSAGE_MAX).join(""))
+        : [];
+      if (!notes.length) return Promise.reject(new Error("studio_import_empty"));
+      const title = normalizeTitle(input.title) || normalizeTitle(notes[0]);
+      return operation(() =>
+        transaction(async (tx) => {
+          const conversation = (
+            await tx.query<StudioConversationRow>(
+              `INSERT INTO studio_conversations(workspace_id,location_id,created_by,title)
+               SELECT $1::uuid,$2::uuid,$3::uuid,$4::text
+               WHERE $2::uuid IS NULL OR EXISTS(
+                 SELECT 1 FROM locations l WHERE l.id=$2::uuid AND l.workspace_id=$1::uuid)
+               RETURNING ${conversationColumns()}`,
+              [input.workspaceId, input.locationId ?? null, input.actorId, title],
+            )
+          ).rows[0];
+          if (!conversation) throw new StudioLocationNotFoundError();
+          for (const [index, note] of notes.entries()) {
+            await tx.query(
+              `INSERT INTO studio_messages(conversation_id,workspace_id,seq,role,author_id,content,parts,intent,model,prompt_version,input_tokens,output_tokens,cost_usd)
+               VALUES($1,$2,$3,'user',$4,$5,'[]'::jsonb,NULL,NULL,NULL,NULL,NULL,NULL)`,
+              [conversation.id, input.workspaceId, index + 1, input.actorId, note],
+            );
+          }
+          const updated = (
+            await tx.query<StudioConversationRow>(
+              `UPDATE studio_conversations SET last_message_at=now(),updated_at=now()
+               WHERE id=$1 AND workspace_id=$2 AND created_by=$3
+               RETURNING ${conversationColumns()}`,
+              [conversation.id, input.workspaceId, input.actorId],
+            )
+          ).rows[0];
+          return { conversation: updated, messageCount: notes.length };
+        }),
+      );
     },
 
     /** Rename one owned conversation; null when it is missing or foreign. */

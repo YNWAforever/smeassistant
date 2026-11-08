@@ -33,6 +33,7 @@ export type RateLimitScope =
   | "assistant_run"
   | "assistant_suggestions"
   | "studio_message"
+  | "studio_import"
   | "preview_draft"
   | "rescan"
   | "brand_update"
@@ -138,6 +139,10 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // (membership, location scope and the per-conversation turn lock are the
   // boundaries).
   studio_message: { limit: 60, windowSeconds: 60 * 60 },
+  // POST /api/studio/conversations/import (convergence bridge): promoting one
+  // browser-local thread costs no model call and creates at most 40 messages;
+  // 20/hour per user is a runaway guard, not an abuse boundary.
+  studio_import: { limit: 20, windowSeconds: 60 * 60 },
   // POST /api/start/[slug]/preview (P4.5): unsaved review-reply preview drafts, 5 a day per source IP, fail-closed.
   preview_draft: { limit: 5, windowSeconds: 60 * 60 * 24 },
   // POST /api/workspaces/[id]/rescan (CLAUDE.md §3.2.3, Phase 6): keyed on the

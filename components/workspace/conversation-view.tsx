@@ -13,6 +13,7 @@ import { resourceCopy } from "@/lib/copy-conversation-resources";
 import { conversationCopy } from "@/lib/copy-conversation";
 import { conversationDesignCopy, type ConversationCategory } from "@/lib/copy-conversation-design";
 import { studioText } from "@/lib/studio/copy";
+import { importStudioConversation } from "@/lib/studio/client";
 import { searchCopy } from "@/lib/copy-search-gap";
 import { openConversationTool, useConversationNavigation } from "./conversation-navigation";
 import { CONVERSATION_LIMITS, conversationScopeKey, readConversationThreads, saveConfirmedPostDraft, saveConversationChanges, type ConversationSave, type ConversationScope, type LocalThread } from "@/lib/workspace/conversation-store";
@@ -46,6 +47,8 @@ export interface ConversationViewProps {
   connectionOutcome?: string;
   /** Persistent, model-backed Studio mode (CONVERSATION_STUDIO_ENABLED). */
   studioEnabled?: boolean;
+  /** The member's persistent Studio discussions, shown next to local threads. */
+  studioConversations?: Array<{ id: string; title: string; lastMessageAt: string }>;
 }
 
 const subscribeToHydration = () => () => {};
@@ -58,7 +61,7 @@ export function ConversationView(props: ConversationViewProps) {
   return hydrated ? <ScopedConversation key={conversationScopeKey(props.scope)} {...props} /> : <p role="status">{conversationCopy[props.locale].loading}</p>;
 }
 
-function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, location, locationName, scope, initialThreadId, actions, today, resources, connectionOutcome, studioEnabled }: ConversationViewProps) {
+function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, location, locationName, scope, initialThreadId, actions, today, resources, connectionOutcome, studioEnabled, studioConversations }: ConversationViewProps) {
   const t = conversationCopy[locale];
   const d = conversationDesignCopy[locale];
   const navigation = useConversationNavigation();
@@ -73,6 +76,8 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
   const [composer, setComposer] = useState("");
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<"unavailable" | "limit" | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState(false);
   const [category, setCategory] = useState<ConversationCategory>("all");
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const pendingIds = useRef(new Set<string>());
@@ -129,6 +134,22 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
     const next = { ...selected, actionIds: [...selected.actionIds, id], updatedAt: new Date().toISOString() };
     persist(next);
   }
+  async function continueInStudio() {
+    if (!selected || importing) return;
+    setImporting(true);
+    setImportError(false);
+    const result = await importStudioConversation(scope.workspaceId, {
+      locationId: scope.locationId === "all" ? null : scope.locationId,
+      title: selected.title,
+      notes: selected.notes,
+    });
+    setImporting(false);
+    if (result.ok) {
+      router.push(`${base}/conversation/studio?chat=${encodeURIComponent(result.data.id)}&${locationQuery}`);
+    } else {
+      setImportError(true);
+    }
+  }
   function citeDocument(id: string) {
     if (!selected || local.status === "corrupt" || selected.documentVersionIds?.includes(id)) return;
     if ((selected.documentVersionIds?.length ?? 0) >= 20) { setSaveError("limit"); return; }
@@ -165,6 +186,10 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
           {selected && <section className="conversation-notes" aria-label={selected.title}>
             <header className="conversation-thread-heading"><span><MessagesSquare aria-hidden="true" />{d.local}</span><time dateTime={selected.updatedAt}>{formatDateTime(selected.updatedAt, locale, timezone)}</time><h2>{selected.title}</h2></header>
             <div className="conversation-note-stack">{selected.notes.map((note, index) => <p className="conversation-note" key={index}>{note}</p>)}</div>
+            {studioEnabled && <div className="conversation-studio-bridge">
+              <Button type="button" size="sm" onClick={() => void continueInStudio()} disabled={importing}>{importing ? d.importing : d.continueInStudio}</Button>
+              {importError && <p role="alert">{d.importFailed}</p>}
+            </div>}
             <div className="conversation-thread-links">
               <label htmlFor="conversation-action"><ListChecks aria-hidden="true" />{t.linkAction}</label>
               <select id="conversation-action" value="" onChange={event => linkAction(event.target.value)} disabled={local.status === "corrupt"}><option value="">{t.chooseAction}</option>{actions.filter(action => !selected.actionIds.includes(action.id)).map(action => <option value={action.id} key={action.id}>{action.title}</option>)}</select>
@@ -199,6 +224,10 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
           <div className="conversation-section-heading"><h2>{d.recent}</h2><Button variant="outline" onClick={() => selectThread()}><Plus aria-hidden="true" />{t.newThread}</Button></div>
           {local.threads.length === 0 ? <p className="conversation-empty">{t.empty}</p> : <ul>{local.threads.map(thread => <li key={thread.id}><MessagesSquare aria-hidden="true" /><button type="button" className={selectedId === thread.id ? "is-active" : ""} aria-label={thread.title} aria-pressed={selectedId === thread.id} onClick={() => selectThread(thread.id)}><span>{thread.title}</span><small>{d.local} · <time dateTime={thread.updatedAt}>{formatDateTime(thread.updatedAt, locale, timezone)}</time></small></button><ArrowRight aria-hidden="true" /></li>)}</ul>}
         </section>
+        {studioEnabled && <section className="conversation-threads conversation-persistent" aria-label={d.persistent}>
+          <div className="conversation-section-heading"><h2>{d.persistent}</h2><Link href={`${base}/conversation/studio?${locationQuery}`}>{studioText(locale).header.openStudio}</Link></div>
+          {studioConversations?.length ? <ul>{studioConversations.map(conversation => <li key={conversation.id}><MessagesSquare aria-hidden="true" /><Link href={`${base}/conversation/studio?chat=${encodeURIComponent(conversation.id)}&${locationQuery}`}><span>{conversation.title || studioText(locale).rail.untitled}</span><small><time dateTime={conversation.lastMessageAt}>{formatDateTime(conversation.lastMessageAt, locale, timezone)}</time></small></Link><ArrowRight aria-hidden="true" /></li>)}</ul> : <p className="conversation-empty">{d.persistentEmpty}</p>}
+        </section>}
         {resources && <section className="conversation-tools" aria-label={d.tools}>
           <h2>{d.tools}</h2><p className="conversation-tool-hint">{d.toolHint}</p>
           <details id="conversation-search" className="conversation-tool"><summary><Search aria-hidden="true" />{searchCopy[locale].title}</summary><ConversationSearch locale={locale} workspaceId={scope.workspaceId} locationId={scope.locationId} workspaceSlug={workspaceSlug} locationSlug={location} canManage={resources.canManage} /></details>
