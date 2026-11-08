@@ -15,7 +15,7 @@ Design: `docs/superpowers/specs/2026-11-08-conversation-studio-design.md`. Recor
 ## 1. Pre-flight (owner, read-only)
 
 1. Confirm the deployed application's `DATABASE_URL` target: Neon project, branch, endpoint host and database. Record the provider IDs (never the connection string).
-2. Read the hosted journal. It must be **exactly 1–20** with the committed names and checksums:
+2. Read the hosted journal. It must be **exactly 1–21** with the committed names and checksums:
    ```sql
    SELECT ordinal, name, checksum FROM neon_migrations.journal ORDER BY ordinal;
    ```
@@ -37,25 +37,35 @@ corepack pnpm test:secret-boundary
 corepack pnpm smoke:studio                  # SKIPPED when no LLM key; run with real gateway vars
 ```
 
-Expected `db:verify`: `applied` ends with `0021_studio_conversations.sql`, `replay: []`, `tables 48`, `columns 560`, `constraints 261`, `indexes 132`, `seededRows 0`. Expected Studio e2e (opt-in, requires both flags in the acceptance env):
+Expected `db:verify`: `applied` ends with `0022_studio_conversation_members.sql`, `replay: []`, `tables 49`, `columns 566`, `constraints 267`, `indexes 134`, `seededRows 0`. Expected Studio e2e (opt-in, requires both flags in the acceptance env):
 
 ```powershell
 $env:CONVERSATION_STUDIO_ENABLED="true"
 corepack pnpm e2e:acceptance -- e2e/acceptance/conversation-studio.spec.ts
 ```
 
-## 3. Apply the migration
+## 3. Apply the migrations
 
-Run `docs/implementation/owner-platform-v1/rollout/apply-0021.sql` in the Neon SQL Editor as the migration owner (`neondb_owner`, which must hold `smeassistant_migrator` with SET TRUE), on a Neon **test branch of production first**, then production. The statement is one DO block: it takes the runner advisory lock, verifies journal 1–20 by name+SHA-256, executes the 0021 text byte for byte, checks tables/RLS/indexes/FK delete rules/policies/grants, and records journal row 21. Any failure rolls back the whole statement.
+**Current production state (2026-11-09):** the hosted journal is exactly **1–21** (0018–0021 were applied through the repo runner). The only pending migration is **0022_studio_conversation_members.sql** (shared conversations, v1.1 P1.3). Apply it through the repo migration runner with the owner connection: it verifies journal 1–21 by name+SHA-256 and records row 22 in one transaction.
+
+```powershell
+# Owner connection, never the runtime URL. Run on a Neon test branch of production first.
+neon connection-string production --role-name neondb_owner --database-name neondb > $env:TEMP\migrate-url.txt
+$env:DATABASE_URL = Get-Content $env:TEMP\migrate-url.txt -Raw
+# Run the repository's pending-migration operator path (loads neon/migrations in order;
+# refuses any journal mismatch). Do not insert journal rows by hand.
+```
+
+There is no prepared `apply-0022.sql`. If the target is still at **1–20**, first apply `docs/implementation/owner-platform-v1/rollout/apply-0021.sql` (row 21), then apply 0022 through the runner.
 
 Post-apply verification (read-only):
 
 ```sql
-SELECT max(ordinal) AS last_migration FROM neon_migrations.journal;                -- 21
+SELECT max(ordinal) AS last_migration FROM neon_migrations.journal;                -- 22
 SELECT relname, relrowsecurity FROM pg_class
- WHERE relname IN ('studio_conversations','studio_messages');                       -- both, RLS true
+ WHERE relname IN ('studio_conversations','studio_messages','studio_conversation_members'); -- all, RLS true
 SELECT count(*) FROM pg_policies
- WHERE schemaname='public' AND tablename IN ('studio_conversations','studio_messages'); -- 2
+ WHERE schemaname='public' AND tablename IN ('studio_conversations','studio_messages','studio_conversation_members'); -- 3
 -- paste docs/operations/check-missing-columns.sql -- 0 rows
 ```
 
@@ -110,7 +120,7 @@ SELECT actor_type, event, entity_type, payload
 
 ## 7. Known constraints at cut-over
 
-- Journal must be exactly 1–20 before 0021 (the conversation workstream’s 0019/0020 must already be applied).
+- Journal must be exactly 1–21 before 0021 (the conversation workstream’s 0019/0020 must already be applied).
 - Conversations are private per member in v1. Shared team threads are a v1.1 design decision (schema/policy change), not a config toggle.
 - The Studio adds model cost: one classifier completion plus one streamed answer per turn; the existing AI daily budget and pause gates apply. The first-turn title rides in the classifier JSON, so it adds no extra call.
 - Hosted acceptance and this runbook were **not executed** from the development workspace; the local evidence is in `CONVERSATION-STUDIO-REPORT.md`.

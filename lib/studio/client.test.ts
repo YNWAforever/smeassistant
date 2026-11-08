@@ -38,7 +38,7 @@ const conversation: StudioConversation = {
   locationId: null,
   createdAt: "2026-11-08T09:00:00.000Z",
   updatedAt: "2026-11-08T10:00:00.000Z",
-  lastMessageAt: "2026-11-08T10:00:00.000Z",
+  lastMessageAt: "2026-11-08T10:00:00.000Z", accessRole: "owner", shared: false,
 }
 
 const message: StudioMessage = {

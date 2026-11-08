@@ -1,6 +1,6 @@
 "use client"
 
-import { Menu, PanelRight, Plus } from "lucide-react"
+import { Menu, PanelRight, Plus, Share2 } from "lucide-react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -33,6 +33,7 @@ import { StudioConversationRail } from "./conversation-rail"
 import { StudioEmptyState } from "./empty-state"
 import { StudioEvidencePicker } from "./evidence-picker"
 import { StudioMessageThread, type StudioThreadError } from "./message-thread"
+import { StudioShareDialog } from "./share-dialog"
 import { studioBlockedText, studioErrorText } from "./studio-errors"
 
 export type StudioViewProps = {
@@ -140,6 +141,7 @@ export function StudioView({
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<StudioThreadError | null>(null)
   const [retryText, setRetryText] = useState<string | null>(null)
+  const [shareOpen, setShareOpen] = useState(false)
   const [aiBlocked, setAiBlocked] = useState<AiBlocked | null>(null)
   const [railOpen, setRailOpen] = useState(false)
   // Desktop: the context pane is a pinned third column (default open).
@@ -446,7 +448,8 @@ export function StudioView({
   }
 
   const blockedNote = archived ? t.notices.archived : aiBlocked ? studioBlockedText(t, aiBlocked) : null
-  const composerDisabled = streaming || sending || loadingConversation || archived
+  const conversationReadOnly = activeConversation?.accessRole === "viewer"
+  const composerDisabled = streaming || sending || loadingConversation || archived || conversationReadOnly
 
   return (
     <div className="studio-root" data-rail={railOpen ? "open" : "closed"} data-context-pinned={contextPinned ? "open" : "closed"} data-context-drawer={contextDrawerOpen ? "open" : "closed"}>
@@ -486,6 +489,12 @@ export function StudioView({
                     {locationSlug === "all" && <option value="all">{workspaceName}</option>}
                   </select>
                 </label>
+              )}
+              {activeConversation?.accessRole === "owner" && !archived && (
+                <Button type="button" size="sm" variant="outline" onClick={() => setShareOpen(true)}>
+                  <Share2 aria-hidden="true" />
+                  <span>{t.share.action}</span>
+                </Button>
               )}
               <button
                 type="button"
@@ -543,6 +552,7 @@ export function StudioView({
           )}
 
           {role === "viewer" && <p className="studio-role-note">{t.notices.viewer}</p>}
+          {conversationReadOnly && <p className="studio-role-note">{t.notices.viewerShared}</p>}
           <StudioEvidencePicker
             locale={locale}
             workspaceId={workspaceId}
@@ -567,6 +577,9 @@ export function StudioView({
 
         <StudioContextPanel locale={locale} summary={contextSummary} open={contextOpen} onClose={closeContext} focusOnOpen={!isWide && contextDrawerOpen} />
       </div>
+      {shareOpen && activeConversation && (
+        <StudioShareDialog locale={locale} workspaceId={workspaceId} conversationId={activeConversation.id} onClose={() => setShareOpen(false)} />
+      )}
       <button type="button" className="studio-overlay" aria-label={t.rail.close} tabIndex={-1} onClick={() => { setRailOpen(false); closeContext() }} />
     </div>
   )

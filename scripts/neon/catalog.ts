@@ -25,13 +25,14 @@ export const additionalIndexes = [
   { tablename: "actions", indexname: "actions_list_keyset_idx", indexdef: "CREATE INDEX actions_list_keyset_idx ON public.actions USING btree (workspace_id, COALESCE(priority_score, (0)::numeric) DESC, updated_at DESC, id DESC) INCLUDE (location_id, action_state, template_key)" },
   { tablename: "output_versions", indexname: "output_versions_latest_metadata_idx", indexdef: "CREATE INDEX output_versions_latest_metadata_idx ON public.output_versions USING btree (workspace_id, action_id, version_no DESC, id DESC) INCLUDE (approval_state, delivery_state, first_exported_at)" },
   { tablename: "studio_conversations", indexname: "studio_conversations_owner_recent_idx", indexdef: "CREATE INDEX studio_conversations_owner_recent_idx ON public.studio_conversations USING btree (workspace_id, created_by, last_message_at DESC, id DESC)" },
+  { tablename: "studio_conversation_members", indexname: "studio_conversation_members_user_idx", indexdef: "CREATE INDEX studio_conversation_members_user_idx ON public.studio_conversation_members USING btree (workspace_id, user_id, created_at DESC)" },
   { tablename: "studio_messages", indexname: "studio_messages_conversation_seq_idx", indexdef: "CREATE INDEX studio_messages_conversation_seq_idx ON public.studio_messages USING btree (conversation_id, seq)" },
 ];
-// Tables added by 0021 (Conversation Studio). They have no independently
+// Tables added by 0021/0022 (Conversation Studio). They have no independently
 // captured legacy counterpart, so verifyCatalog excludes them from the legacy
 // deepEqual and asserts their exact catalog below; each carries one
-// server_application policy, so the policy count is offset by two.
-export const additionalTables = ["studio_conversations", "studio_messages"] as const;
+// server_application policy, so the policy count is offset by three.
+export const additionalTables = ["studio_conversations", "studio_messages", "studio_conversation_members"] as const;
 export type ExpectedColumn = { table_name: string; column_name: string; data_type: string; udt_name: string; is_nullable: string; column_default: string | null };
 export type ExpectedConstraint = { table_name: string; name: string; type: string; definition: string };
 export type ExpectedIndex = { tablename: string; indexname: string; indexdef: string };
@@ -40,6 +41,12 @@ const column = (table_name: string, column_name: string, data_type: string, udt_
 const constraint = (table_name: string, name: string, type: string, definition: string): ExpectedConstraint =>
   ({ table_name, name, type, definition });
 export const studioColumns: ExpectedColumn[] = [
+  column('studio_conversation_members','conversation_id','uuid','uuid','NO',null),
+  column('studio_conversation_members','workspace_id','uuid','uuid','NO',null),
+  column('studio_conversation_members','user_id','uuid','uuid','NO',null),
+  column('studio_conversation_members','role','text','text','NO',"'editor'::text"),
+  column('studio_conversation_members','added_by','uuid','uuid','YES',null),
+  column('studio_conversation_members','created_at','timestamp with time zone','timestamptz','NO','now()'),
   column('studio_conversations','id','uuid','uuid','NO','gen_random_uuid()'),
   column('studio_conversations','workspace_id','uuid','uuid','NO',null),
   column('studio_conversations','location_id','uuid','uuid','YES',null),
@@ -66,6 +73,12 @@ export const studioColumns: ExpectedColumn[] = [
   column('studio_messages','created_at','timestamp with time zone','timestamptz','NO','now()'),
 ];
 export const studioConstraints: ExpectedConstraint[] = [
+  constraint('studio_conversation_members','studio_conversation_members_added_by_fkey','f','FOREIGN KEY (added_by) REFERENCES app_users(id) ON DELETE SET NULL'),
+  constraint('studio_conversation_members','studio_conversation_members_conversation_id_fkey','f','FOREIGN KEY (conversation_id) REFERENCES studio_conversations(id) ON DELETE CASCADE'),
+  constraint('studio_conversation_members','studio_conversation_members_pkey','p','PRIMARY KEY (conversation_id, user_id)'),
+  constraint('studio_conversation_members','studio_conversation_members_role_check','c',"CHECK ((role = ANY (ARRAY['editor'::text, 'viewer'::text])))"),
+  constraint('studio_conversation_members','studio_conversation_members_user_id_fkey','f','FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE'),
+  constraint('studio_conversation_members','studio_conversation_members_workspace_id_fkey','f','FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE'),
   constraint('studio_conversations','studio_conversations_created_by_fkey','f','FOREIGN KEY (created_by) REFERENCES app_users(id) ON DELETE CASCADE'),
   constraint('studio_conversations','studio_conversations_location_id_fkey','f','FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL'),
   constraint('studio_conversations','studio_conversations_pkey','p','PRIMARY KEY (id)'),
@@ -85,6 +98,8 @@ export const studioConstraints: ExpectedConstraint[] = [
   constraint('studio_messages','studio_messages_workspace_id_fkey','f','FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE'),
 ];
 export const studioIndexes: ExpectedIndex[] = [
+  { tablename: 'studio_conversation_members', indexname: 'studio_conversation_members_pkey', indexdef: 'CREATE UNIQUE INDEX studio_conversation_members_pkey ON public.studio_conversation_members USING btree (conversation_id, user_id)' },
+  { tablename: 'studio_conversation_members', indexname: 'studio_conversation_members_user_idx', indexdef: 'CREATE INDEX studio_conversation_members_user_idx ON public.studio_conversation_members USING btree (workspace_id, user_id, created_at DESC)' },
   { tablename: 'studio_conversations', indexname: 'studio_conversations_owner_recent_idx', indexdef: 'CREATE INDEX studio_conversations_owner_recent_idx ON public.studio_conversations USING btree (workspace_id, created_by, last_message_at DESC, id DESC)' },
   { tablename: 'studio_conversations', indexname: 'studio_conversations_pkey', indexdef: 'CREATE UNIQUE INDEX studio_conversations_pkey ON public.studio_conversations USING btree (id)' },
   { tablename: 'studio_messages', indexname: 'studio_messages_conversation_id_seq_key', indexdef: 'CREATE UNIQUE INDEX studio_messages_conversation_id_seq_key ON public.studio_messages USING btree (conversation_id, seq)' },
@@ -153,7 +168,7 @@ export async function verifyCatalog(pool: Pool) {
   for (const [name, query] of Object.entries(catalogQueries)) actual[name] = (await pool.query(query)).rows;
   const identity = new Set(["app_users", "auth_identities"]);
   const business = (rows: Row[]) => rows.filter(row => !identity.has(String(row.table_name ?? row.tablename ?? row.name)));
-  const legacyBusiness = (rows: Row[]) => business(rows).filter(row => !["brand_revisions","conversation_document_versions","conversation_research_accounts","conversation_research_ledger","conversation_search_briefs","studio_conversations","studio_messages"].includes(String(row.table_name ?? row.tablename ?? row.name)));
+  const legacyBusiness = (rows: Row[]) => business(rows).filter(row => !["brand_revisions","conversation_document_versions","conversation_research_accounts","conversation_research_ledger","conversation_search_briefs","studio_conversations","studio_messages","studio_conversation_members"].includes(String(row.table_name ?? row.tablename ?? row.name)));
   assert.deepEqual(legacyBusiness(actual.tables), legacy.tables, "retained business tables and RLS");
   assert.deepEqual(actual.tables.find(row=>row.name==='brand_revisions'),{name:'brand_revisions',rls:true},'immutable brand table and RLS');
   // Dropped legacy columns leave ordinal gaps; compare surviving order, not physical attnum.
@@ -200,7 +215,7 @@ export async function verifyCatalog(pool: Pool) {
   for (const name of changedFunctions) assert.ok(actual.functions.some(row => row.name === name), `changed function ${name} present`);
   assert.deepEqual(actual.enums, legacy.enums, "enum catalog");
   const policy = (await pool.query("SELECT tablename,roles::text[] AS roles,cmd,qual,with_check FROM pg_policies WHERE schemaname='public' ORDER BY tablename")).rows;
-  assert.equal(policy.length, legacy.tables.length + 17);
+  assert.equal(policy.length, legacy.tables.length + 18);
   for (const row of policy.filter(row=>row.tablename!=='brand_revisions' && row.tablename!=='conversation_document_versions' && row.tablename!=='conversation_research_accounts' && row.tablename!=='conversation_research_ledger' && row.tablename!=='conversation_search_briefs' && !isStudioTable(row.tablename))) assert.deepEqual({...row, tablename:undefined}, {tablename:undefined,roles:["sme_app_runtime"],cmd:"ALL",qual:"true",with_check:"true"});
   assert.deepEqual(policy.filter(row=>row.tablename==='brand_revisions').sort((a,b)=>String(a.cmd).localeCompare(String(b.cmd))),[
    {tablename:'brand_revisions',roles:['sme_app_runtime'],cmd:'INSERT',qual:null,with_check:'true'},

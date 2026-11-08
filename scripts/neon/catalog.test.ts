@@ -50,10 +50,10 @@ beforeEach(() => { vi.mocked(readFile).mockResolvedValue(JSON.stringify(legacy))
 
 describe("T-19 PostgreSQL NOT NULL catalog compatibility", () => {
   it("accepts the unchanged PostgreSQL 16 representation", async () => {
-    await expect(verifyCatalog(metadataPool({ version: 160014 }).pool)).resolves.toMatchObject({ constraints: 26, seededRows: 0 });
+    await expect(verifyCatalog(metadataPool({ version: 160014 }).pool)).resolves.toMatchObject({ constraints: 32, seededRows: 0 });
   });
   it("accepts PostgreSQL 18 only after validating its redundant NOT NULL metadata", async () => {
-    await expect(verifyCatalog(metadataPool().pool)).resolves.toMatchObject({ constraints: 26, notNullConstraints: 6, seededRows: 0 });
+    await expect(verifyCatalog(metadataPool().pool)).resolves.toMatchObject({ constraints: 32, notNullConstraints: 6, seededRows: 0 });
   });
   it.each([
     ["missing constraint", []],

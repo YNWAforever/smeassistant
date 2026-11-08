@@ -88,7 +88,7 @@ const row = {
   last_message_at: "2026-11-08T00:00:00Z",
 };
 
-const conversation: StudioConversation = { id: CONVERSATION_ID, title: "", status: "active", locationId: LOCATION_ID, createdAt: "2026-11-08T00:00:00Z", updatedAt: "2026-11-08T00:00:00Z", lastMessageAt: "2026-11-08T00:00:00Z" };
+const conversation: StudioConversation = { id: CONVERSATION_ID, title: "", status: "active", locationId: LOCATION_ID, createdAt: "2026-11-08T00:00:00Z", updatedAt: "2026-11-08T00:00:00Z", lastMessageAt: "2026-11-08T00:00:00Z", accessRole: "owner", shared: false };
 const userMessage: StudioMessage = { id: "message-1", conversationId: CONVERSATION_ID, seq: 1, role: "user", content: SECRET_TEXT, parts: [{ kind: "text", text: SECRET_TEXT }], intent: null, createdAt: "2026-11-08T00:00:00Z" };
 const assistantMessage: StudioMessage = { id: "message-2", conversationId: CONVERSATION_ID, seq: 2, role: "assistant", content: "Grounded answer", parts: [{ kind: "text", text: "Grounded answer" }], intent: "explain_priority", createdAt: "2026-11-08T00:00:01Z" };
 

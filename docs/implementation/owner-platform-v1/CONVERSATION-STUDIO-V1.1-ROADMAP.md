@@ -46,7 +46,9 @@ Remove the dual thread model from the workbench.
 - Local-note retirement: after all unimported threads are promoted, hide/disable local creation with a clear explanation; keep read-only local access for one release.
 - Tests: store contract, page/server data, import/merge edge cases, offline fallback, browser flow workbench → Studio → back.
 
-### P1.3 — Shared team conversations
+### P1.3 — Shared team conversations (implemented locally on `feat/studio-v1.3-shared`)
+
+Status: implemented locally on `feat/studio-v1.3-shared` (migration 0022, participant-aware access, sharing API/UI, tests); PR pending CI.
 
 The last schema-changing phase; additive migration `0022`.
 

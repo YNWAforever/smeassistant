@@ -46,7 +46,7 @@ const conversation: StudioConversation = {
   locationId: LOCATION_ID,
   createdAt: "2026-11-08T00:00:00Z",
   updatedAt: "2026-11-08T00:00:00Z",
-  lastMessageAt: "2026-11-08T00:00:00Z",
+  lastMessageAt: "2026-11-08T00:00:00Z", accessRole: "owner", shared: false,
 };
 
 const evidenceRef: EvidenceReference = {

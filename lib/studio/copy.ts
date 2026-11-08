@@ -109,9 +109,26 @@ export type StudioCopy = {
     network: string
     stream: string
   }
+  share: {
+    title: string
+    action: string
+    hint: string
+    members: string
+    candidates: string
+    roleEditor: string
+    roleViewer: string
+    add: string
+    remove: string
+    loading: string
+    failed: string
+    empty: string
+    close: string
+    owner: string
+  }
   notices: {
     boundary: string
     viewer: string
+    viewerShared: string
     aiUnavailable: string
     archived: string
     needsFacts: string
@@ -129,6 +146,23 @@ export function formatStudioCopy(template: string, values: Record<string, string
 }
 
 const en: StudioCopy = {
+  share: {
+    title: "Share conversation",
+    action: "Share",
+    hint: "Only the creator can add or remove members.",
+    members: "Members",
+    candidates: "Add a teammate",
+    roleEditor: "Can continue",
+    roleViewer: "Can view",
+    add: "Share",
+    remove: "Remove",
+    loading: "Loading…",
+    failed: "Could not update sharing.",
+    empty: "Not shared yet.",
+    close: "Close",
+    owner: "Owner",
+  },
+
   evidence: {
     title: "Evidence",
     hint: "Choose a location to attach documents and approved search briefs.",
@@ -242,6 +276,7 @@ const en: StudioCopy = {
   notices: {
     boundary: "Drafts stay drafts until an authorised person approves one exact version. Nothing publishes automatically.",
     viewer: "You can ask questions here. Drafting needs an owner or manager in scope.",
+    viewerShared: "This conversation is shared with you as read-only.",
     aiUnavailable: "The Studio cannot answer right now because the AI provider is unavailable. No message was sent.",
     archived: "This conversation is archived and read-only.",
     needsFacts: "I still need these confirmed details before drafting: {facts}.",
@@ -251,6 +286,23 @@ const en: StudioCopy = {
 }
 
 const zhHK: StudioCopy = {
+  share: {
+    title: "分享討論",
+    action: "分享",
+    hint: "只有建立者可以加入或移除成員。",
+    members: "成員",
+    candidates: "加入團隊成員",
+    roleEditor: "可以繼續對話",
+    roleViewer: "只可查看",
+    add: "分享",
+    remove: "移除",
+    loading: "載入中…",
+    failed: "未能更新分享。",
+    empty: "未分享。",
+    close: "關閉",
+    owner: "建立者",
+  },
+
   evidence: {
     title: "證據",
     hint: "選擇一個分店，先可以附加文件同已確認搜尋簡報。",
@@ -364,6 +416,7 @@ const zhHK: StudioCopy = {
   notices: {
     boundary: "草稿在獲授權人士核准指定版本之前仍屬草稿，不會自動發佈。",
     viewer: "你可以在這裡提問；起草需要店主或範圍內的經理。",
+    viewerShared: "呢個討論以唯讀方式分享畀你。",
     aiUnavailable: "AI 供應商暫時無法使用，工作台未能回答，亦沒有傳送訊息。",
     archived: "這個對話已封存，只供閱讀。",
     needsFacts: "起草前仍需要你確認以下資料：{facts}。",
@@ -373,6 +426,23 @@ const zhHK: StudioCopy = {
 }
 
 const zhTW: StudioCopy = {
+  share: {
+    title: "分享討論",
+    action: "分享",
+    hint: "只有建立者可以加入或移除成員。",
+    members: "成員",
+    candidates: "加入團隊成員",
+    roleEditor: "可以繼續對話",
+    roleViewer: "只可查看",
+    add: "分享",
+    remove: "移除",
+    loading: "載入中…",
+    failed: "未能更新分享。",
+    empty: "未分享。",
+    close: "關閉",
+    owner: "建立者",
+  },
+
   evidence: {
     title: "證據",
     hint: "選擇一個分店，才能附加文件和已確認搜尋簡報。",
@@ -486,6 +556,7 @@ const zhTW: StudioCopy = {
   notices: {
     boundary: "草稿在獲授權人士核准指定版本之前仍屬草稿，不會自動發布。",
     viewer: "你可以在這裡提問；起草需要店主或範圍內的經理。",
+    viewerShared: "這個討論以唯讀方式分享給你。",
     aiUnavailable: "AI 供應商暫時無法使用，工作台未能回答，也沒有傳送訊息。",
     archived: "這個對話已封存，僅供閱讀。",
     needsFacts: "起草前仍需要你確認以下資料：{facts}。",

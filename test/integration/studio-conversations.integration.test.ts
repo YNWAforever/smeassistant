@@ -254,6 +254,52 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Conversation Studio persis
     expect(messages.map((message) => [message.seq, message.role, message.content])).toEqual([[1, "user", "three"]]);
   });
 
+  it("shares a conversation with an accepted workspace member and enforces editor/viewer access", async () => {
+    const { workspaceId, actorId, repo } = await setup();
+    const teammateId = await member();
+    await runtime.query(
+      "INSERT INTO workspace_members(workspace_id,user_id,email,role,accepted_at) VALUES($1,$2,$3,'manager',now())",
+      [workspaceId, teammateId, `${randomUUID()}@studio.test`],
+    );
+    const conversation = await repo.createConversation({ workspaceId, actorId });
+
+    // Before sharing, the teammate cannot see the conversation at all.
+    await expect(repo.getConversation({ workspaceId, actorId: teammateId, conversationId: conversation.id })).resolves.toBeNull();
+    expect(await repo.listConversations({ workspaceId, actorId: teammateId })).toEqual([]);
+
+    // Share as editor: visible, continuable.
+    await repo.addConversationMember({ workspaceId, actorId, conversationId: conversation.id, userId: teammateId, role: "editor" });
+    const shared = await repo.getConversation({ workspaceId, actorId: teammateId, conversationId: conversation.id });
+    expect(shared).toMatchObject({ id: conversation.id, access_role: "editor" });
+    expect((await repo.listConversations({ workspaceId, actorId: teammateId })).map((row) => row.id)).toEqual([conversation.id]);
+    const appended = await repo.appendMessage({
+      workspaceId,
+      actorId: teammateId,
+      conversationId: conversation.id,
+      role: "user",
+      content: "Continuing the shared plan.",
+      parts: [],
+    });
+    expect(appended.message).toMatchObject({ conversation_id: conversation.id, role: "user", content: "Continuing the shared plan." });
+
+    // Re-share as viewer: readable, not writable.
+    await repo.addConversationMember({ workspaceId, actorId, conversationId: conversation.id, userId: teammateId, role: "viewer" });
+    await expect(repo.appendMessage({
+      workspaceId,
+      actorId: teammateId,
+      conversationId: conversation.id,
+      role: "user",
+      content: "Should fail.",
+      parts: [],
+    })).rejects.toMatchObject({ name: "StudioConversationForbiddenError" });
+
+    expect(await repo.listConversationMembers({ workspaceId, actorId, conversationId: conversation.id })).toMatchObject([
+      { user_id: teammateId, role: "viewer" },
+    ]);
+    await expect(repo.removeConversationMember({ workspaceId, actorId, conversationId: conversation.id, userId: teammateId })).resolves.toBe(true);
+    await expect(repo.getConversation({ workspaceId, actorId: teammateId, conversationId: conversation.id })).resolves.toBeNull();
+  });
+
   it("cascades content with the conversation, the workspace and the creator, and nulls a removed location", async () => {
     const workspaceId = await workspace();
     const actorId = await member();

@@ -84,7 +84,9 @@ describe("studioRepository.listConversations", () => {
   it("filters by workspace and creator, active only, newest first, and defaults to 40", async () => {
     const db = executor((sql, values) => {
       expect(sql).toContain("FROM studio_conversations c");
-      expect(sql).toContain("c.workspace_id=$1 AND c.created_by=$2 AND c.status='active'");
+      expect(sql).toContain("LEFT JOIN studio_conversation_members sm");
+      expect(sql).toContain("(c.created_by=$2 OR sm.user_id IS NOT NULL)");
+      expect(sql).toContain("c.status='active'");
       expect(sql).toContain("ORDER BY c.last_message_at DESC,c.id DESC");
       // A null location filter means the whole workspace; a location also admits
       // workspace-wide conversations, exactly like owner actions do.
@@ -126,7 +128,8 @@ describe("studioRepository.listConversations", () => {
 describe("studioRepository.getConversation", () => {
   it("scopes by id, workspace and creator", async () => {
     const db = executor((sql, values) => {
-      expect(sql).toContain("WHERE id=$1 AND workspace_id=$2 AND created_by=$3");
+      expect(sql).toContain("WHERE c.id=$1 AND c.workspace_id=$2");
+      expect(sql).toContain("(c.created_by=$3 OR sm.user_id IS NOT NULL)");
       expect(values).toEqual([CONVERSATION, WORKSPACE, ACTOR]);
       return { rows: [conversationRow()] };
     });
@@ -245,7 +248,8 @@ describe("studioRepository.renameConversation / archiveConversation", () => {
 describe("studioRepository.listMessages", () => {
   it("proves scope through the conversation join and returns the window oldest-first", async () => {
     const db = executor((sql, values) => {
-      expect(sql).toContain("JOIN studio_conversations c ON c.id=m.conversation_id AND c.workspace_id=m.workspace_id AND c.created_by=$3");
+      expect(sql).toContain("JOIN studio_conversations c ON c.id=m.conversation_id AND c.workspace_id=m.workspace_id");
+      expect(sql).toContain("c.created_by=$3 OR EXISTS(");
       expect(sql).toContain("m.workspace_id=$1 AND m.conversation_id=$2");
       expect(sql).toContain("ORDER BY m.seq DESC LIMIT $5");
       expect(values).toEqual([WORKSPACE, CONVERSATION, ACTOR, null, 50]);
@@ -328,7 +332,8 @@ describe("studioRepository.appendMessage", () => {
     expect(seen[2].sql).toMatch(/^INSERT INTO studio_messages/);
     expect(seen[3].sql).toMatch(/^UPDATE studio_conversations/);
     const lock = seen[0];
-    expect(lock.sql).toContain("WHERE id=$1 AND workspace_id=$2 AND created_by=$3 FOR UPDATE");
+    expect(lock.sql).toContain("WHERE c.id=$1 AND c.workspace_id=$2");
+    expect(lock.sql).toContain("(c.created_by=$3 OR sm.user_id IS NOT NULL)");
     expect(lock.values).toEqual([CONVERSATION, WORKSPACE, ACTOR]);
     const insert = seen[2];
     expect(insert.values).toEqual([
@@ -536,6 +541,80 @@ describe("studioRepository.importConversation (convergence bridge)", () => {
   });
 });
 
+describe("studioRepository shared-conversation access", () => {
+  const MEMBER = "77777777-7777-4777-8777-777777777777";
+
+  it("refuses a viewer's append before allocating a sequence", async () => {
+    transactionQuery.mockResolvedValueOnce({ rows: [{ ...conversationRow({ status: "active" }), access_role: "viewer" }] });
+    await expect(studioRepository().appendMessage({
+      workspaceId: WORKSPACE,
+      actorId: OTHER_ACTOR,
+      conversationId: CONVERSATION,
+      role: "user",
+      content: "Can I write?",
+      parts: [],
+    })).rejects.toMatchObject({ name: "StudioConversationForbiddenError" });
+    expect(transactionQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets an editor append by attaching the conversation access role", async () => {
+    transactionQuery
+      .mockResolvedValueOnce({ rows: [{ ...conversationRow({ status: "active" }), access_role: "editor" }] })
+      .mockResolvedValueOnce({ rows: [{ seq: 3 }] })
+      .mockResolvedValueOnce({ rows: [{ ...MESSAGE_ROW, seq: 3, content: "Hi" }] })
+      .mockResolvedValueOnce({ rows: [conversationRow({ status: "active" })] });
+    const result = await studioRepository().appendMessage({
+      workspaceId: WORKSPACE,
+      actorId: OTHER_ACTOR,
+      conversationId: CONVERSATION,
+      role: "user",
+      content: "Hi",
+      parts: [],
+    });
+    expect(result.conversation.access_role).toBe("editor");
+  });
+
+  it("adds an accepted member as owner and rejects a non-member target", async () => {
+    transactionQuery
+      .mockResolvedValueOnce({ rows: [{ id: CONVERSATION }] })
+      .mockResolvedValueOnce({ rows: [{ user_id: MEMBER }] })
+      .mockResolvedValueOnce({ rows: [{ conversation_id: CONVERSATION, workspace_id: WORKSPACE, user_id: MEMBER, role: "editor", added_by: ACTOR, created_at: "2026-11-09T00:00:00Z", user_email: "teammate@example.test" }] });
+    await expect(studioRepository().addConversationMember({
+      workspaceId: WORKSPACE,
+      actorId: ACTOR,
+      conversationId: CONVERSATION,
+      userId: MEMBER,
+      role: "editor",
+    })).resolves.toMatchObject({ user_id: MEMBER, role: "editor", user_email: "teammate@example.test" });
+
+    transactionQuery.mockResolvedValueOnce({ rows: [{ id: CONVERSATION }] }).mockResolvedValueOnce({ rows: [] });
+    await expect(studioRepository().addConversationMember({
+      workspaceId: WORKSPACE,
+      actorId: ACTOR,
+      conversationId: CONVERSATION,
+      userId: MEMBER,
+      role: "viewer",
+    })).rejects.toThrow("studio_share_target_not_member");
+  });
+
+  it("rejects sharing with yourself and a malformed conversation", async () => {
+    await expect(studioRepository().addConversationMember({
+      workspaceId: WORKSPACE,
+      actorId: ACTOR,
+      conversationId: CONVERSATION,
+      userId: ACTOR,
+      role: "editor",
+    })).rejects.toThrow("studio_share_self");
+    await expect(studioRepository().addConversationMember({
+      workspaceId: WORKSPACE,
+      actorId: ACTOR,
+      conversationId: "nope",
+      userId: MEMBER,
+      role: "editor",
+    })).rejects.toMatchObject({ name: "StudioConversationNotFoundError" });
+  });
+});
+
 describe("wire mappers", () => {
   it("maps a conversation row to the camelCase contract", () => {
     expect(toStudioConversation(conversationRow({ location_id: LOCATION }) as unknown as Parameters<typeof toStudioConversation>[0])).toEqual({
@@ -546,7 +625,15 @@ describe("wire mappers", () => {
       createdAt: "2026-11-08T12:00:00.000000Z",
       updatedAt: "2026-11-08T12:00:00.000000Z",
       lastMessageAt: "2026-11-08T12:00:00.000000Z",
+      accessRole: "owner",
+      shared: false,
     });
+  });
+
+  it("maps a shared membership row to the editor/viewer access contract", () => {
+    for (const [accessRole, shared] of [["editor", true], ["viewer", true]] as const) {
+      expect(toStudioConversation(conversationRow({ access_role: accessRole }) as unknown as Parameters<typeof toStudioConversation>[0])).toMatchObject({ accessRole, shared });
+    }
   });
 
   it("parses and validates persisted parts, dropping unknown shapes", () => {
