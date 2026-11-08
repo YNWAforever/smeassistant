@@ -249,7 +249,7 @@ export async function addStudioConversationMember(
   )
   if (!result.ok) return result
   const member = isRecord(result.data) ? result.data.member : null
-  if (!isRecord(member) || typeof member.user_id !== "string" || typeof member.user_email !== "string") {
+  if (!isRecord(member) || typeof member.user_id !== "string") {
     return { ok: false, status: 201, code: "unavailable", error: "invalid_response" }
   }
   return {
@@ -258,7 +258,7 @@ export async function addStudioConversationMember(
       conversationId: typeof member.conversation_id === "string" ? member.conversation_id : conversationId,
       userId: member.user_id,
       role: member.role === "viewer" ? "viewer" : "editor",
-      email: member.user_email,
+      email: typeof member.user_email === "string" ? member.user_email : "",
       addedBy: typeof member.added_by === "string" ? member.added_by : null,
       createdAt: typeof member.created_at === "string" ? member.created_at : "",
     },

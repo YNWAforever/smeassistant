@@ -150,6 +150,45 @@ test.describe("Conversation Studio", () => {
     await expect(page.getByRole("link", { name: /Open persistent copy/ }).first()).toBeVisible();
   });
 
+  test("shares a conversation with an accepted teammate and enforces viewer read-only", async ({ page, merchant, environment }) => {
+    await setModelScript(environment);
+    await signIn(page, environment, merchant, "owner");
+    await page.goto(`/en/owner/${merchant.slug}/conversation/studio`);
+    await page.getByRole("button", { name: "What should I do first?" }).click();
+    await expect(page.locator(".studio-message-assistant").last()).toContainText("Start with the unanswered reviews", { timeout: 90_000 });
+    const conversationId = new URL(page.url()).searchParams.get("chat");
+    expect(conversationId).toMatch(/^[a-f0-9-]{36}$/);
+
+    // Make the fixture viewer an accepted member before sharing (the seed leaves
+    // invitations pending; real owners share with accepted teammates).
+    expect(sql(environment.db, `update workspace_members set user_id=(select id from app_users where email='${merchant.emails.viewer}'), accepted_at=now() where workspace_id='${merchant.workspaceId}' and email='${merchant.emails.viewer}'; select 'ok';`)).toBe("ok");
+
+    await page.getByRole("button", { name: "Share" }).click();
+    const dialog = page.locator(".studio-share-dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("combobox").first().selectOption({ label: merchant.emails.viewer });
+    await dialog.getByRole("combobox").nth(1).selectOption("viewer");
+    await dialog.getByRole("button", { name: "Share" }).click();
+    await expect.poll(() => sql(environment.db, `select role from studio_conversation_members where conversation_id='${conversationId}' and user_id=(select id from app_users where email='${merchant.emails.viewer}');`)).toBe("viewer");
+    const membersResponse = await page.request.get(`/api/studio/conversations/${conversationId}/members?workspaceId=${merchant.workspaceId}`);
+    expect(membersResponse.status()).toBe(200);
+    const membersPayload = await membersResponse.json() as { members?: Array<{ user_email?: string }> };
+    expect(membersPayload.members?.map((member) => member.user_email)).toContain(merchant.emails.viewer);
+    await expect(dialog.locator(".studio-share-members")).toContainText(merchant.emails.viewer, { timeout: 15_000 });
+
+    // The teammate signs in and sees the shared conversation on their rail.
+    expect((await page.request.post("/api/auth/sign-out")).status()).toBe(200);
+    await signIn(page, environment, merchant, "viewer");
+    await page.goto(`/en/owner/${merchant.slug}/conversation/studio`);
+    await page.locator(".studio-rail-select").filter({ hasText: "Review replies first" }).click();
+    await expect(page.getByText("This conversation is shared with you as read-only.")).toBeVisible();
+    await expect(page.locator("#studio-composer-input")).toBeDisabled();
+    const forbidden = await page.request.post(`/api/studio/conversations/${conversationId}/messages`, {
+      data: { workspaceId: merchant.workspaceId, text: "Should be refused" },
+    });
+    expect(forbidden.status()).toBe(403);
+  });
+
   test("conversations are private per member: a teammate in the same workspace starts with an empty rail", async ({ page, merchant, environment }) => {
     await setModelScript(environment);
     await signIn(page, environment, merchant, "owner");

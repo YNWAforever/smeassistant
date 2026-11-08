@@ -125,6 +125,7 @@ export async function POST(
   }
   if (!conversation) return jsonStatus("not_found");
   if (conversation.status !== "active") return jsonStatus("archived");
+  if (conversation.access_role === "viewer") return jsonStatus("forbidden");
 
   const effectiveLocationId = locationId ?? conversation.location_id;
   if (effectiveLocationId && !inLocationScope(membership, effectiveLocationId)) return jsonStatus("not_found");
