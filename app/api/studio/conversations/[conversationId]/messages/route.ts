@@ -12,6 +12,7 @@ import { runStudioTurn } from "@/lib/studio/orchestrator";
 import { acquireStudioTurnLock } from "@/lib/studio/turn-lock";
 import { STUDIO_MESSAGE_MAX, type StudioErrorCode, type StudioStreamEvent } from "@/lib/studio/types";
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
+import { ConversationDocumentError, listConversationDocuments } from "@/lib/workspace/conversation-documents";
 import {
   STUDIO_SSE_HEADERS,
   authFailure,
@@ -80,6 +81,14 @@ export async function POST(
   if (!workspaceId || locationId === null || locale === null || text === null || text.length < 1 || text.length > STUDIO_MESSAGE_MAX) {
     return studioError("invalid_input");
   }
+  const rawDocumentIds = body.documentVersionIds;
+  if (rawDocumentIds !== undefined && (!Array.isArray(rawDocumentIds) || rawDocumentIds.length > 5)) return studioError("invalid_input");
+  const documentVersionIds = rawDocumentIds === undefined
+    ? []
+    : (rawDocumentIds as unknown[]).map((id) => optionalUuid(id));
+  if (documentVersionIds.some((id) => id === null) || new Set(documentVersionIds).size !== documentVersionIds.length) {
+    return studioError("invalid_input");
+  }
 
   const auth = await authorizationOrUnavailable(() => authorizeWorkspaceRequest({ id: workspaceId }));
   if (!auth) return studioError("unavailable");
@@ -110,6 +119,30 @@ export async function POST(
   // The conversation must belong to the workspace the caller was authorised
   // for; the repository enforces that, and this restates it for the audit row.
   if (conversation.workspace_id !== membership.workspaceId) return jsonStatus("not_found");
+
+  // Attached workbench documents are re-read here, in the same workspace and
+  // location scope as the conversation; the extracted text never travels
+  // through the browser and a missing/foreign version is rejected before SSE.
+  const documentScope = { workspaceId: membership.workspaceId, locationId: effectiveLocationId ?? null };
+  let documents: Array<{ documentVersionId: string; title: string; text: string; truncated: boolean }> = [];
+  if (documentVersionIds.length) {
+    try {
+      documents = (await listConversationDocuments(documentScope, documentVersionIds as string[])).map((version) => ({
+        documentVersionId: version.id,
+        title: version.title,
+        text: version.text,
+        truncated: version.truncated,
+      }));
+    } catch (error) {
+      if (error instanceof ConversationDocumentError) return studioError(error.code === "document_not_found" ? "not_found" : "invalid_input");
+      return jsonStatus("unavailable");
+    }
+  }
+  const citationRefs = documents.map((document) => ({
+    documentVersionId: document.documentVersionId,
+    title: document.title,
+    truncated: document.truncated,
+  }));
 
   let release: Awaited<ReturnType<typeof acquireStudioTurnLock>>;
   try {
@@ -159,6 +192,16 @@ export async function POST(
           locationId: effectiveLocationId,
           db: studioTurnStore(repository),
           briefing,
+          documents: citationRefs,
+          loadDocuments: async (ids) => {
+            const versions = await listConversationDocuments(documentScope, ids);
+            return versions.map((version) => ({
+              documentVersionId: version.id,
+              title: version.title,
+              text: version.text,
+              truncated: version.truncated,
+            }));
+          },
           llm: studioTurnLlm(),
           emit,
           lock: async () => releaseOnce,

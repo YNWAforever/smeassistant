@@ -20,6 +20,7 @@ import {
   type StudioMessage,
   type StudioMessagePart,
   type StudioMessageRole,
+  type StudioCitationRef,
 } from "../studio/types";
 
 /**
@@ -159,6 +160,8 @@ export type StudioImportConversationInput = {
   locationId?: string | null;
   title: string;
   notes: string[];
+  /** Authorised workbench documents to attach to the opening turn. */
+  documents?: StudioCitationRef[];
 };
 
 export type StudioImportConversationResult = {
@@ -169,7 +172,7 @@ export type StudioImportConversationResult = {
 /** A local thread is at most 40 notes; a message is at most 4,000 characters. */
 export const STUDIO_IMPORT_MAX_NOTES = 40;
 
-export type StudioImportThreadInput = { title: string; notes: string[] };
+export type StudioImportThreadInput = { title: string; notes: string[]; documents?: StudioCitationRef[] };
 
 /**
  * One-click convergence: import several browser-local threads in one
@@ -282,7 +285,14 @@ function normalizeImportNotes(notes: string[]): string[] {
  */
 async function insertImportedThread(
   tx: Executor,
-  input: { workspaceId: string; actorId: string; locationId: string | null; title: string; notes: string[] },
+  input: {
+    workspaceId: string;
+    actorId: string;
+    locationId: string | null;
+    title: string;
+    notes: string[];
+    documents?: StudioCitationRef[];
+  },
 ): Promise<{ conversation: StudioConversationRow; messageCount: number }> {
   const notes = normalizeImportNotes(input.notes);
   if (!notes.length) throw new Error("studio_import_empty");
@@ -299,10 +309,14 @@ async function insertImportedThread(
   ).rows[0];
   if (!conversation) throw new StudioLocationNotFoundError();
   for (const [index, note] of notes.entries()) {
+    const parts: StudioMessagePart[] = [{ kind: "text", text: note }];
+    if (index === 0 && input.documents?.length) {
+      parts.push({ kind: "citation", refs: input.documents.slice(0, 8) });
+    }
     await tx.query(
       `INSERT INTO studio_messages(conversation_id,workspace_id,seq,role,author_id,content,parts,intent,model,prompt_version,input_tokens,output_tokens,cost_usd)
-       VALUES($1,$2,$3,'user',$4,$5,'[]'::jsonb,NULL,NULL,NULL,NULL,NULL,NULL)`,
-      [conversation.id, input.workspaceId, index + 1, input.actorId, note],
+       VALUES($1,$2,$3,'user',$4,$5,$6::jsonb,NULL,NULL,NULL,NULL,NULL,NULL)`,
+      [conversation.id, input.workspaceId, index + 1, input.actorId, note, JSON.stringify(parts)],
     );
   }
   const updated = (
@@ -441,6 +455,22 @@ export function parseStudioParts(value: unknown): StudioMessagePart[] {
           parts.push({ kind: "warning", code: record.code, text: record.text });
         }
         break;
+      case "citation": {
+        const refs = Array.isArray(record.refs)
+          ? record.refs
+              .map((ref) => asRecord(ref))
+              .filter((ref): ref is Record<string, unknown> => Boolean(ref))
+              .filter((ref) => typeof ref.documentVersionId === "string" && typeof ref.title === "string")
+              .slice(0, 8)
+              .map((ref): StudioCitationRef => ({
+                documentVersionId: ref.documentVersionId as string,
+                title: ref.title as string,
+                truncated: ref.truncated === true,
+              }))
+          : [];
+        if (refs.length) parts.push({ kind: "citation", refs });
+        break;
+      }
       default:
         break;
     }
@@ -549,6 +579,7 @@ export function studioRepository(client?: Executor, transaction: StudioTransacti
           locationId: input.locationId ?? null,
           title: input.title,
           notes: input.notes,
+          documents: input.documents,
         })),
       );
     },
@@ -567,6 +598,7 @@ export function studioRepository(client?: Executor, transaction: StudioTransacti
       const normalized = threads.map((thread) => ({
         title: typeof thread.title === "string" ? thread.title : "",
         notes: normalizeImportNotes(Array.isArray(thread.notes) ? thread.notes : []),
+        documents: Array.isArray(thread.documents) ? thread.documents.slice(0, 8) : [],
       }));
       if (normalized.some((thread) => thread.notes.length === 0)) {
         return Promise.reject(new Error("studio_import_invalid"));
@@ -585,6 +617,7 @@ export function studioRepository(client?: Executor, transaction: StudioTransacti
               locationId: input.locationId ?? null,
               title: thread.title,
               notes: thread.notes,
+              documents: thread.documents,
             });
             conversations.push(imported.conversation);
             messageCount += imported.messageCount;

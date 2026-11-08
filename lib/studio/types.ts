@@ -87,12 +87,27 @@ export type StudioNextStepPart = { kind: "next_step"; step: AssistantNextStep }
 /** A refusal or limitation that must stay visible next to the answer. */
 export type StudioWarningPart = { kind: "warning"; code: string; text: string }
 
+/**
+ * A workbench document the owner attached to a turn (convergence slice 3).
+ * The persisted part carries only the authorised identity and title: the
+ * extracted text stays in `conversation_document_versions` and is re-read with
+ * the same scope for each answer, so a revoked document cannot be replayed.
+ */
+export type StudioCitationRef = {
+  documentVersionId: string
+  title: string
+  truncated: boolean
+}
+
+export type StudioCitationPart = { kind: "citation"; refs: StudioCitationRef[] }
+
 export type StudioMessagePart =
   | StudioTextPart
   | StudioEvidencePart
   | StudioArtifactPart
   | StudioNextStepPart
   | StudioWarningPart
+  | StudioCitationPart
 
 export type StudioMessage = {
   id: string

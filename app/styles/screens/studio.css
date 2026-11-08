@@ -1,4 +1,27 @@
 @layer screens {
+  .studio-citations {
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+    font-size: 11px;
+  }
+  .studio-citations-label {
+    font-weight: 700;
+    margin: 0 0 4px;
+  }
+  .studio-citations ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .studio-citations li {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 8px;
+  }
+
   .conversation-persistent-actions {
     display: flex;
     flex-wrap: wrap;

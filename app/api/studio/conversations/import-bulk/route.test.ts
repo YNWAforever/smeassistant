@@ -141,7 +141,7 @@ describe("POST /api/studio/conversations/import-bulk", () => {
       workspaceId: WORKSPACE_ID,
       actorId: "user-1",
       locationId: LOCATION_ID,
-      threads: VALID.threads,
+      threads: VALID.threads.map((thread) => ({ ...thread, documents: [] })),
     });
     expect(mocks.recordNeonEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: "conversation.imported",

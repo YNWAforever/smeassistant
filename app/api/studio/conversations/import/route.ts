@@ -6,6 +6,7 @@ import { conversationStudioEnabled } from "@/lib/studio/flag";
 import { STUDIO_MESSAGE_MAX, STUDIO_TITLE_MAX } from "@/lib/studio/types";
 import { conversationHomeEnabled } from "@/lib/workspace/conversation-flag";
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
+import { ConversationDocumentError, listConversationDocuments } from "@/lib/workspace/conversation-documents";
 import { STUDIO_IMPORT_MAX_NOTES } from "@/lib/repositories/studio";
 import {
   authFailure,
@@ -55,11 +56,32 @@ export async function POST(request: Request): Promise<Response> {
   }
   const notes = body.notes.map((note) => (typeof note === "string" ? note.trim() : ""));
   if (notes.some((note) => note.length < 1 || note.length > STUDIO_MESSAGE_MAX)) return studioError("invalid_input");
+  const rawDocumentIds = body.documentVersionIds;
+  if (rawDocumentIds !== undefined && (!Array.isArray(rawDocumentIds) || rawDocumentIds.length > 5)) return studioError("invalid_input");
+  const documentVersionIds = rawDocumentIds === undefined
+    ? []
+    : (rawDocumentIds as unknown[]).map((id) => optionalUuid(id));
+  if (documentVersionIds.some((id) => id === null) || new Set(documentVersionIds).size !== documentVersionIds.length) {
+    return studioError("invalid_input");
+  }
 
   const auth = await authorizationOrUnavailable(() => authorizeWorkspaceRequest({ id: workspaceId }, { minRole: "manager" }));
   if (!auth) return studioError("unavailable");
   if (!auth.ok) return authFailure(auth);
   if (locationId && !inLocationScope(auth.membership, locationId)) return studioError("not_found");
+
+  let documents: Array<{ documentVersionId: string; title: string; truncated: boolean }> = [];
+  if (documentVersionIds.length) {
+    try {
+      documents = (await listConversationDocuments(
+        { workspaceId: auth.membership.workspaceId, locationId: locationId ?? null },
+        documentVersionIds as string[],
+      )).map((version) => ({ documentVersionId: version.id, title: version.title, truncated: version.truncated }));
+    } catch (error) {
+      if (error instanceof ConversationDocumentError) return studioError(error.code === "document_not_found" ? "not_found" : "invalid_input");
+      return studioError("unavailable");
+    }
+  }
 
   const decision = await enforceRateLimit({
     req: request,
@@ -76,6 +98,7 @@ export async function POST(request: Request): Promise<Response> {
       locationId: locationId ?? null,
       title,
       notes,
+      documents,
     });
     await recordNeonEvent({
       workspaceId: auth.membership.workspaceId,
