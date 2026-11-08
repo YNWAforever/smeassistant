@@ -167,6 +167,29 @@ export async function importStudioConversation(
   return { ok: true, data: conversation }
 }
 
+/**
+ * Bulk convergence bridge: promote several browser-local threads in one
+ * request. The route is atomic, so either every thread becomes a conversation
+ * or none does; the response is in the same order as the request.
+ */
+export async function importStudioConversationsBulk(
+  workspaceId: string,
+  input: { locationId?: string | null; threads: Array<{ title: string; notes: string[] }> },
+): Promise<StudioClientResult<{ conversations: StudioConversation[]; messageCount: number }>> {
+  const body = {
+    workspaceId,
+    ...(input.locationId ? { locationId: input.locationId } : {}),
+    threads: input.threads,
+  }
+  const result = await request<{ conversations?: unknown; messageCount?: unknown }>("/api/studio/conversations/import-bulk", { method: "POST", body })
+  if (!result.ok) return result
+  const conversations = isRecord(result.data) && Array.isArray(result.data.conversations)
+    ? result.data.conversations.filter(isStudioConversation)
+    : []
+  if (conversations.length !== input.threads.length) return { ok: false, status: 201, code: "unavailable", error: "invalid_response" }
+  return { ok: true, data: { conversations, messageCount: typeof result.data.messageCount === "number" ? result.data.messageCount : 0 } }
+}
+
 export async function readStudioConversation(
   workspaceId: string,
   conversationId: string,

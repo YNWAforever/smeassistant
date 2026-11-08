@@ -96,6 +96,14 @@ The workbench and the Studio still keep two thread stores in this release: brows
 - **Copy:** five new keys in `lib/copy-conversation-design.ts` for en, zh-HK and zh-TW.
 - **Verified:** `studioRepository.importConversation` unit tests (30 total repo tests), the import route contract (7 tests: flag-off before auth/SQL, body validation, scope, audit without text, 404/429/503), the workbench component test (persistent list + bridge), the Docker integration test (ordered user turns on real PostgreSQL, 10/10), and the Studio browser acceptance (3/3, including “promote a local note thread into a persistent Studio conversation”). `next build` passes and the `/conversation` first-load budget is 253/300 KB gzip.
 
+### 1.8 Convergence slice 2: one-click bulk import and persistent-copy tracking (2026-11-09)
+
+- **Import all:** the workbench shows “Import all to Studio (N)” for the local threads that have no persistent copy; one request promotes them all atomically via `POST /api/studio/conversations/import-bulk` (≤25 threads / ≤400 notes, `studio_import_bulk` 5/hour/user). If any thread is invalid, the whole batch is rejected before the transaction.
+- **Persistent-copy tracking:** the workbench stores a per-account/workspace/location map (local `kinnso:conversation:v1:studio-imports:` record) from local thread id → Studio conversation id. Imported threads show **Open persistent copy** instead of the import button, and the bulk action skips them, so repeated clicks never duplicate conversations. A blocked/corrupt map is treated as empty; the notes themselves are still never deleted.
+- **Audit:** the bulk route writes one `conversation.imported` event with `{surface:"conversation", threads, notes}` and no text.
+- **Copy:** five more trilingual keys (`openPersistent`, `importAll`, `importingAll`, `importAllFailed`, `importAllDone`).
+- **Verified:** repository bulk unit tests (7 imports per call, rejects empty/oversized batches before a transaction), the bulk route contract (7 tests), the imports-map unit tests (4), the workbench component test (bulk action + persistent copy link), Docker integration (11/11 Studio persistence tests, including the atomic bulk import), and the Studio browser acceptance (4/4, including “imports all local note threads in one click”). `next build` passes; `/conversation` first-load budget is 254/300 KB gzip.
+
 ### Bug caught by visual verification (pre-integration branch)
 
 The pre-integration e2e/screenshot round exposed two issues that text assertions missed: `buildShellWorkspace` accepted `studioEnabled` but did not copy it into `ShellWorkspace` (the page rendered while nav stayed hidden), and the fixture returned classifier JSON as answer prose. The fixture fix (real SSE + prose) and the no-raw-JSON assertion are kept; the shell flag forwarding became obsolete under Path A, which mounts the entry in the conversation workbench instead of the shell nav.

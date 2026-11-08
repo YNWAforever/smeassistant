@@ -34,6 +34,7 @@ export type RateLimitScope =
   | "assistant_suggestions"
   | "studio_message"
   | "studio_import"
+  | "studio_import_bulk"
   | "preview_draft"
   | "rescan"
   | "brand_update"
@@ -143,6 +144,9 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   // browser-local thread costs no model call and creates at most 40 messages;
   // 20/hour per user is a runaway guard, not an abuse boundary.
   studio_import: { limit: 20, windowSeconds: 60 * 60 },
+  // POST /api/studio/conversations/import-bulk: one call promotes many local
+  // threads (up to 25 threads / 400 notes), so it is limited much tighter.
+  studio_import_bulk: { limit: 5, windowSeconds: 60 * 60 },
   // POST /api/start/[slug]/preview (P4.5): unsaved review-reply preview drafts, 5 a day per source IP, fail-closed.
   preview_draft: { limit: 5, windowSeconds: 60 * 60 * 24 },
   // POST /api/workspaces/[id]/rescan (CLAUDE.md §3.2.3, Phase 6): keyed on the

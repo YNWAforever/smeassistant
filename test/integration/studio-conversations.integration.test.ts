@@ -229,6 +229,25 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Conversation Studio persis
     ]);
   });
 
+  it("bulk-imports several browser-local threads in one transaction", async () => {
+    const { workspaceId, actorId, repo } = await setup();
+    const result = await repo.importConversations({
+      workspaceId,
+      actorId,
+      threads: [
+        { title: "First local", notes: ["one", "two"] },
+        { title: "Second local", notes: ["three"] },
+      ],
+    });
+    expect(result.messageCount).toBe(3);
+    expect(result.conversations.map((conversation) => conversation.title)).toEqual(["First local", "Second local"]);
+    const conversations = await repo.listConversations({ workspaceId, actorId });
+    expect(conversations.map((conversation) => conversation.title).sort()).toEqual(["First local", "Second local"]);
+    const second = result.conversations[1];
+    const messages = await repo.listMessages({ workspaceId, actorId, conversationId: second.id });
+    expect(messages.map((message) => [message.seq, message.role, message.content])).toEqual([[1, "user", "three"]]);
+  });
+
   it("cascades content with the conversation, the workspace and the creator, and nulls a removed location", async () => {
     const workspaceId = await workspace();
     const actorId = await member();

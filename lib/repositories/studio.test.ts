@@ -481,6 +481,47 @@ describe("studioRepository.importConversation (convergence bridge)", () => {
     expect(transactionQuery).not.toHaveBeenCalled();
   });
 
+  it("imports several local threads in one transaction and reports the total", async () => {
+    const first = conversationRow({ id: CONVERSATION, title: "First idea" });
+    const second = conversationRow({ id: MESSAGE, title: "Second idea" });
+    transactionQuery
+      .mockResolvedValueOnce({ rows: [first] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [first] })
+      .mockResolvedValueOnce({ rows: [second] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [second] });
+
+    const result = await studioRepository().importConversations({
+      workspaceId: WORKSPACE,
+      actorId: ACTOR,
+      locationId: LOCATION,
+      threads: [
+        { title: "First idea", notes: ["one", "two"] },
+        { title: "Second idea", notes: ["three"] },
+      ],
+    });
+
+    expect(result.messageCount).toBe(3);
+    expect(result.conversations.map((conversation) => conversation.id)).toEqual([CONVERSATION, MESSAGE]);
+    expect(transactionQuery).toHaveBeenCalledTimes(7);
+  });
+
+  it("rejects an empty or oversized bulk import before opening a transaction", async () => {
+    await expect(studioRepository().importConversations({
+      workspaceId: WORKSPACE,
+      actorId: ACTOR,
+      threads: [],
+    })).rejects.toThrow("studio_import_invalid");
+    await expect(studioRepository().importConversations({
+      workspaceId: WORKSPACE,
+      actorId: ACTOR,
+      threads: [{ title: "blank", notes: ["   "] }],
+    })).rejects.toThrow("studio_import_invalid");
+    expect(transactionQuery).not.toHaveBeenCalled();
+  });
+
   it("rejects a location outside the workspace without inserting anything", async () => {
     transactionQuery.mockResolvedValueOnce({ rows: [] });
     await expect(studioRepository().importConversation({

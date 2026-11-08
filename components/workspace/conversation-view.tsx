@@ -13,7 +13,8 @@ import { resourceCopy } from "@/lib/copy-conversation-resources";
 import { conversationCopy } from "@/lib/copy-conversation";
 import { conversationDesignCopy, type ConversationCategory } from "@/lib/copy-conversation-design";
 import { studioText } from "@/lib/studio/copy";
-import { importStudioConversation } from "@/lib/studio/client";
+import { importStudioConversation, importStudioConversationsBulk } from "@/lib/studio/client";
+import { readConversationImports, saveConversationImports, type ConversationImports } from "@/lib/workspace/conversation-imports";
 import { searchCopy } from "@/lib/copy-search-gap";
 import { openConversationTool, useConversationNavigation } from "./conversation-navigation";
 import { CONVERSATION_LIMITS, conversationScopeKey, readConversationThreads, saveConfirmedPostDraft, saveConversationChanges, type ConversationSave, type ConversationScope, type LocalThread } from "@/lib/workspace/conversation-store";
@@ -78,6 +79,13 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
   const [saveError, setSaveError] = useState<"unavailable" | "limit" | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState(false);
+  const [imports, setImports] = useState<ConversationImports>(() => {
+    try { return readConversationImports(window.localStorage, scope); }
+    catch { return {}; }
+  });
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkImportError, setBulkImportError] = useState(false);
+  const [bulkImportDone, setBulkImportDone] = useState(false);
   const [category, setCategory] = useState<ConversationCategory>("all");
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const pendingIds = useRef(new Set<string>());
@@ -89,6 +97,8 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
   }
   const selected = local.threads.find(thread => thread.id === selectedId);
   const missing = selectedId !== undefined && !selected;
+  const unimportedLocal = local.threads.filter(thread => !imports[thread.id]);
+  const persistentId = selected ? imports[selected.id] : undefined;
   const actionHref = (action: ConversationAction, version = false) => `${base}/actions/${encodeURIComponent(action.id)}?${locationQuery}${version && action.versionId ? `&version=${encodeURIComponent(action.versionId)}` : ""}`;
   const publishThreads = navigation?.setThreads;
   useEffect(() => {
@@ -145,10 +155,39 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
     });
     setImporting(false);
     if (result.ok) {
+      try {
+        const saved = saveConversationImports(window.localStorage, scope, { [selected.id]: result.data.id });
+        if (saved) setImports(saved);
+      } catch { /* the mapping is a convenience; navigation still works */ }
       router.push(`${base}/conversation/studio?chat=${encodeURIComponent(result.data.id)}&${locationQuery}`);
     } else {
       setImportError(true);
     }
+  }
+  async function importAllToStudio() {
+    if (!studioEnabled || bulkImporting || !unimportedLocal.length) return;
+    setBulkImporting(true);
+    setBulkImportError(false);
+    setBulkImportDone(false);
+    const result = await importStudioConversationsBulk(scope.workspaceId, {
+      locationId: scope.locationId === "all" ? null : scope.locationId,
+      threads: unimportedLocal.map(thread => ({ title: thread.title, notes: thread.notes })),
+    });
+    setBulkImporting(false);
+    if (!result.ok) {
+      setBulkImportError(true);
+      return;
+    }
+    const entries: ConversationImports = {};
+    unimportedLocal.forEach((thread, index) => {
+      const conversation = result.data.conversations[index];
+      if (conversation) entries[thread.id] = conversation.id;
+    });
+    try {
+      const saved = saveConversationImports(window.localStorage, scope, entries);
+      if (saved) setImports(saved);
+    } catch { /* mapping is best-effort */ }
+    setBulkImportDone(true);
   }
   function citeDocument(id: string) {
     if (!selected || local.status === "corrupt" || selected.documentVersionIds?.includes(id)) return;
@@ -187,7 +226,9 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
             <header className="conversation-thread-heading"><span><MessagesSquare aria-hidden="true" />{d.local}</span><time dateTime={selected.updatedAt}>{formatDateTime(selected.updatedAt, locale, timezone)}</time><h2>{selected.title}</h2></header>
             <div className="conversation-note-stack">{selected.notes.map((note, index) => <p className="conversation-note" key={index}>{note}</p>)}</div>
             {studioEnabled && <div className="conversation-studio-bridge">
-              <Button type="button" size="sm" onClick={() => void continueInStudio()} disabled={importing}>{importing ? d.importing : d.continueInStudio}</Button>
+              {persistentId
+                ? <Link href={`${base}/conversation/studio?chat=${encodeURIComponent(persistentId)}&${locationQuery}`}>{d.openPersistent}<ArrowRight aria-hidden="true" /></Link>
+                : <Button type="button" size="sm" onClick={() => void continueInStudio()} disabled={importing}>{importing ? d.importing : d.continueInStudio}</Button>}
               {importError && <p role="alert">{d.importFailed}</p>}
             </div>}
             <div className="conversation-thread-links">
@@ -225,7 +266,12 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
           {local.threads.length === 0 ? <p className="conversation-empty">{t.empty}</p> : <ul>{local.threads.map(thread => <li key={thread.id}><MessagesSquare aria-hidden="true" /><button type="button" className={selectedId === thread.id ? "is-active" : ""} aria-label={thread.title} aria-pressed={selectedId === thread.id} onClick={() => selectThread(thread.id)}><span>{thread.title}</span><small>{d.local} · <time dateTime={thread.updatedAt}>{formatDateTime(thread.updatedAt, locale, timezone)}</time></small></button><ArrowRight aria-hidden="true" /></li>)}</ul>}
         </section>
         {studioEnabled && <section className="conversation-threads conversation-persistent" aria-label={d.persistent}>
-          <div className="conversation-section-heading"><h2>{d.persistent}</h2><Link href={`${base}/conversation/studio?${locationQuery}`}>{studioText(locale).header.openStudio}</Link></div>
+          <div className="conversation-section-heading"><h2>{d.persistent}</h2><div className="conversation-persistent-actions">
+            {unimportedLocal.length > 0 && <Button type="button" size="sm" variant="outline" onClick={() => void importAllToStudio()} disabled={bulkImporting}>{bulkImporting ? d.importingAll : `${d.importAll} (${unimportedLocal.length})`}</Button>}
+            <Link href={`${base}/conversation/studio?${locationQuery}`}>{studioText(locale).header.openStudio}</Link>
+          </div></div>
+          {bulkImportError && <p role="alert">{d.importAllFailed}</p>}
+          {bulkImportDone && <p role="status">{d.importAllDone}</p>}
           {studioConversations?.length ? <ul>{studioConversations.map(conversation => <li key={conversation.id}><MessagesSquare aria-hidden="true" /><Link href={`${base}/conversation/studio?chat=${encodeURIComponent(conversation.id)}&${locationQuery}`}><span>{conversation.title || studioText(locale).rail.untitled}</span><small><time dateTime={conversation.lastMessageAt}>{formatDateTime(conversation.lastMessageAt, locale, timezone)}</time></small></Link><ArrowRight aria-hidden="true" /></li>)}</ul> : <p className="conversation-empty">{d.persistentEmpty}</p>}
         </section>}
         {resources && <section className="conversation-tools" aria-label={d.tools}>
