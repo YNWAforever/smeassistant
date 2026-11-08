@@ -94,8 +94,12 @@ export function isDemoQuestionId(value: unknown): value is DemoQuestionId {
   return typeof value === "string" && demoQuestionIds.includes(value as DemoQuestionId)
 }
 
-/** Where the assistant was opened from; decides which intents are offered (§3.8). */
-export type AssistantSurface = "sample" | "report" | "home" | "actions" | "action" | "create" | "insights" | "assets" | "rescan" | "workspace"
+/**
+ * Where the assistant was opened from; decides which intents are offered (§3.8).
+ * `studio` is the Conversation Studio: its orchestrator reuses the same
+ * deterministic and agent-backed intents, but owns the conversation itself.
+ */
+export type AssistantSurface = "sample" | "report" | "home" | "actions" | "action" | "create" | "insights" | "assets" | "rescan" | "workspace" | "studio"
 
 export type AssistantMode = "demo" | "live"
 

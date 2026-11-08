@@ -35,6 +35,8 @@ export type DatabaseRows = {
   "scan_schedules": typeof schema.scanSchedules.$inferSelect;
   "scan_snapshots": typeof schema.scanSnapshots.$inferSelect;
   "staff_report_events": typeof schema.staffReportEvents.$inferSelect;
+  "studio_conversations": typeof schema.studioConversations.$inferSelect;
+  "studio_messages": typeof schema.studioMessages.$inferSelect;
   "work_pack_items": typeof schema.workPackItems.$inferSelect;
   "work_packs": typeof schema.workPacks.$inferSelect;
   "workspace_access_requests": typeof schema.workspaceAccessRequests.$inferSelect;
@@ -81,6 +83,8 @@ export type DatabaseInserts = {
   "scan_schedules": typeof schema.scanSchedules.$inferInsert;
   "scan_snapshots": typeof schema.scanSnapshots.$inferInsert;
   "staff_report_events": typeof schema.staffReportEvents.$inferInsert;
+  "studio_conversations": typeof schema.studioConversations.$inferInsert;
+  "studio_messages": typeof schema.studioMessages.$inferInsert;
   "work_pack_items": typeof schema.workPackItems.$inferInsert;
   "work_packs": typeof schema.workPacks.$inferInsert;
   "workspace_access_requests": typeof schema.workspaceAccessRequests.$inferInsert;

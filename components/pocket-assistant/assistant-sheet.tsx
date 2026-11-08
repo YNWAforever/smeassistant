@@ -63,6 +63,10 @@ export const surfaceQuestions: Record<AssistantSurface, DemoQuestionId[]> = {
   assets: ["asset_next_step", "generate_social", "generate_menu"],
   rescan: ["rescan_validation", "explain_limits"],
   workspace: ["explain_priority", "compare_priorities", "explain_insights"],
+  // Never rendered: the Studio owns its own conversation UI and does not mount
+  // the sheet. The key exists so the surface union stays exhaustive, and the
+  // fixed list still obeys the "contextual intents are suggestions only" rule.
+  studio: ["explain_priority", "explain_change", "explain_insights"],
 }
 
 type ContextualIntentId = AssistantSuggestion["intentId"]
@@ -174,6 +178,7 @@ function surfaceTitle(surface: AssistantSurface, isChinese: boolean) {
     assets: ["已核准素材", "Approved assets"],
     rescan: ["重新掃描驗證", "Re-scan validation"],
     workspace: ["目前工作台", "Current workspace"],
+    studio: ["對話工作台", "Conversation Studio"],
   }
   return map[surface][isChinese ? 0 : 1]
 }

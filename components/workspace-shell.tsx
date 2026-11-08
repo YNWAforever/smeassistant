@@ -8,6 +8,7 @@ import {
   ChevronDown,
   FileClock,
   Home,
+  MessagesSquare,
   MoreHorizontal,
   Search,
   WandSparkles,
@@ -31,6 +32,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { copy, normaliseLocale, type PrototypeLocale } from "@/lib/copy"
+import { studioText } from "@/lib/studio/copy"
 import { accountInitials, resolveLocationSlug, usagePercent } from "@/lib/workspace/shell"
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import { useFocusClearOfBars } from "@/hooks/use-focus-clear-of-bars"
@@ -42,6 +44,11 @@ import { zhFor } from "@/lib/zh-tw"
  * The authenticated workspace chrome (sidebar, top bar, mobile nav). Kept out
  * of components/product-ui.tsx so public pages, which import that module for
  * their own chrome, do not download the sidebar and tooltip code.
+ *
+ * `studio` is first and only present with CONVERSATION_STUDIO_ENABLED on
+ * (design §2 S1/S6): the conversation is the primary owner surface, and the
+ * top-bar sheet trigger becomes an "Open Studio" link. With the flag off the
+ * navigation is byte-for-byte what it was.
  */
 const primaryWorkspaceNav: ReadonlyArray<{
   key: string
@@ -49,6 +56,7 @@ const primaryWorkspaceNav: ReadonlyArray<{
   icon: typeof Home
   suffix: string
 }> = [
+  { key: "studio", label: "Studio", icon: MessagesSquare, suffix: "/studio" },
   { key: "home", label: "Home", icon: Home, suffix: "" },
   { key: "actions", label: "Actions", icon: FileClock, suffix: "/actions" },
   { key: "create", label: "Create", icon: WandSparkles, suffix: "/create" },
@@ -66,6 +74,16 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const t = copy[locale]
+  const studio = studioText(locale)
+  const studioEnabled = workspace.studioEnabled === true
+  // With the flag off the list is exactly the old one; with it on Studio leads
+  // the desktop sidebar and the mobile bar drops Create to keep five targets.
+  const primaryNav = studioEnabled ? primaryWorkspaceNav : primaryWorkspaceNav.filter((item) => item.key !== "studio")
+  const mobileNav = studioEnabled ? primaryNav.filter((item) => item.key !== "create") : primaryNav
+  // With the Studio, the workspace root redirects to the conversation, so the
+  // Home tab points at the /today brief instead of the root.
+  const homeSuffix = studioEnabled ? "/today" : ""
+  const navSuffix = (key: string, suffix: string) => (key === "home" ? homeSuffix : suffix)
   useFocusClearOfBars(".workspace-topbar", ".mobile-bottom-nav")
   const isChinese = locale !== "en"
   const base = `/${locale}/owner/${workspace.slug}`
@@ -78,24 +96,29 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
   const actionsBadge = workspace.urgentActions && workspace.urgentActions > 0 ? String(workspace.urgentActions) : undefined
   const workspaceSection = pathname.includes("/actions/")
     ? (isChinese ? zhFor(locale, "審閱與審批") : "Review & approve")
-    : pathname.endsWith("/actions")
-      ? t.nav.actions
-      : pathname.endsWith("/create")
-        ? t.nav.create
-        : pathname.endsWith("/insights")
-          ? t.nav.insights
-          : pathname.includes("/settings/")
-            ? (isChinese ? "工作台設定" : "Workspace settings")
-            : pathname.endsWith("/assets")
-              ? (isChinese ? "素材" : "Assets")
-              : pathname.endsWith("/offers")
-                ? t.workspace.offers.nav
-                : pathname.endsWith("/calendar")
-                  ? (isChinese ? "日曆" : "Calendar")
-                  : pathname.endsWith("/activity")
-                    ? (isChinese ? "活動紀錄" : "Activity")
-                    : pathname.endsWith("/more") ? t.nav.more : t.nav.home
+    : pathname.endsWith("/studio")
+      ? studio.nav.label
+      : pathname.endsWith("/today")
+        ? t.nav.home
+        : pathname.endsWith("/actions")
+        ? t.nav.actions
+        : pathname.endsWith("/create")
+          ? t.nav.create
+          : pathname.endsWith("/insights")
+            ? t.nav.insights
+            : pathname.includes("/settings/")
+              ? (isChinese ? "工作台設定" : "Workspace settings")
+              : pathname.endsWith("/assets")
+                ? (isChinese ? "素材" : "Assets")
+                : pathname.endsWith("/offers")
+                  ? t.workspace.offers.nav
+                  : pathname.endsWith("/calendar")
+                    ? (isChinese ? "日曆" : "Calendar")
+                    : pathname.endsWith("/activity")
+                      ? (isChinese ? "活動紀錄" : "Activity")
+                      : pathname.endsWith("/more") ? t.nav.more : t.nav.home
   const labelMap: Record<string, string> = {
+    Studio: studio.nav.label,
     Home: t.nav.home,
     Actions: t.nav.actions,
     Create: t.nav.create,
@@ -119,7 +142,7 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
       <a className="skip-link" href="#main-content">{isChinese ? "跳到主要內容" : "Skip to content"}</a>
       <Sidebar collapsible="none" className="workspace-sidebar hidden md:flex">
         <SidebarHeader className="workspace-sidebar-header">
-          <Link className="brand-lockup brand-lockup-inverse" href={base}>
+          <Link className="brand-lockup brand-lockup-inverse" href={studioEnabled ? `${base}/studio` : base}>
             <span className="brand-mark" aria-hidden="true"><Search /></span>
             <span><strong>Visibility</strong><small>Workspace</small></span>
           </Link>
@@ -134,10 +157,11 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
             <SidebarGroupLabel>{isChinese ? "今日工作" : "Operate"}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {primaryWorkspaceNav.map(({ key, label, icon: Icon, suffix }) => {
-                  const href = scopedHref(`${base}${suffix}`)
-                  const path = `${base}${suffix}`
-                  const active = suffix ? pathname === path || pathname.startsWith(`${path}/`) : pathname === base || pathname === `/${locale}/owner`
+                {primaryNav.map(({ key, label, icon: Icon, suffix }) => {
+                  const effectiveSuffix = navSuffix(key, suffix)
+                  const href = scopedHref(`${base}${effectiveSuffix}`)
+                  const path = `${base}${effectiveSuffix}`
+                  const active = effectiveSuffix ? pathname === path || pathname.startsWith(`${path}/`) : pathname === base || pathname === `/${locale}/owner`
                   const badge = key === "actions" ? actionsBadge : undefined
                   return (
                     <SidebarMenuItem key={label}>
@@ -181,7 +205,16 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
             <strong>{workspaceSection}</strong>
           </div>
           <div className="workspace-topbar-spacer" />
-          <ContextualAssistant locale={locale} surface={assistantSurface} triggerLabel={isChinese ? "問增長助理" : "Ask operator"} mode={workspace.assistant ? "live" : "demo"} context={workspace.assistant} basePath={workspace.assistant ? base : undefined} locationParam={location} />
+          {studioEnabled ? (
+            <Button asChild variant="outline" size="sm" className="workspace-studio-link">
+              <Link href={scopedHref(`${base}/studio`)} aria-label={studio.nav.aria}>
+                <MessagesSquare aria-hidden="true" />
+                <span>{studio.header.openStudio}</span>
+              </Link>
+            </Button>
+          ) : (
+            <ContextualAssistant locale={locale} surface={assistantSurface} triggerLabel={isChinese ? "問增長助理" : "Ask operator"} mode={workspace.assistant ? "live" : "demo"} context={workspace.assistant} basePath={workspace.assistant ? base : undefined} locationParam={location} />
+          )}
           <Button asChild variant="ghost" size="icon" className="notification-button">
             <Link href={scopedHref(`${base}/settings/notifications`)} aria-label={unreadLabel(workspace.unreadNotifications, isChinese)}><Bell />{workspace.unreadNotifications > 0 && <span className="notification-dot" />}</Link>
           </Button>
@@ -190,10 +223,11 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
         </header>
         <main className="workspace-content" id="main-content" tabIndex={-1}>{children}</main>
         <nav className="mobile-bottom-nav md:hidden" aria-label={isChinese ? "工作台導覽" : "Workspace navigation"}>
-          {primaryWorkspaceNav.map(({ key, label, icon: Icon, suffix }) => {
-            const href = scopedHref(`${base}${suffix}`)
-            const path = `${base}${suffix}`
-            const active = suffix ? pathname === path || pathname.startsWith(`${path}/`) : pathname === base
+          {mobileNav.map(({ key, label, icon: Icon, suffix }) => {
+            const effectiveSuffix = navSuffix(key, suffix)
+            const href = scopedHref(`${base}${effectiveSuffix}`)
+            const path = `${base}${effectiveSuffix}`
+            const active = effectiveSuffix ? pathname === path || pathname.startsWith(`${path}/`) : pathname === base
             return <Link key={key} href={href} aria-current={active ? "page" : undefined} className={active ? "is-active" : ""}><Icon /><span>{labelMap[label] ?? label}</span></Link>
           })}
           <Link href={scopedHref(`${base}/more`)} aria-current={moreActive ? "page" : undefined} className={moreActive ? "is-active" : ""}>

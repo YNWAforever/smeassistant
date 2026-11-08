@@ -7,6 +7,7 @@ import "./responsive.css";
 import "./ramp-refresh.css";
 import "./polish.css";
 import "./editorial.css";
+import "./studio.css";
 import { HydrationMarker } from "@/components/hydration-marker";
 import { Toaster } from "@/components/ui/sonner";
 import { LOCALE_HEADER, resolveHtmlLang } from "@/lib/funnel/locale-redirect";

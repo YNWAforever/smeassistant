@@ -67,6 +67,8 @@ export type ShellWorkspace = {
   assistant?: { workspaceId: string; locationId?: string }
   /** P4.1: the Offers nav entry renders only when OFFER_PROMOTIONS_ENABLED is on (non-demo workspaces); absent means hidden. */
   offersEnabled?: boolean
+  /** Conversation Studio (CONVERSATION_STUDIO_ENABLED): adds the nav entry and replaces the top-bar assistant trigger with "Open Studio". Absent means hidden. */
+  studioEnabled?: boolean
 }
 
 /**

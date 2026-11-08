@@ -31,6 +31,7 @@
     "report:value": "tsx scripts/report/value.ts",
     "test:no-supabase": "node scripts/assert-no-supabase.mjs",
     "test:no-self-service-claim": "node scripts/assert-no-self-service-claim.mjs",
+    "smoke:studio": "tsx scripts/studio-smoke.ts",
     "e2e:neon-auth": "playwright test --config playwright.neon-auth.config.ts"
   },
   "dependencies": {
@@ -83,3 +84,4 @@
     "vitest": "^4.1.7"
   }
 }
+

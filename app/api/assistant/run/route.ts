@@ -22,7 +22,7 @@ import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
  */
 export const maxDuration = 60;
 
-const SURFACES: readonly AssistantSurface[] = ["sample", "report", "home", "actions", "action", "create", "insights", "assets", "rescan", "workspace"];
+const SURFACES: readonly AssistantSurface[] = ["sample", "report", "home", "actions", "action", "create", "insights", "assets", "rescan", "workspace", "studio"];
 const ORIGINS: readonly AssistantOrigin[] = ["suggested", "fixed"];
 // Live answers that only exist behind CONTEXTUAL_ASSISTANT_ENABLED (P4.3); with the flag off they are as absent as before the slice.
 const CONTEXTUAL_INTENTS: readonly AssistantIntentId[] = ["explain_missing_inputs", "where_to_continue"];
