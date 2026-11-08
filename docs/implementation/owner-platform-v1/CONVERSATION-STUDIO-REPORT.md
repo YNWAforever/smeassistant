@@ -35,20 +35,19 @@ The owner product's primary surface is now a persistent, continuous conversation
 
 ### 1.3 UI
 
-- `app/[locale]/owner/[workspaceSlug]/studio/page.tsx` (server): flag → `notFound()`, membership/`?location=` via `loadOwnerPage`, caller's conversation rail, `?chat=` conversation (archived-aware, defaults to most recent), message page + `hasMore`, briefed context summary/chips → `StudioView`.
+- `app/[locale]/owner/[workspaceSlug]/conversation/studio/page.tsx` (server): both flag checks → `notFound()`, membership/`?location=` via `loadOwnerPage`, caller's conversation rail, `?chat=` conversation (archived-aware, defaults to most recent), message page + `hasMore`, briefed context summary/chips → `StudioView`.
+- `components/workspace/conversation-view.tsx`: the workbench header shows the “Open Studio” entry only when the Studio flag is on; `components/workspace-shell.tsx` keeps the conversation chrome active on `/conversation/*` so the nested route renders inside the workbench.
 - `components/studio/*`: chat-first client surface — persistent rail (search, Intl recency grouping, rename, archive, new conversation), thread with `role="log"`/`aria-live="polite"` and status stages, optimistic user turn reconciled by the persisted events, token deltas when available, stop/reconcile, retry, honest error banner, evidence chips, inline draft artifact with **Save as a version → Review** and no approve/export/publish control, read-only context rail, starters empty state, mobile rail/context drawers, `?chat=`/`?location=` URL sync without remount.
 - `lib/studio/client.ts`: never-throw REST helpers + `streamStudioMessage` (TextDecoder SSE reader, typed event validation, `AbortController`, pre-stream JSON error mapping).
-- `app/studio.css` (tokens only; imported from `app/layout.tsx`): 3 columns ≥1200 px, 2 columns 768–1199 px with context drawer, single column <768 px with both drawers; focus rings, reduced motion.
-- `components/workspace-shell.tsx`: Studio first primary nav item and the top-bar "Open Studio" entry (sheet remains on public/demo surfaces and flag-off paths are byte-identical); mobile bar Studio·Home·Actions·Insights·More. `ShellWorkspace.studioEnabled` is optional, so no other caller changes.
+- `app/styles/screens/studio.css` (tokens only; imported from `globals.css` under the page layer): 3 columns ≥1200 px, 2 columns 768–1199 px with context drawer, single column <768 px with both drawers; focus rings, reduced motion; a shared `.conversation-studio-entry` style for the workbench entry.
 - Copy in `lib/studio/copy.ts` for en, zh-HK, zh-TW; no hard-coded English.
 
 ### 1.4 Test and fixture updates
 
-- `components/pocket-assistant/assistant-sheet.test.tsx`: `studio` added to the surface-coverage list.
-- `components/workspace/more-view.test.tsx`: `studio` added to the reachable-without-More set (it is a mobile tab).
-- `test/e2e/safety.ts`: `CONVERSATION_STUDIO_ENABLED` is forwarded to the acceptance app **only** when the runner sets it, so the default acceptance suite is unchanged and the Studio spec is opt-in.
-- `test/integration/neon-schema.integration.test.ts` and the brand-revisions/brand-profile-capture/publish-reply replay lists: journal 19 and the exact new catalog counts.
-- New tests: repository unit 27, LLM chat/stream, prompt/context/orchestrator/turn-lock, three route suites, Studio client 13, Studio component 9 + navigation 4, Studio integration 9, rollout pin 5, Studio acceptance spec 2.
+- `components/pocket-assistant/assistant-sheet.test.tsx`: `studio` added to the surface-coverage list (main's suite covers every surface).
+- `test/e2e/safety.ts`: both conversation flags are forwarded to the acceptance app **only** when the runner sets `CONVERSATION_STUDIO_ENABLED=true`, so the default acceptance suite is unchanged and the Studio spec is opt-in.
+- `test/integration/neon-schema.integration.test.ts` and the brand-revisions/brand-profile-capture/publish-reply replay lists: journal 21 and the merged catalog counts (48 tables / 560 columns / 261 constraints / 132 indexes); the two rolled-back-journal assertions were updated to 21 rows.
+- New tests: repository unit 27, LLM chat/stream, prompt/context/orchestrator/turn-lock, three route suites, Studio client 13, Studio component 9, Studio integration 9, rollout pin 5, Studio acceptance spec 2.
 
 ## 2. Verification (executed locally on 2026-11-09, merged Path A tree)
 
