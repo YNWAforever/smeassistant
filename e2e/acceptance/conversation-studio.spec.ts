@@ -125,6 +125,29 @@ test.describe("Conversation Studio", () => {
     expect(sql(environment.db, `select count(*) from studio_conversations where id='${conversationId}' and workspace_id='${merchant.workspaceId}';`)).toBe("1");
   });
 
+  test("imports all local note threads into persistent discussions in one click", async ({ page, merchant, environment }) => {
+    await signIn(page, environment, merchant, "owner");
+    await page.goto(`/en/owner/${merchant.slug}/conversation`);
+
+    await page.getByLabel("Your note").fill("First local note");
+    await page.getByRole("button", { name: "Save local note" }).click();
+    await expect(page.locator(".conversation-note").first()).toContainText("First local note");
+    await page.getByRole("button", { name: "New thread" }).click();
+    await page.getByLabel("Your note").fill("Second local note");
+    await page.getByRole("button", { name: "Save local note" }).click();
+    await expect(page.locator(".conversation-note").first()).toContainText("Second local note");
+
+    await page.getByRole("button", { name: /Import all to Studio/ }).click();
+    await expect(page.getByText("Local threads are now in Studio.")).toBeVisible();
+    expect(sql(environment.db, `select count(*) from studio_messages where workspace_id='${merchant.workspaceId}' and content in ('First local note','Second local note');`)).toBe("2");
+
+    // The persistent copies are listed and the local threads link to them.
+    await page.reload();
+    await waitForHydration(page);
+    await expect(page.locator(".conversation-persistent li")).toHaveCount(2);
+    await expect(page.getByRole("link", { name: /Open persistent copy/ }).first()).toBeVisible();
+  });
+
   test("conversations are private per member: a teammate in the same workspace starts with an empty rail", async ({ page, merchant, environment }) => {
     await setModelScript(environment);
     await signIn(page, environment, merchant, "owner");

@@ -9,7 +9,7 @@ import { conversationCopy } from "@/lib/copy-conversation";
 import { CONVERSATION_LIMITS, writeConversationThreads } from "@/lib/workspace/conversation-store";
 const props: ConversationViewProps = { locale: "en", timezone: "Asia/Singapore", workspaceSlug: "shop", workspaceName: "Shop", location: "branch", locationName: "Branch", scope: { userId: "u", workspaceId: "w", locationId: "l" }, initialThreadId: undefined, actions: [{ id: "a1", title: "Real work", versionId: "v1" }] };
 beforeEach(() => { localStorage.clear(); replace.mockClear(); });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 async function addNote(note: string) {
   fireEvent.change(screen.getByLabelText("Your note"), { target: { value: note } });
   fireEvent.click(screen.getByRole("button", { name: "Save local note" }));
@@ -126,6 +126,33 @@ it("shows persistent Studio discussions and the continue bridge when the Studio 
   );
   await addNote("Bridge this note");
   expect(screen.getByRole("button", { name: "Continue in Studio" })).toBeInTheDocument();
+});
+
+it("imports all local threads and links each one to its persistent copy", async () => {
+  const conversation = (id: string, title: string) => ({
+    id, title, status: "active", locationId: null,
+    createdAt: "2026-11-09T00:00:00Z", updatedAt: "2026-11-09T00:00:00Z", lastMessageAt: "2026-11-09T00:00:00Z",
+  });
+  const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+    conversations: [conversation("c1", "Second note"), conversation("c2", "First note")],
+    messageCount: 2,
+  }), { status: 201, headers: { "content-type": "application/json" } }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  render(<ConversationView {...props} studioEnabled />);
+  await screen.findByLabelText("Your note");
+  await addNote("First note");
+  fireEvent.click(screen.getByRole("button", { name: "New thread" }));
+  await addNote("Second note");
+
+  fireEvent.click(screen.getByRole("button", { name: /Import all to Studio/ }));
+  expect(await screen.findByText("Local threads are now in Studio.")).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledWith("/api/studio/conversations/import-bulk", expect.objectContaining({ method: "POST" }));
+  expect(screen.getByRole("button", { name: "Second note" })).toHaveTextContent("Second note");
+  expect(screen.getByRole("link", { name: /Open persistent copy/ })).toHaveAttribute(
+    "href",
+    "/en/owner/shop/conversation/studio?chat=c1&location=branch",
+  );
 });
 
 it("discloses blocked storage honestly and keeps an unsaved note in memory", async () => {

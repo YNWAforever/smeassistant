@@ -1,4 +1,11 @@
 @layer screens {
+  .conversation-persistent-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+
   /* Workbench convergence bridge. */
   .conversation-studio-bridge {
     display: flex;
