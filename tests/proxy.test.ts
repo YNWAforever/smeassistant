@@ -149,6 +149,13 @@ describe("proxy()", () => {
     expect(response.headers.get("location")).toBe("https://app.test/zh-HK/owner/select-workspace?workspace=123");
   });
 
+  it("moves old workspace pages with 308 before the sign-in gate, keeping the query string", async () => {
+    const response = await proxy(req("/en/owner/kam-man-house/settings/billing?checkout=success"));
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe("https://app.test/en/owner/kam-man-house/settings/plan?checkout=success");
+    expect(auth.validate).not.toHaveBeenCalled();
+  });
+
   it("sends a signed-out visitor on an owner page to sign-in with returnTo", async () => {
     const response = await proxy(req("/en/owner/kam-man-house/actions?state=open"));
     expect(response.status).toBe(307);

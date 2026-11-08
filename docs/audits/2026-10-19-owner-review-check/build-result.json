@@ -1,0 +1,6 @@
+{
+  "command": "node test-results/webkit-reliability-20261019/run-build-boundary.cjs",
+  "exitCode": 0,
+  "finishedAt": "2026-10-19T08:54:04.9269154Z",
+  "environment": "OS/cache allowlist; synthetic DB/Auth sentinels; transport guard; Webpack"
+}

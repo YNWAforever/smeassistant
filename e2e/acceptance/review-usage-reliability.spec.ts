@@ -32,7 +32,7 @@ for (const locale of ["en", "zh-HK"] as const) {
     }) });
     await page.goto(`/${locale}/owner/${merchant.slug}/actions/${merchant.actionId}`);
     const generated = page.waitForResponse(response => response.url().endsWith(`/api/actions/${merchant.actionId}/run`));
-    await page.getByRole("button", { name: locale === "en" ? "Generate a draft" : "生成草稿", exact: true }).click();
+    await page.locator(".draft-editor-card").getByRole("button", { name: locale === "en" ? "Generate a draft" : "生成草稿", exact: true }).click();
     const response = await generated;
     expect(response.status()).toBe(200);
     const result = await response.json();
@@ -56,7 +56,7 @@ test("missing review still asks before any provider request", async ({ page, env
   sql(environment.db, `update actions set provided_inputs='{"language":"en"}' where id='${merchant.actionId}';`);
   const before = (await (await fetch(`${environment.llm}/requests`)).json()).length;
   await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}`);
-  await page.getByRole("button", { name: "Generate a draft", exact: true }).click();
+  await page.locator(".draft-editor-card").getByRole("button", { name: "Generate a draft", exact: true }).click();
   await expect(page.locator("#input-reviews_without_response")).toBeVisible();
   expect((await (await fetch(`${environment.llm}/requests`)).json()).length).toBe(before);
   expect(sql(environment.db, `select count(*) from output_versions where action_id='${merchant.actionId}';`)).toBe("0");
@@ -69,12 +69,14 @@ test("late measured usage settles after timeout without another inference or a l
   expect(saved.status()).toBe(201);
   await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}`);
   await expect(page.locator("#draft-content")).toHaveValue(original);
+  await expect(page.locator("#draft-content")).toHaveAttribute("readonly", "");
+  await page.locator(".approval-panel").getByRole("button", { name: "Change the draft", exact: true }).click();
   const before = (await (await fetch(`${environment.llm}/requests`)).json()).length;
   await fetch(`${environment.llm}/hold`, { method: "POST" });
   try {
     const response = page.waitForResponse(result => result.url().endsWith(`/api/actions/${merchant.actionId}/run`), { timeout: 65_000 });
     const started = Date.now();
-    await page.getByRole("button", { name: "Regenerate with the agent as a new version", exact: true }).click();
+    await page.locator(".draft-editor-card").getByRole("button", { name: "Regenerate with the agent as a new version", exact: true }).click();
     const result = await (await response).json();
     const elapsedMs = Date.now() - started;
     expect(result).toMatchObject({ state: "failed", usagePending: true });
@@ -97,7 +99,8 @@ test("late measured usage settles after timeout without another inference or a l
     await expect(page.getByRole("button", { name: "Reload draft and run status" })).toBeVisible();
     await page.reload(); await waitForHydration(page);
     await expect(page.locator("#draft-content")).toHaveValue(original);
-    await expect(page.getByRole("button", { name: "Regenerate with the agent as a new version", exact: true })).toBeEnabled();
+    await page.locator(".approval-panel").getByRole("button", { name: "Change the draft", exact: true }).click();
+    await expect(page.locator(".draft-editor-card").getByRole("button", { name: "Regenerate with the agent as a new version", exact: true })).toBeEnabled();
     expect(sql(environment.db, `select count(*) from deliveries where workspace_id='${merchant.workspaceId}';`)).toBe("0");
     await page.screenshot({ path: `${evidence}/late-usage-settled.png`, fullPage: true });
     record("late-usage", { environment: "owned local DB/Auth/model fixtures; not real AI", result: "PASS", elapsedMs, providerCalls: 1, retainedVersions: 1, observation: observed });

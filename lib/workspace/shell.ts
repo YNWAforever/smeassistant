@@ -55,6 +55,18 @@ export function resolveLocationSlug(
   return locationWhitelist(locations).includes(value) ? value : fallback;
 }
 
+/** A branch change leaves entity-bound editors and drops stale list/detail selection. */
+export function locationSwitchHref(pathname: string, search: string, location: string): string {
+  const owner = pathname.match(/^(\/(?:en|zh-HK|zh-TW)\/owner\/[^/]+)(\/.*)?$/);
+  const suffix = owner?.[2] ?? "";
+  const entity = (suffix.startsWith("/actions/") && suffix !== "/actions/new") || suffix.startsWith("/packs/");
+  const destination = entity && owner ? `${owner[1]}/actions` : pathname;
+  const query = new URLSearchParams(entity ? "" : search);
+  for (const key of ["cursor", "open", "version"]) query.delete(key);
+  query.set("location", location);
+  return `${destination}?${query}`;
+}
+
 /** The primary location, else the first, else "all" (a workspace without locations yet). */
 export function defaultLocationSlug(locations: ReadonlyArray<{ slug: string; isPrimary?: boolean }>): string {
   return locations.find((location) => location.isPrimary)?.slug ?? locations[0]?.slug ?? "all";

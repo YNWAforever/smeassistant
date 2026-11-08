@@ -1,8 +1,59 @@
 export const supportedLocales = ["en", "zh-HK", "zh-TW"] as const
+import type { PublicCopy } from "@/lib/copy-public"
+import type { PublicInfoCopy } from "@/lib/copy-public-info"
+import type { ReportUiCopy } from "@/lib/copy-report"
+import type { ActionCopy } from "@/lib/copy-action"
+import type { WorkspaceActionsCopy } from "@/lib/copy-workspace-actions"
+import type { WorkspaceBusinessCopy } from "@/lib/copy-workspace-business"
+import type { WorkspaceHomeCopy } from "@/lib/copy-workspace-home"
+import type { AccessRequestCopy } from "@/lib/copy-access-request"
+import type { AssistantSheetCopy } from "@/lib/copy-assistant"
+import type { DemoWorkspaceCopy } from "@/lib/copy-demo-workspace"
+import type { PricingPageCopy } from "@/lib/copy-pricing"
+import type { ProductCopy } from "@/lib/copy-product"
+import type { ActionTabsCopy } from "@/lib/copy-action-tabs"
+import type { WorkspaceLabelsCopy } from "@/lib/copy-workspace-labels"
+import type { OnboardingCopy } from "@/lib/copy-onboarding"
+import type { ShellCopy } from "@/lib/copy-shell"
+import type { UiCopy } from "@/lib/copy-ui"
 import type { WorkspaceCopy } from "@/lib/copy-workspace"
 import { localeDataFor } from "@/lib/locale-data/registry"
 
 export type PrototypeLocale = (typeof supportedLocales)[number]
+
+const homeReviewZh = {
+  title: "已套用回覆的下一步", applied: "已套用（店主回報）", completed: "已完成",
+  version: "第 {n} 版", pending: "待店主人工核對", checked: "店主已核對 · 店主聲明",
+  notFound: "未找到／內容不符", later: "稍後再核對", retracted: "店主核對已撤回",
+  check: "核對已儲存回覆", view: "查看已儲存核對", next: "下一步：",
+  compare: "比對商戶、指定評論及此已儲存回覆。",
+  independent: "獨立驗證仍待核實；店主聲明不代表已發佈或成效改善。",
+  newerDraft: "第 {n} 版是另一份待確認草稿；此核對及已套用聲明只屬第 {applied} 版。",
+  reviewDraft: "審閱第 {n} 版草稿", returnHome: "返回今日首頁",
+  returnBlocked: "請先儲存這份核對再返回。若結果未確認，請重試儲存；輸入會保留。",
+  missingVersion: "無法讀取指定的已儲存版本",
+  missingVersionHelp: "請重新開啟指定的已儲存版本；這裡不會自動選取另一版本。",
+  restoreVersion: "返回上一個畫面",
+}
+/** Shared vocabulary for the version-bound home/check handoff. */
+export const homeReviewCopy = {
+  en: {
+    title: "Follow up an applied reply", applied: "Applied (reported)", completed: "Completed",
+    version: "Version {n}", pending: "Owner check pending", checked: "Owner checked · statement only",
+    notFound: "Not found / content differs", later: "Check deferred", retracted: "Owner check withdrawn",
+    check: "Check saved reply", view: "View saved check", next: "Next:",
+    compare: "Match the business, specified review and this saved reply.",
+    independent: "Independent verification is pending; an owner statement does not confirm publication or improved results.",
+    newerDraft: "Version {n} is a separate draft and needs its own review. This check and applied statement stay with version {applied}.",
+    reviewDraft: "Review draft version {n}", returnHome: "Return to today",
+    returnBlocked: "Save this check before going back. If the result is unclear, retry the save; your input stays here.",
+    missingVersion: "This saved version is unavailable",
+    missingVersionHelp: "Open the intended saved version again. Another version will not be selected automatically.",
+    restoreVersion: "Return to the previous view",
+  },
+  "zh-HK": homeReviewZh,
+  "zh-TW": { ...homeReviewZh, independent: "獨立驗證仍待核實；店主聲明不代表已發佈或成效改善。" },
+}
 
 /**
  * Each locale's name in its own language, for the language picker. It lists
@@ -29,7 +80,7 @@ export function normaliseLocale(value: string | undefined): PrototypeLocale {
 /**
  * Production copy for the public funnel (Phase 1). Every string exists in all
  * three locales; zh-HK is written Chinese in the prototype's register, zh-TW
- * uses Taiwan wording (店家／核准／據點), en is concise British-neutral.
+ * uses Taiwan wording (店家／確認／據點), en is concise British-neutral.
  * Data-derived labels (finding keys, module names, severities, candidate-search
  * errors, consent sentences) come from the upstream message bundle instead
  * (lib/i18n.ts + lib/messages/*.json).
@@ -390,7 +441,7 @@ export type Copy = {
     changed: string
     priority: string
     proof: string
-    /** FA-04: the 今日要做 card's one verb, and the variant when facts are missing. */
+    /** The coach card's one verb, and the variant when facts are missing. */
     start: string
     addFacts: string
     whyNow: string
@@ -407,9 +458,12 @@ export type Copy = {
     noLocationBody: string
     noLocationCta: string
     month: string
+    /** Shown in place of a count when no comparable scan exists: unknown, never 0. */
+    noComparable: string
   }
   ownerFocus: {
-    why: string
+    /** Each folded panel on the task screen is named for what it holds. */
+    panels: { version: string; finding: string; altText: string; brandCheck: string; applied: string; technical: string }
     results: string
     otherTasks: string
     allTasks: string
@@ -437,9 +491,45 @@ export type Copy = {
     howMeasured: string
     back: string
     continue: string
+    /** Workspace colour theme switch (dark mode is workspace-only). */
+    theme: { label: string; light: string; dark: string; system: string }
   }
   funnel: FunnelCopy
   workspace: WorkspaceCopy
+  /** Component kit strings (lib/copy-ui.ts). */
+  ui: UiCopy
+  /** Public site: header, footer and landing (lib/copy-public.ts). */
+  site: PublicCopy
+  /** Methodology and Trust pages (lib/copy-public-info.ts). */
+  siteInfo: PublicInfoCopy
+  /** Report page additions (lib/copy-report.ts). */
+  report: ReportUiCopy
+  /** Workspace shell and Phase 4 navigation (lib/copy-shell.ts). */
+  shell: ShellCopy
+  /** First-run wizard (lib/copy-onboarding.ts). */
+  onboarding: OnboardingCopy
+  /** Action detail: editor, approval, delivery and history (lib/copy-action.ts). */
+  action: ActionCopy
+  /** Today, Insights, Due, Activity and the location picker (lib/copy-workspace-home.ts). */
+  workspaceHome: WorkspaceHomeCopy
+  /** The Actions queue, New and the Fix Pack card (lib/copy-workspace-actions.ts). */
+  workspaceActions: WorkspaceActionsCopy
+  /** Plan, Assets, Team, Integrations, Notifications and the owner check (lib/copy-workspace-business.ts). */
+  workspaceBusiness: WorkspaceBusinessCopy
+  /** The ownership access request form and status (lib/copy-access-request.ts). */
+  accessRequest: AccessRequestCopy
+  /** Ask Kinnso, the contextual assistant sheet (lib/copy-assistant.ts). */
+  assistantSheet: AssistantSheetCopy
+  /** The public demo workspace (lib/copy-demo-workspace.ts). */
+  demoWorkspace: DemoWorkspaceCopy
+  /** The pricing page (lib/copy-pricing.ts). */
+  pricingPage: PricingPageCopy
+  /** Capability and fact-type badges, score dial, loop ribbon and language selector (lib/copy-product.ts). */
+  product: ProductCopy
+  /** The action detail's Workflow and Evidence tabs and version origin (lib/copy-action-tabs.ts). */
+  actionTabs: ActionTabsCopy
+  /** Guardrail warnings, comparison reasons, effort and ledger labels built by lib helpers (lib/copy-workspace-labels.ts). */
+  workspaceLabels: WorkspaceLabelsCopy
 }
 
 /**
@@ -461,7 +551,7 @@ export const scanMetricsCopy = {
   title: "Captured scan samples", instagram: "Instagram post sample", organic: "Google Search", maps: "Google Maps", ai: "AI mentions",
   appearances: "{x} of {n} eligible observations confirmed an appearance in the captured surface",
   scope: "This measures confirmed appearances in the captured results only, not overall search visibility.",
-  posts: "{n} distinct posts", dated: "{n} posts with a recorded publication date", span: "Captured publication date span", published: "Publication date", scanned: "Scan date", observed: "Observation date", dateUnavailable: "Observation date unavailable", publicationUnavailable: "Publication date unavailable", scanUnavailable: "Scan date unavailable",
+  posts: "{n} distinct posts", dated: "{n} posts with a recorded publication date", span: "Captured publication date span", published: "Publication date", scanned: "Scan date", observed: "Observation date", dateUnavailable: "Date not recorded", publicationUnavailable: "Publication date unavailable", scanUnavailable: "Scan date unavailable",
   historical: "Engagement averages and follower-based rates are unavailable: historical counts cannot reliably distinguish missing values from zero.", zero: "Historical zeros may mean missing counts", likes: "Recorded likes", comments: "Recorded comments", missing: "Not recorded", recorded: "Counts as recorded in stored evidence; not current totals.",
   unavailable: "Measurement unavailable", inspected: "Inspected records: {n}", duplicates: "Duplicate records: {n}", eligible: "Eligible observations: {n}", excluded: "Excluded observations: {n}", incomplete: "Incomplete sample: input records were limited.", evidenceLimited: "Evidence rows limited; totals use the inspected sample.", omitted: "{n} search groups omitted", evidence: "Stored evidence ({n} rows)",
   engine: "Engine", queryType: "Query type", contextUnavailable: "Source context not recorded", queryTypeUnavailable: "Not recorded", gl: "Country", hl: "Language", location: "Location", device: "Device", ll: "Map coordinates", mobile: "Mobile", desktop: "Desktop", discovery: "Discovery", branded: "Branded",
@@ -470,7 +560,7 @@ export const scanMetricsCopy = {
  "zh-HK": {
   title: "已擷取的掃描樣本", instagram: "Instagram 帖文樣本", organic: "Google 搜尋", maps: "Google 地圖", ai: "AI 提及",
   appearances: "{n} 次合資格觀察中，{x} 次確認在已擷取結果中出現", scope: "只量度已擷取結果中確認出現的次數，並非整體搜尋能見度。",
-  posts: "{n} 則不重複帖文", dated: "{n} 則帖文有發佈日期記錄", span: "已擷取帖文的發佈日期範圍", published: "發佈日期", scanned: "掃描日期", observed: "觀察日期", dateUnavailable: "觀察日期未有提供", publicationUnavailable: "發佈日期未有提供", scanUnavailable: "掃描日期未有提供",
+  posts: "{n} 則不重複帖文", dated: "{n} 則帖文有發佈日期記錄", span: "已擷取帖文的發佈日期範圍", published: "發佈日期", scanned: "掃描日期", observed: "觀察日期", dateUnavailable: "未有記錄日期", publicationUnavailable: "發佈日期未有提供", scanUnavailable: "掃描日期未有提供",
   historical: "未能量度平均互動及按追蹤者計算的互動率：歷史數據無法可靠地區分缺失數值與零。", zero: "歷史零值可能代表未有記錄", likes: "已記錄讚好數", comments: "已記錄留言數", missing: "未有記錄", recorded: "數值來自已儲存證據，並非目前總數。",
   unavailable: "未能量度", inspected: "已檢視記錄：{n}", duplicates: "重複記錄：{n}", eligible: "合資格觀察：{n}", excluded: "已排除觀察：{n}", incomplete: "樣本不完整：輸入記錄已截短。", evidenceLimited: "證據列已截短；總數按已檢視樣本計算。", omitted: "已省略 {n} 組搜尋", evidence: "已儲存證據（{n} 列）",
   engine: "引擎", queryType: "查詢類型", contextUnavailable: "未有來源設定記錄", queryTypeUnavailable: "未有記錄", gl: "國家", hl: "語言", location: "地點", device: "裝置", ll: "地圖座標", mobile: "流動裝置", desktop: "桌面裝置", discovery: "探索", branded: "品牌",
@@ -479,7 +569,7 @@ export const scanMetricsCopy = {
  "zh-TW": {
   title: "已擷取的掃描樣本", instagram: "Instagram 貼文樣本", organic: "Google 搜尋", maps: "Google 地圖", ai: "AI 提及",
   appearances: "{n} 次合資格觀察中，{x} 次確認在已擷取結果中出現", scope: "僅衡量已擷取結果中確認出現的次數，並非整體搜尋能見度。",
-  posts: "{n} 則不重複貼文", dated: "{n} 則貼文有發布日期記錄", span: "已擷取貼文的發布日期範圍", published: "發布日期", scanned: "掃描日期", observed: "觀察日期", dateUnavailable: "未提供觀察日期", publicationUnavailable: "未提供發布日期", scanUnavailable: "未提供掃描日期",
+  posts: "{n} 則不重複貼文", dated: "{n} 則貼文有發布日期記錄", span: "已擷取貼文的發布日期範圍", published: "發布日期", scanned: "掃描日期", observed: "觀察日期", dateUnavailable: "未記錄日期", publicationUnavailable: "未提供發布日期", scanUnavailable: "未提供掃描日期",
   historical: "未能量度平均互動及依追蹤者計算的互動率：歷史資料無法可靠地區分缺漏數值與零。", zero: "歷史零值可能代表未有記錄", likes: "已記錄按讚數", comments: "已記錄留言數", missing: "未有記錄", recorded: "數值來自已儲存證據，並非目前總數。",
   unavailable: "未能量度", inspected: "已檢視記錄：{n}", duplicates: "重複記錄：{n}", eligible: "合資格觀察：{n}", excluded: "已排除觀察：{n}", incomplete: "樣本不完整：輸入記錄已截短。", evidenceLimited: "證據列已截短；總數依已檢視樣本計算。", omitted: "已省略 {n} 組搜尋", evidence: "已儲存證據（{n} 列）",
   engine: "引擎", queryType: "查詢類型", contextUnavailable: "未記錄來源設定", queryTypeUnavailable: "未有記錄", gl: "國家", hl: "語言", location: "地點", device: "裝置", ll: "地圖座標", mobile: "行動裝置", desktop: "桌面裝置", discovery: "探索", branded: "品牌",

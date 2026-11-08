@@ -10,7 +10,7 @@ export const deferredTriggers: string[] = [];
 // replay-compare against. verifyCatalog excludes these from the legacy deepEqual and
 // instead asserts their bare presence; their actual behavior is proven by dedicated tests
 // (e.g. test/integration/neon-membership.integration.test.ts for prevent_owner_removal).
-export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_expired","confirm_offer","archive_offer","offer_current_for_version","claim_preview_slot","finish_preview_slot","begin_publish_output_version","finish_publish_output_version","cancel_published_reply","guard_brand_revision_immutable","save_brand_revision","capture_brand_profile_revision","brand_snapshot_for_generation"];
+export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_expired","confirm_offer","archive_offer","offer_current_for_version","claim_preview_slot","finish_preview_slot","begin_publish_output_version","finish_publish_output_version","cancel_published_reply","guard_brand_revision_immutable","save_brand_revision","capture_brand_profile_revision","brand_snapshot_for_generation","guard_conversation_document_version_insert","guard_conversation_document_version_immutable","guard_conversation_document_asset_provenance","guard_conversation_research_ledger","guard_conversation_research_account","guard_conversation_search_brief"];
 // Retained legacy functions that a later migration re-created on purpose (0011 adds one
 // offer-freshness guard line to each; 0014 re-creates export_output_version again with the
 // once-per-version counting changes). verifyCatalog drops them from the legacy deepEqual and
@@ -18,7 +18,7 @@ export const additionalFunctions: string[] = ["prevent_owner_removal","offer_is_
 // one line, and lib/workspace/publish-sql.test.ts pins the 0014 export as 0011 plus changes (a)-(c).
 // They stay in retainedFunctions, so neon:readiness still requires them.
 export const changedFunctions: string[] = ["create_output_version","approve_output_version","export_output_version"];
-export const additionalTriggers: string[] = ["workspace_members_prevent_owner_removal","brand_revision_immutable","brand_profile_revision_capture"];
+export const additionalTriggers: string[] = ["workspace_members_prevent_owner_removal","brand_revision_immutable","brand_profile_revision_capture","conversation_document_version_insert","conversation_document_version_immutable","conversation_document_asset_provenance","conversation_research_ledger_guard","conversation_research_account_guard","conversation_search_brief_guard"];
 // Exact PostgreSQL definitions added by 0015; the independently retained legacy catalog stays unchanged.
 export const additionalIndexes = [
   { tablename: "action_runs", indexname: "action_runs_latest_metadata_idx", indexdef: "CREATE INDEX action_runs_latest_metadata_idx ON public.action_runs USING btree (workspace_id, action_id, created_at DESC, id DESC) INCLUDE (state)" },
@@ -27,10 +27,10 @@ export const additionalIndexes = [
   { tablename: "studio_conversations", indexname: "studio_conversations_owner_recent_idx", indexdef: "CREATE INDEX studio_conversations_owner_recent_idx ON public.studio_conversations USING btree (workspace_id, created_by, last_message_at DESC, id DESC)" },
   { tablename: "studio_messages", indexname: "studio_messages_conversation_seq_idx", indexdef: "CREATE INDEX studio_messages_conversation_seq_idx ON public.studio_messages USING btree (conversation_id, seq)" },
 ];
-// Tables added by 0019 (Conversation Studio). They have no independently
+// Tables added by 0021 (Conversation Studio). They have no independently
 // captured legacy counterpart, so verifyCatalog excludes them from the legacy
 // deepEqual and asserts their exact catalog below; each carries one
-// server_application policy (policy count becomes legacy.tables.length + 6).
+// server_application policy, so the policy count is offset by two.
 export const additionalTables = ["studio_conversations", "studio_messages"] as const;
 export type ExpectedColumn = { table_name: string; column_name: string; data_type: string; udt_name: string; is_nullable: string; column_default: string | null };
 export type ExpectedConstraint = { table_name: string; name: string; type: string; definition: string };
@@ -91,7 +91,7 @@ export const studioIndexes: ExpectedIndex[] = [
   { tablename: 'studio_messages', indexname: 'studio_messages_conversation_seq_idx', indexdef: 'CREATE INDEX studio_messages_conversation_seq_idx ON public.studio_messages USING btree (conversation_id, seq)' },
   { tablename: 'studio_messages', indexname: 'studio_messages_pkey', indexdef: 'CREATE UNIQUE INDEX studio_messages_pkey ON public.studio_messages USING btree (id)' },
 ];
-const isAdditionalTable = (name: unknown): boolean => (additionalTables as readonly string[]).includes(String(name));
+const isStudioTable = (name: unknown): boolean => (additionalTables as readonly string[]).includes(String(name));
 export const catalogQueries = {
   tables: `select c.relname as name,c.relrowsecurity as rls from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' order by c.relname`,
   columns: `select table_name,column_name,ordinal_position,data_type,udt_name,is_nullable,column_default from information_schema.columns where table_schema='public' order by table_name,ordinal_position`,
@@ -153,23 +153,28 @@ export async function verifyCatalog(pool: Pool) {
   for (const [name, query] of Object.entries(catalogQueries)) actual[name] = (await pool.query(query)).rows;
   const identity = new Set(["app_users", "auth_identities"]);
   const business = (rows: Row[]) => rows.filter(row => !identity.has(String(row.table_name ?? row.tablename ?? row.name)));
-  const legacyBusiness = (rows: Row[]) => business(rows).filter(row => {
-    const name = String(row.table_name ?? row.tablename ?? row.name);
-    return name !== "brand_revisions" && !isAdditionalTable(name);
-  });
+  const legacyBusiness = (rows: Row[]) => business(rows).filter(row => !["brand_revisions","conversation_document_versions","conversation_research_accounts","conversation_research_ledger","conversation_search_briefs","studio_conversations","studio_messages"].includes(String(row.table_name ?? row.tablename ?? row.name)));
   assert.deepEqual(legacyBusiness(actual.tables), legacy.tables, "retained business tables and RLS");
   assert.deepEqual(actual.tables.find(row=>row.name==='brand_revisions'),{name:'brand_revisions',rls:true},'immutable brand table and RLS');
-  for (const name of additionalTables) assert.deepEqual(actual.tables.find(row => row.name === name), {name, rls:true}, `${name} table and RLS`);
   // Dropped legacy columns leave ordinal gaps; compare surviving order, not physical attnum.
   const columns = (rows: Row[]) => rows.map(row => Object.fromEntries(Object.entries(row).filter(([key]) => key !== "ordinal_position")));
   assert.deepEqual(columns(legacyBusiness(actual.columns).filter(row=>!(row.table_name==='brand_profiles' && row.column_name==='current_revision_id'))), columns(legacy.columns), "all business columns/types/nullability/defaults");
+  assert.deepEqual(actual.tables.find(row=>row.name==='conversation_document_versions'),{name:'conversation_document_versions',rls:true},'document versions table and RLS');
+  for(const name of ['conversation_research_accounts','conversation_research_ledger','conversation_search_briefs']) assert.deepEqual(actual.tables.find(row=>row.name===name),{name,rls:true},`${name} table and RLS`);
+  for (const name of additionalTables) assert.deepEqual(actual.tables.find(row => row.name === name), {name, rls:true}, `${name} table and RLS`);
+  const documentGrants=await pool.query("SELECT privilege_type FROM information_schema.role_table_grants WHERE grantee='sme_app_runtime' AND table_schema='public' AND table_name='conversation_document_versions' ORDER BY privilege_type");
+  assert.deepEqual(documentGrants.rows,[{privilege_type:'INSERT'},{privilege_type:'SELECT'}],'runtime document versions remain append-only');
+  const gscConstraint=actual.constraints.find(row=>row.name==='oauth_connections_provider_check');
+  assert.equal(gscConstraint?.definition,"CHECK ((provider = ANY (ARRAY['instagram'::text, 'google_gbp'::text, 'ga4'::text, 'google_gsc'::text])))",'GSC provider is additive to the original OAuth allowlist');
   const revisionColumns=columns(actual.columns.filter(row=>row.table_name==='brand_revisions' || (row.table_name==='brand_profiles' && row.column_name==='current_revision_id')));
+  const column=(table_name:string,column_name:string,data_type:string,udt_name:string,is_nullable:string,column_default:string|null)=>({table_name,column_name,data_type,udt_name,is_nullable,column_default});
   assert.deepEqual(revisionColumns,[column('brand_profiles','current_revision_id','uuid','uuid','YES',null),column('brand_revisions','id','uuid','uuid','NO','gen_random_uuid()'),column('brand_revisions','workspace_id','uuid','uuid','NO',null),column('brand_revisions','profile','jsonb','jsonb','NO',null),column('brand_revisions','actor_id','uuid','uuid','YES',null),column('brand_revisions','created_at','timestamp with time zone','timestamptz','NO','now()'),column('brand_revisions','source','text','text','NO',null)],'exact revision columns');
-  assert.deepEqual(columns(actual.columns.filter(row => isAdditionalTable(row.table_name))), studioColumns, "exact studio columns/types/nullability/defaults");
+  assert.deepEqual(columns(actual.columns.filter(row => isStudioTable(row.table_name))), studioColumns, "exact studio columns/types/nullability/defaults");
   const notNullConstraints = await validateNotNullCatalog(pool, actual.constraints.filter(row => row.type === "n").length);
   const comparableConstraints = business(actual.constraints).filter(row => row.type !== "n");
-  assert.deepEqual(legacyBusiness(comparableConstraints).filter(row=>row.name!=='brand_profiles_current_revision_fkey'), legacy.constraints.map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
-  assert.deepEqual(comparableConstraints.filter(row=>isAdditionalTable(row.table_name)),studioConstraints,'exact studio constraints and non-destructive deletion semantics');
+  assert.deepEqual(legacyBusiness(comparableConstraints).filter(row=>row.name!=='brand_profiles_current_revision_fkey' && row.name!=='oauth_connections_provider_check'), legacy.constraints.filter(row=>row.name!=="oauth_connections_provider_check").map(row => ({...row, definition:String(row.definition).replaceAll("auth.users", "app_users")})), "constraints and deletion semantics");
+  assert.deepEqual(comparableConstraints.filter(row=>isStudioTable(row.table_name)),studioConstraints,'exact studio constraints and non-destructive deletion semantics');
+  const constraint=(table_name:string,name:string,type:string,definition:string)=>({table_name,name,type,definition});
   assert.deepEqual(comparableConstraints.filter(row=>row.table_name==='brand_revisions' || row.name==='brand_profiles_current_revision_fkey'),[
    constraint('brand_profiles','brand_profiles_current_revision_fkey','f','FOREIGN KEY (workspace_id, current_revision_id) REFERENCES brand_revisions(workspace_id, id)'),
    constraint('brand_revisions','brand_revisions_actor_id_fkey','f','FOREIGN KEY (actor_id) REFERENCES app_users(id)'),
@@ -178,12 +183,12 @@ export async function verifyCatalog(pool: Pool) {
    constraint('brand_revisions','brand_revisions_source_check','c',"CHECK ((source = ANY (ARRAY['baseline'::text, 'save'::text])))"),
    constraint('brand_revisions','brand_revisions_workspace_id_fkey','f','FOREIGN KEY (workspace_id) REFERENCES workspaces(id)'),
    constraint('brand_revisions','brand_revisions_workspace_id_id_key','u','UNIQUE (workspace_id, id)')],'exact revision constraints and non-destructive deletion semantics');
-  assert.deepEqual(legacyBusiness(actual.indexes).filter(row => !additionalIndexes.some(index => index.indexname === row.indexname) && !isAdditionalTable(row.tablename)), legacy.indexes, "all retained indexes and predicates");
+  assert.deepEqual(legacyBusiness(actual.indexes).filter(row => !additionalIndexes.some(index => index.indexname === row.indexname)), legacy.indexes, "all retained indexes and predicates");
+  assert.deepEqual(actual.indexes.filter(row=>isStudioTable(row.tablename)),studioIndexes,'exact studio indexes');
   assert.deepEqual(actual.indexes.filter(row=>row.tablename==='brand_revisions'),[
    {tablename:'brand_revisions',indexname:'brand_revisions_history_idx',indexdef:'CREATE INDEX brand_revisions_history_idx ON public.brand_revisions USING btree (workspace_id, created_at DESC, id DESC)'},
    {tablename:'brand_revisions',indexname:'brand_revisions_pkey',indexdef:'CREATE UNIQUE INDEX brand_revisions_pkey ON public.brand_revisions USING btree (id)'},
    {tablename:'brand_revisions',indexname:'brand_revisions_workspace_id_id_key',indexdef:'CREATE UNIQUE INDEX brand_revisions_workspace_id_id_key ON public.brand_revisions USING btree (workspace_id, id)'}],'exact revision indexes');
-  assert.deepEqual(actual.indexes.filter(row=>isAdditionalTable(row.tablename)),studioIndexes,'exact studio indexes');
   for (const index of additionalIndexes) assert.deepEqual(actual.indexes.find(row => row.indexname === index.indexname), index, `additional index ${index.indexname} definition`);
   const isAdditionalTrigger = (row: Row) => additionalTriggers.includes(String(row.name));
   const isAdditionalFunction = (row: Row) => additionalFunctions.includes(String(row.name)) || changedFunctions.includes(String(row.name));
@@ -195,8 +200,8 @@ export async function verifyCatalog(pool: Pool) {
   for (const name of changedFunctions) assert.ok(actual.functions.some(row => row.name === name), `changed function ${name} present`);
   assert.deepEqual(actual.enums, legacy.enums, "enum catalog");
   const policy = (await pool.query("SELECT tablename,roles::text[] AS roles,cmd,qual,with_check FROM pg_policies WHERE schemaname='public' ORDER BY tablename")).rows;
-  assert.equal(policy.length, legacy.tables.length + 6);
-  for (const row of policy.filter(row=>row.tablename!=='brand_revisions')) assert.deepEqual({...row, tablename:undefined}, {tablename:undefined,roles:["sme_app_runtime"],cmd:"ALL",qual:"true",with_check:"true"});
+  assert.equal(policy.length, legacy.tables.length + 17);
+  for (const row of policy.filter(row=>row.tablename!=='brand_revisions' && row.tablename!=='conversation_document_versions' && row.tablename!=='conversation_research_accounts' && row.tablename!=='conversation_research_ledger' && row.tablename!=='conversation_search_briefs' && !isStudioTable(row.tablename))) assert.deepEqual({...row, tablename:undefined}, {tablename:undefined,roles:["sme_app_runtime"],cmd:"ALL",qual:"true",with_check:"true"});
   assert.deepEqual(policy.filter(row=>row.tablename==='brand_revisions').sort((a,b)=>String(a.cmd).localeCompare(String(b.cmd))),[
    {tablename:'brand_revisions',roles:['sme_app_runtime'],cmd:'INSERT',qual:null,with_check:'true'},
    {tablename:'brand_revisions',roles:['sme_app_runtime'],cmd:'SELECT',qual:'true',with_check:null}],'append-only revision policies');

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "unit-related-final",
+    "command": "corepack pnpm exec vitest run lib/workspace/owner-review-check.test.ts lib/repositories/owner-review-check.test.ts app/api/actions/[actionId]/owner-check/route.test.ts components/workspace/owner-review-check-panel.test.tsx components/workspace/action-detail-client.test.tsx lib/workspace/queries-pages.test.ts lib/report/sanitize-proof.test.ts --maxWorkers=1 --retry=0",
+    "startedAt": "2026-10-19T08:51:37.2239887Z",
+    "finishedAt": "2026-10-19T08:51:59.2656978Z",
+    "exitCode": 0
+  },
+  {
+    "name": "typecheck-final",
+    "command": "corepack pnpm typecheck",
+    "startedAt": "2026-10-19T08:51:59.2986527Z",
+    "finishedAt": "2026-10-19T08:52:30.0916967Z",
+    "exitCode": 0
+  },
+  {
+    "name": "lint-final",
+    "command": "corepack pnpm lint",
+    "startedAt": "2026-10-19T08:52:30.1005729Z",
+    "finishedAt": "2026-10-19T08:53:01.4355112Z",
+    "exitCode": 0
+  },
+  {
+    "name": "no-supabase",
+    "command": "corepack pnpm test:no-supabase",
+    "startedAt": "2026-10-19T08:53:01.4526291Z",
+    "finishedAt": "2026-10-19T08:53:02.8026401Z",
+    "exitCode": 0
+  },
+  {
+    "name": "no-self-service-claim",
+    "command": "corepack pnpm test:no-self-service-claim",
+    "startedAt": "2026-10-19T08:53:02.8054101Z",
+    "finishedAt": "2026-10-19T08:53:03.2014548Z",
+    "exitCode": 0
+  }
+]

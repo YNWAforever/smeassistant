@@ -51,9 +51,10 @@ export async function loadOwnerPage(props: OwnerPageProps, opts: { minRole?: Mem
   };
 }
 
-export async function ownerPageMetadata(props: OwnerPageProps, title: { en: string; zh: string }): Promise<Metadata> {
+/** `zh` is the zh-HK title and zh-TW's too unless `zhTW` gives Taiwan wording. */
+export async function ownerPageMetadata(props: OwnerPageProps, title: { en: string; zh: string; zhTW?: string }): Promise<Metadata> {
   const locale = normaliseLocale((await props.params).locale);
-  return { title: locale === "en" ? title.en : title.zh, robots: { index: false, follow: false } };
+  return { title: locale === "en" ? title.en : locale === "zh-TW" ? title.zhTW ?? title.zh : title.zh, robots: { index: false, follow: false } };
 }
 
 /** Whether a manager's location scope covers the given location (owner/viewer always in scope for reading). */

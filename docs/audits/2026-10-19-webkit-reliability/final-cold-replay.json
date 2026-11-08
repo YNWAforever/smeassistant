@@ -1,0 +1,30 @@
+{
+  "recordedAt": "2026-10-18T20:21:02.5242393Z",
+  "command": "corepack pnpm exec playwright test --config playwright.webkit.config.ts --timeout=300000 --max-failures=1 --output test-results/webkit-reliability-20261019/cold-bilingual-final e2e/acceptance/audit-delivery-history.spec.ts -g \"bilingual completed-page reloads\"",
+  "exitCode": 0,
+  "passed": 2,
+  "duration": "3.6m",
+  "retries": 0,
+  "results": [
+    {
+      "engine": "chromium",
+      "version": "149.0.7827.55",
+      "reads": 18,
+      "pageErrors": 0,
+      "hydrationErrors": 0,
+      "requestErrors": 0,
+      "mutations": 0,
+      "durableRecordsUnchanged": true
+    },
+    {
+      "engine": "webkit",
+      "version": "26.5",
+      "reads": 18,
+      "pageErrors": 0,
+      "hydrationErrors": 0,
+      "requestErrors": 0,
+      "mutations": 0,
+      "durableRecordsUnchanged": true
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "layer": "OFFLINE memory HTTP fixture; no real DB/Auth/Google",
+  "locale": "en",
+  "width": 1440,
+  "usage": "2/3",
+  "exactVersion": true,
+  "independent": false,
+  "reload": true,
+  "freshContextRead": true,
+  "mutations": 1,
+  "externalRequests": 0
+}

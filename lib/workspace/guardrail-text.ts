@@ -1,4 +1,5 @@
-import type { PrototypeLocale } from "@/lib/copy"
+import { copy, type PrototypeLocale } from "@/lib/copy"
+import { fill } from "@/lib/copy-ui"
 import { classifyGuardrailWarning, type GuardrailFlag } from "@/lib/workspace/version-meta"
 
 /**
@@ -10,41 +11,39 @@ export type GuardrailAudience = "approver" | "visitor"
 
 /** The agents' warning vocabulary, in words an approver (or a preview visitor) can act on. */
 export function guardrailText(flag: GuardrailFlag, locale: PrototypeLocale, audience: GuardrailAudience = "approver"): string {
-  const isChinese = locale !== "en"
-  const visitor = audience === "visitor"
+  const t = copy[locale].workspaceLabels.guardrails
+  const detail = { detail: flag.detail ?? "" }
   switch (flag.code) {
     case "offer_price_mismatch":
-      return locale === "zh-HK" ? "優惠金額或貨幣缺漏、不一致或不明確；審批前請核對已確認優惠。" : locale === "zh-TW" ? "優惠金額或幣別缺漏、不一致或不明確；核准前請確認已確認優惠。" : "The offer amount or currency is missing, inconsistent or ambiguous; check the confirmed offer before approving."
+      return t.offerPriceMismatch
     case "offer_dates_missing":
-      return locale === "zh-HK" ? "優惠起訖日期缺漏或不一致；審批前請核對日期及年份。" : locale === "zh-TW" ? "優惠起訖日期缺漏或不一致；核准前請確認日期及年份。" : "The offer start and end dates are missing or inconsistent; check the dates and years before approving."
+      return t.offerDatesMissing
     case "offer_prohibited_term":
-      return locale === "zh-HK" ? "含優惠禁用字眼；審批前請核對。" : locale === "zh-TW" ? "包含優惠禁用用語；核准前請確認。" : "Contains a prohibited offer term; check it before approving."
+      return t.offerProhibitedTerm
     case "unexpected_link":
-      if (visitor) return locale === "zh-HK" ? "含有你沒有提供的連結，使用前請先檢查。" : locale === "zh-TW" ? "包含你沒有提供的連結，使用前請先確認。" : "Contains a link you did not supply — check it before using it."
-      return locale === "zh-HK" ? "含有你沒有提供的連結，審批前請先檢查。" : locale === "zh-TW" ? "包含你沒有提供的連結，核准前請先確認。" : "Contains a link you did not supply — check it before approving."
+      return t.unexpectedLink[audience]
     case "unconfirmed_claim":
-      if (visitor) return locale === "zh-HK" ? "提及你未確認的價錢或誇大字眼，使用前請先檢查。" : locale === "zh-TW" ? "提到你未確認的價格或誇大用語，使用前請先確認。" : "Mentions a price or superlative you have not confirmed — check it before using it."
-      return locale === "zh-HK" ? "提及你未確認的價錢或誇大字眼，審批前請先檢查。" : locale === "zh-TW" ? "提到你未確認的價格或誇大用語，核准前請先確認。" : "Mentions a price or superlative that is not in your confirmed facts — check it before approving."
+      return t.unconfirmedClaim[audience]
     case "prohibited_term":
-      return isChinese ? `含品牌禁用詞：${flag.detail ?? ""}` : `Contains a prohibited brand term: ${flag.detail ?? ""}`
+      return fill(t.prohibitedTerm, detail)
     case "compensation_promise":
-      return isChinese ? "似乎承諾補償、退款或折扣。" : "Appears to promise compensation, a refund or a discount."
+      return t.compensationPromise
     case "alt_text_missing":
-      return isChinese ? "缺少圖片替代文字。" : "Image alt text is missing."
+      return t.altTextMissing
     case "too_many_hashtags":
-      return isChinese ? "主題標籤過多。" : "Too many hashtags."
+      return t.tooManyHashtags
     case "jsonld_missing":
-      return isChinese ? "缺少 JSON-LD 結構化資料。" : "The JSON-LD block is missing."
+      return t.jsonldMissing
     case "jsonld_invalid":
-      return isChinese ? "JSON-LD 結構無效，下次掃描將無法讀取。" : "The JSON-LD is not valid, so the next scan will not read it."
+      return t.jsonldInvalid
     case "jsonld_mismatch":
-      return isChinese ? "JSON-LD 的問答與上方文字不一致。" : "The JSON-LD questions and answers do not match the text above them."
+      return t.jsonldMismatch
     case "title_too_long":
-      return isChinese ? `標題超過 ${flag.detail ?? ""} 字元。` : `Title is longer than ${flag.detail ?? ""} characters.`
+      return fill(t.titleTooLong, detail)
     case "bio_too_long":
-      return isChinese ? `簡介超過 ${flag.detail ?? ""} 字元。` : `Bio is longer than ${flag.detail ?? ""} characters.`
+      return fill(t.bioTooLong, detail)
     default:
-      return isChinese ? `內文超過 ${flag.detail ?? ""} 字元。` : `Body is longer than ${flag.detail ?? ""} characters.`
+      return fill(t.bodyTooLong, detail)
   }
 }
 

@@ -9,6 +9,7 @@ import { ActionRunInFlightError, ActionRunUsageUncertainError } from "@/lib/repo
 import { isLocale } from "@/lib/locale";
 import type { PrototypeLocale } from "@/lib/copy";
 import { isAssistantIntentId, isDemoQuestionId, type AssistantIntentId, type AssistantOrigin, type AssistantSurface } from "@/lib/pocket-assistant/contracts";
+import { assistantIntentAllowed } from "@/lib/pocket-assistant/intent-policy";
 import { createDemoAssistantRun } from "@/lib/pocket-assistant/demo";
 import { enforceRateLimit, rateLimitedResponse } from "@/lib/security/rate-limit";
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
   if (mode !== "demo" && mode !== "live") return json({ error: "invalid_mode" }, 400);
   if (!SURFACES.includes(surface as AssistantSurface)) return json({ error: "invalid_surface" }, 400);
   if (!isAssistantIntentId(intentId) || (mode === "demo" && !isDemoQuestionId(intentId))) return json({ error: "invalid_intent" }, 400);
+  if (!assistantIntentAllowed(surface as AssistantSurface, intentId, mode, true)) return json({ error: "intent_not_available_here" }, 400);
   if (typeof locale !== "string" || !isLocale(locale)) return json({ error: "unsupported_locale" }, 400);
 
   if (origin !== undefined && !ORIGINS.includes(origin as AssistantOrigin)) return json({ error: "invalid_origin" }, 400);
@@ -74,6 +76,7 @@ export async function POST(request: Request) {
     : authorizeWorkspaceRequest({ id: workspaceId }));
   if (!auth) return json({ error: "unavailable" }, 503);
   if (!auth.ok) return json({ error: auth.code }, auth.status);
+  if (isDraftIntent(intentId) && !ids.actionId) return json({ error: "actionId is required" }, 400);
 
   // P3.5d: checked ahead of the limiter, so a paused draft request never
   // burns the assistant_run rate limit. Explain/compare intents make no LLM

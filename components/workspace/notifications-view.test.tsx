@@ -58,10 +58,11 @@ describe("NotificationsView", () => {
     ["none_on", t("en", "mail.offNote", { address: ADDRESS })],
     ["blocked", t("en", "mail.gateNote")],
     ["open", openNote],
-  ] as const)("renders the %s note on both mail cards", (mailState, note) => {
+  ] as const)("renders the %s note once, under my emails", (mailState, note) => {
     const root = render(model({ mailState, myAddress: mailState === "no_address" ? null : ADDRESS }));
     const occurrences = (root.textContent ?? "").split(note).length - 1;
-    expect(occurrences).toBe(2);
+    expect(occurrences).toBe(1);
+    expect(cardFor(root, t("en", "mail.myEmailsTitle"))?.textContent).toContain(note);
     expect(root.textContent).not.toContain("{address}");
     if (mailState !== "open") expect(root.textContent).not.toContain(openNote);
   });

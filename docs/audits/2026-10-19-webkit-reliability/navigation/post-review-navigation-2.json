@@ -1,0 +1,249 @@
+{
+  "layer": "Owned synthetic local DB/Auth fixtures; no credentials, bodies or Auth query strings captured",
+  "browser": "webkit",
+  "version": "26.5",
+  "events": [
+    {
+      "ms": 2759,
+      "kind": "request",
+      "path": "/api/auth/verify",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 3024,
+      "kind": "request",
+      "path": "/auth/callback",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 3025,
+      "kind": "response",
+      "path": "/api/auth/verify",
+      "status": 303,
+      "contentType": null,
+      "encoding": null,
+      "transfer": null,
+      "corsOrigin": null
+    },
+    {
+      "ms": 3851,
+      "kind": "request",
+      "path": "/en/owner/sign-in/complete",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 3851,
+      "kind": "response",
+      "path": "/auth/callback",
+      "status": 307,
+      "contentType": null,
+      "encoding": null,
+      "transfer": null,
+      "corsOrigin": null
+    },
+    {
+      "ms": 7714,
+      "kind": "response",
+      "path": "/en/owner/sign-in/complete",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "encoding": "gzip",
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 9141,
+      "kind": "request",
+      "path": "/api/owner/sign-in/complete",
+      "method": "POST",
+      "type": "fetch"
+    },
+    {
+      "ms": 10566,
+      "kind": "request",
+      "path": "/_next/static/webpack/2b7a110e38370714.webpack.hot-update.json",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 10835,
+      "kind": "response",
+      "path": "/_next/static/webpack/2b7a110e38370714.webpack.hot-update.json",
+      "status": 200,
+      "contentType": "application/json; charset=UTF-8",
+      "encoding": null,
+      "transfer": null,
+      "corsOrigin": null
+    },
+    {
+      "ms": 11023,
+      "kind": "response",
+      "path": "/api/owner/sign-in/complete",
+      "status": 200,
+      "contentType": "application/json",
+      "encoding": null,
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 11049,
+      "kind": "request",
+      "path": "/en/owner/acceptance-hk-21d3c48a",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 15522,
+      "kind": "request",
+      "path": "/_next/static/webpack/1baf649f7a693311.webpack.hot-update.json",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 15801,
+      "kind": "response",
+      "path": "/_next/static/webpack/1baf649f7a693311.webpack.hot-update.json",
+      "status": 200,
+      "contentType": "application/json; charset=UTF-8",
+      "encoding": null,
+      "transfer": null,
+      "corsOrigin": null
+    },
+    {
+      "ms": 18488,
+      "kind": "response",
+      "path": "/en/owner/acceptance-hk-21d3c48a",
+      "status": 200,
+      "contentType": "text/x-component",
+      "encoding": "gzip",
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 20191,
+      "kind": "request",
+      "path": "/api/workspaces/21d3c48a-a2f0-4aee-84f1-73409a0d91e7/fix-pack-drafts",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 20194,
+      "kind": "request",
+      "path": "/api/workspaces/21d3c48a-a2f0-4aee-84f1-73409a0d91e7/fix-pack-drafts",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 21345,
+      "kind": "request",
+      "path": "/_next/static/webpack/fd99fd67b1fcb1e2.webpack.hot-update.json",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 21348,
+      "kind": "request",
+      "path": "/en/owner/acceptance-hk-21d3c48a",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 21612,
+      "kind": "response",
+      "path": "/_next/static/webpack/fd99fd67b1fcb1e2.webpack.hot-update.json",
+      "status": 200,
+      "contentType": "application/json; charset=UTF-8",
+      "encoding": null,
+      "transfer": null,
+      "corsOrigin": null
+    },
+    {
+      "ms": 22614,
+      "kind": "response",
+      "path": "/en/owner/acceptance-hk-21d3c48a",
+      "status": 200,
+      "contentType": "text/x-component",
+      "encoding": "gzip",
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 23221,
+      "kind": "response",
+      "path": "/api/workspaces/21d3c48a-a2f0-4aee-84f1-73409a0d91e7/fix-pack-drafts",
+      "status": 200,
+      "contentType": "application/json",
+      "encoding": null,
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 23788,
+      "kind": "response",
+      "path": "/api/workspaces/21d3c48a-a2f0-4aee-84f1-73409a0d91e7/fix-pack-drafts",
+      "status": 200,
+      "contentType": "application/json",
+      "encoding": null,
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 26245,
+      "kind": "authenticated_home"
+    },
+    {
+      "ms": 28516,
+      "kind": "request",
+      "path": "/_next/static/webpack/8365fe7e35905b07.webpack.hot-update.json",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 28689,
+      "kind": "response",
+      "path": "/_next/static/webpack/8365fe7e35905b07.webpack.hot-update.json",
+      "status": 200,
+      "contentType": "application/json; charset=UTF-8",
+      "encoding": null,
+      "transfer": null,
+      "corsOrigin": null
+    },
+    {
+      "ms": 34294,
+      "kind": "request",
+      "path": "/en/owner/acceptance-hk-21d3c48a/actions/337cfd24-46a5-447d-a031-1b5d9bd9592d",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 34750,
+      "kind": "response",
+      "path": "/en/owner/acceptance-hk-21d3c48a/actions/337cfd24-46a5-447d-a031-1b5d9bd9592d",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "encoding": "gzip",
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 38563,
+      "kind": "request",
+      "path": "/en/owner/acceptance-hk-21d3c48a/actions/337cfd24-46a5-447d-a031-1b5d9bd9592d",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 38859,
+      "kind": "response",
+      "path": "/en/owner/acceptance-hk-21d3c48a/actions/337cfd24-46a5-447d-a031-1b5d9bd9592d",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "encoding": "gzip",
+      "transfer": "chunked",
+      "corsOrigin": null
+    }
+  ]
+}

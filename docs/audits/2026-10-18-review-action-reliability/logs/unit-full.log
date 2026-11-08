@@ -1,0 +1,126 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018
+> vitest run --exclude lib/evidence/safe-media.test.ts && vitest run lib/evidence/safe-media.test.ts && corepack pnpm -r test
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ components/workspace/create-view.test.tsx (21 tests | 6 failed) 1539ms
+     × labels review-response with its real capability (Live) 55ms (retry x1)
+     × labels review-request with its real capability (Live) 63ms (retry x1)
+     × labels social-post with its real capability (Live) 49ms (retry x1)
+     × labels ig-bio with its real capability (Live) 64ms (retry x1)
+     × labels visibility-content with its real capability (Live) 58ms (retry x1)
+     × labels website-basics with its real capability (Live) 61ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/create-view.test.tsx > CreateView capability labelling > labels review-response with its real capability (Live)
+ FAIL  components/workspace/create-view.test.tsx > CreateView capability labelling > labels review-response with its real capability (Live)
+AssertionError: expected 'Owner objectiveFeature availableReply…' to contain 'Live'
+
+Expected: "Live"
+Received: "Owner objectiveFeature availableReply to unanswered Google reviewsDrafts follow your brand voice and each review's content, ready for one review pass.about 10 minutes to review"
+
+ ❯ components/workspace/create-view.test.tsx:100:33
+     98|       );
+     99|       expect(card, `no card rendered for ${key}`).toBeTruthy();
+    100|       expect(card?.textContent).toContain(capability);
+       |                                 ^
+    101|     },
+    102|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  components/workspace/create-view.test.tsx > CreateView capability labelling > labels review-request with its real capability (Live)
+ FAIL  components/workspace/create-view.test.tsx > CreateView capability labelling > labels review-request with its real capability (Live)
+AssertionError: expected 'Owner objectiveFeature availableAsk r…' to contain 'Live'
+
+Expected: "Live"
+Received: "Owner objectiveFeature availableAsk recent customers for a Google reviewA short, polite request for WhatsApp, LINE or a QR card, matched to your brand voice.about 8 minutes to review"
+
+ ❯ components/workspace/create-view.test.tsx:100:33
+     98|       );
+     99|       expect(card, `no card rendered for ${key}`).toBeTruthy();
+    100|       expect(card?.textContent).toContain(capability);
+       |                                 ^
+    101|     },
+    102|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  components/workspace/create-view.test.tsx > CreateView capability labelling > labels social-post with its real capability (Live)
+ FAIL  components/workspace/create-view.test.tsx > CreateView capability labelling > labels social-post with its real capability (Live)
+AssertionError: expected 'Owner objectiveFeature availableFill …' to contain 'Live'
+
+Expected: "Live"
+Received: "Owner objectiveFeature availableFill the Instagram content gapA social post draft about what is happening in the shop right now.about 8 minutes to review"
+
+ ❯ components/workspace/create-view.test.tsx:100:33
+     98|       );
+     99|       expect(card, `no card rendered for ${key}`).toBeTruthy();
+    100|       expect(card?.textContent).toContain(capability);
+       |                                 ^
+    101|     },
+    102|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  components/workspace/create-view.test.tsx > CreateView capability labelling > labels ig-bio with its real capability (Live)
+ FAIL  components/workspace/create-view.test.tsx > CreateView capability labelling > labels ig-bio with its real capability (Live)
+AssertionError: expected 'Owner objectiveFeature availableSharp…' to contain 'Live'
+
+Expected: "Live"
+Received: "Owner objectiveFeature availableSharpen the Instagram bioSay what you do, where you are, and how to book, in the first two lines.about 5 minutes to review"
+
+ ❯ components/workspace/create-view.test.tsx:100:33
+     98|       );
+     99|       expect(card, `no card rendered for ${key}`).toBeTruthy();
+    100|       expect(card?.textContent).toContain(capability);
+       |                                 ^
+    101|     },
+    102|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  components/workspace/create-view.test.tsx > CreateView capability labelling > labels visibility-content with its real capability (Live)
+ FAIL  components/workspace/create-view.test.tsx > CreateView capability labelling > labels visibility-content with its real capability (Live)
+AssertionError: expected 'Owner objectiveFeature availableAdd c…' to contain 'Live'
+
+Expected: "Live"
+Received: "Owner objectiveFeature availableAdd clear FAQ answers for search and AIAnswer the three questions search and AI surfaces could not find on your site.about 15 minutes to review"
+
+ ❯ components/workspace/create-view.test.tsx:100:33
+     98|       );
+     99|       expect(card, `no card rendered for ${key}`).toBeTruthy();
+    100|       expect(card?.textContent).toContain(capability);
+       |                                 ^
+    101|     },
+    102|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+ FAIL  components/workspace/create-view.test.tsx > CreateView capability labelling > labels website-basics with its real capability (Live)
+ FAIL  components/workspace/create-view.test.tsx > CreateView capability labelling > labels website-basics with its real capability (Live)
+AssertionError: expected 'Owner objectiveFeature availableFix t…' to contain 'Live'
+
+Expected: "Live"
+Received: "Owner objectiveFeature availableFix the website basicsTitle, description and heading copy that describes the business plainly.about 10 minutes to review"
+
+ ❯ components/workspace/create-view.test.tsx:100:33
+     98|       );
+     99|       expect(card, `no card rendered for ${key}`).toBeTruthy();
+    100|       expect(card?.textContent).toContain(capability);
+       |                                 ^
+    101|     },
+    102|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+
+ Test Files  1 failed | 462 passed (463)
+      Tests  6 failed | 5658 passed (5664)
+   Start at  23:49:54
+   Duration  265.35s (transform 14.66s, setup 143.63s, import 128.90s, tests 89.67s, environment 51.72s)
+
+ ELIFECYCLE  Test failed. See above for more details.

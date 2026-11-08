@@ -116,7 +116,7 @@ describe("PackView", () => {
   })
 
   it("has no approve, export, reject or bulk control, open or closed, in any locale", () => {
-    const forbidden = /approve|export|reject|核准|匯出|拒絕/i
+    const forbidden = /approve|export|reject|確認|匯出|拒絕/i
     const pack = packOf([{ version: { approval: "approved", delivery: "export_ready" } }, { version: { approval: "draft" } }, { run: "failed" }])
     for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
       for (const candidate of [pack, packOf([], { closedAt: "2026-10-03T00:00:00Z" })]) {

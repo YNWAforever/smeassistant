@@ -1,0 +1,40 @@
+
+Running 28 tests using 1 worker
+
+
+
+(node:41428) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/28] [chromium] › e2e\acceptance\audit-delivery-history.spec.ts:8:1 › shows every version, approval, and repeated delivery audit without double-counting usage
+[2/28] [chromium] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+[3/28] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:83:1 › assistant preview remains retryable when saving fails
+[4/28] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:113:1 › S1 existing brand: recommendation, source/time/limits, first saved draft and explicit exact-version approval
+[5/28] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:158:1 › S2 incomplete facts: required review is asked for, invented operations are withheld, safe omissions save
+[6/28] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:190:1 › S3 selected branch: other branch facts and imported metadata never enter the confirmed drafting context
+[7/28] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:210:1 › S4 Hong Kong mobile: shorten, tone and CTA revisions save, fresh login reads the exact version and reapproval is explicit
+[8/28] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:262:1 › S5 old tab compares before saving; invalid provider output preserves drafts and an explicit retry succeeds
+[9/28] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:301:1 › API boundaries: active generation is unique, cross-workspace and non-approver requests fail closed
+[10/28] [chromium] › e2e\acceptance\content-approval-journey.spec.ts:340:1 › a lost generation response is reconciled by reading the saved draft instead of another model call
+[11/28] [chromium] › e2e\acceptance\permissions.spec.ts:4:52 › viewer: accepted evidence reads, omitted/spoofed context denial, revocation
+[12/28] [chromium] › e2e\acceptance\permissions.spec.ts:4:52 › manager: accepted evidence reads, omitted/spoofed context denial, revocation
+[13/28] [chromium] › e2e\acceptance\permissions.spec.ts:27:1 › unverified identity and invalid callback cannot acquire workspace authority
+[14/28] [chromium] › e2e\acceptance\permissions.spec.ts:36:1 › lite permits three distinct approved deliveries and blocks the fourth
+[15/28] [chromium] › e2e\acceptance\permissions.spec.ts:51:2 › expired local fixture link cannot accept an invitation
+[16/28] [chromium] › e2e\acceptance\permissions.spec.ts:59:1 › authenticated fixture session can observe an unknown owner route 404
+[17/28] [chromium] › e2e\acceptance\permissions.spec.ts:64:1 › local logout revokes retained fixture session credentials
+[18/28] [chromium] › e2e\acceptance\returning-sign-in.spec.ts:12:3 › en 1440px returning owner completes email-code sign-in
+[19/28] [chromium] › e2e\acceptance\returning-sign-in.spec.ts:12:3 › en 1440px returning viewer completes email-code sign-in
+[20/28] [chromium] › e2e\acceptance\returning-sign-in.spec.ts:12:3 › zh-HK 375px first owner completes email-code sign-in
+
+(node:25008) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[21/28] [chromium] › e2e\acceptance\auth-reliability.spec.ts:34:1 › LOCAL OTP rejects wrong and expired codes, then accepts one fresh code and refuses consumed replay
+[22/28] [chromium] › e2e\acceptance\auth-reliability.spec.ts:61:1 › LOCAL resend honors the client cooldown, rotates the fixture code and leaves the old code unusable
+[23/28] [chromium] › e2e\acceptance\auth-reliability.spec.ts:79:1 › LOCAL request budget stops after five deliveries and the UI counts down without sending automatically
+[24/28] [chromium] › e2e\acceptance\auth-reliability.spec.ts:105:1 › LOCAL verify budget blocks the eleventh attempt and the UI preserves its countdown without acquiring ownership
+[25/28] [chromium] › e2e\acceptance\auth-reliability.spec.ts:130:1 › LOCAL expired-session reload requires relogin, sign-out removes access, and switching identity cannot replace the existing owner
+[26/28] [chromium] › e2e\acceptance\auth-reliability.spec.ts:163:3 › LOCAL legacy invalid-code recovery offers explicit email-code and Google alternatives (en)
+[27/28] [chromium] › e2e\acceptance\auth-reliability.spec.ts:163:3 › LOCAL legacy invalid-code recovery offers explicit email-code and Google alternatives (zh-HK)
+[28/28] [chromium] › e2e\acceptance\auth-reliability.spec.ts:163:3 › LOCAL legacy invalid-code recovery offers explicit email-code and Google alternatives (zh-TW)
+  28 passed (6.5m)

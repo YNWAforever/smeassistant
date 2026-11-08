@@ -1,0 +1,27 @@
+const { spawnSync } = require("node:child_process");
+const { existsSync } = require("node:fs");
+const { resolve } = require("node:path");
+
+for (const name of [".env", ".env.local", ".env.production", ".env.production.local"]) {
+  if (existsSync(name)) throw new Error("Refusing ambient build environment file");
+}
+const env = {};
+for (const key of ["PATH", "Path", "SystemRoot", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "HOME", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "ComSpec", "PATHEXT"]) {
+  if (process.env[key]) env[key] = process.env[key];
+}
+Object.assign(env, {
+  NODE_ENV: "production",
+  NEXT_TELEMETRY_DISABLED: "1",
+  SME_TEST_WEBPACK: "1",
+  NODE_OPTIONS: `--require=${resolve("test/e2e/transport-guard.cjs").replaceAll("\\", "/")}`,
+  NEXT_PUBLIC_SITE_URL: "https://example.invalid",
+  APP_ORIGIN: "https://example.invalid",
+  DATABASE_URL: "postgresql://fixture:fixture-only@127.0.0.1:1/review_reliability_build",
+  NEON_AUTH_BASE_URL: "https://auth.example.invalid/auth",
+  NEON_AUTH_COOKIE_SECRET: "fixture-build-only-at-least-32-characters",
+});
+const result = spawnSync("corepack", ["pnpm", "test:secret-boundary"], {
+  cwd: process.cwd(), env, stdio: "inherit", shell: process.platform === "win32", windowsHide: true,
+});
+if (result.error) throw result.error;
+process.exit(result.status ?? 1);

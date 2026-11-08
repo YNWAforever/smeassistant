@@ -1,0 +1,47 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ test/integration/neon-website-verification.integration.test.ts (17 tests | 1 failed | 16 skipped) 4753ms
+     × loads the last scoped verification receipt before applying the workspace activity limit 184ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/integration/neon-website-verification.integration.test.ts > website verification eligibility and attribution > loads the last scoped verification receipt before applying the workspace activity limit
+AssertionError: expected { id: '2', …(9) } to match object { …(5) }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "entity_id": "b24697fd-c288-4103-b00d-01fd0f4ccee4",
+-   "event": "action.verification_checked",
+-   "location_id": "780b4142-b782-4d59-9e57-0db1d3f46f17",
+-   "payload": {
+-     "verification": {
+-       "checkedAt": "2026-10-18T15:59:58.041Z",
+-       "outcome": "source_unavailable",
+-     },
+-   },
++   "entity_id": "eb02b15b-6f71-4b0a-84db-ea8a3533512e",
++   "event": "action.updated",
++   "location_id": null,
++   "payload": {},
+    "workspace_id": "1468bc64-4daf-4656-b8ae-24351bc0d7ee",
+  }
+
+ ❯ test/integration/neon-website-verification.integration.test.ts:453:24
+    451|     const receipt = await read.activity(ws, 1, scope);
+    452|     expect(receipt).toHaveLength(1);
+    453|     expect(receipt[0]).toMatchObject({
+       |                        ^
+    454|       event: "action.verification_checked", entity_id: id, workspace_i…
+    455|       payload: { verification: { outcome: "source_unavailable", checke…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 skipped (17)
+   Start at  23:59:48
+   Duration  9.84s (transform 214ms, setup 14ms, import 785ms, tests 4.75s, environment 0ms)

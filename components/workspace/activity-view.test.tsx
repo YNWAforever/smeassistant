@@ -50,7 +50,7 @@ describe("ActivityView labels (F-22)", () => {
 
   it.each([
     ["pack.started", "已開始入門套組", "入門套裝"],
-    ["asset.uploaded", "素材已上傳", "上載"],
+    ["asset.uploaded", "照片已上傳", "上載"],
     ["mail.attempted", "已嘗試發送電子郵件", "電郵"],
   ])("uses Taiwan wording for zh-TW (%s)", (event, tw, hkOnly) => {
     const [[, , label]] = cells("zh-TW", [row({ event })]);

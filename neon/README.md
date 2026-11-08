@@ -1,6 +1,6 @@
 # Fresh application schema and atomic workflows
 
-The four SQL migrations create 34 final business tables and 2 application identity tables on an empty PostgreSQL database. They never replay legacy account backfills or create managed Auth/storage schemas. The independently captured original catalog and source SHA-256 manifest live in `test/integration/fixtures/`.
+The ordered SQL migrations build the application schema on an empty PostgreSQL database. The initial four establish business/identity tables and atomic workflows; subsequent migrations add the owner workflow features. They never replay legacy account backfills or create managed Auth/storage schemas. The independently captured original catalog and source SHA-256 manifest live in `test/integration/fixtures/`.
 
 The owner runs `applyMigrations` from `scripts/neon/migrations.ts`. The runner takes a migration-only pool, locks a transaction, validates the entire applied prefix with SHA-256, and commits DDL and journal together. Never edit applied migration files. Append an ordered migration instead. `drizzle.config.ts` describes the typed schema for inspection; the SQL migrations own the function/grant behavior and journal.
 

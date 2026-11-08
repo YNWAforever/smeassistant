@@ -28,14 +28,14 @@ describe("buildEvidenceRefs", () => {
       `ev_${SNAPSHOT_ID}_composite`,
     ]);
     expect(refs.every((r) => r.scanId === "job-head" && r.observedAt === snapshot.observedAt)).toBe(true);
-    expect(refs[0]).toMatchObject({ value: "62/100", factType: "Observed", source: "SME Scanner · Yik Yam" });
+    expect(refs[0]).toMatchObject({ value: "62/100", factType: "Observed", source: "Kinnso OS · Yik Yam" });
     expect(refs[1]).toMatchObject({ value: "78%" });
     expect(refs.at(-1)).toMatchObject({ factType: "Observed", value: "66 → 62 (-4)", label: "Composite score change" });
   });
 
   it("labels in the requested locale and names modules per locale", () => {
     const refs = buildEvidenceRefs({ snapshot, locationName: "奕蔭街", locale: "zh-HK" });
-    expect(refs.find((r) => r.evidenceId.endsWith("gbp.rating"))).toMatchObject({ label: "Google 評分", value: "4.3", source: "Google 商戶 · 奕蔭街" });
+    expect(refs.find((r) => r.evidenceId.endsWith("gbp.rating"))).toMatchObject({ label: "Google 評分", value: "4.3", source: "Google 商家檔案 · 奕蔭街" });
     expect(refs.find((r) => r.evidenceId.endsWith("gbp.hours_complete"))).toMatchObject({ value: "是" });
     expect(refs.find((r) => r.evidenceId.endsWith("composite"))).toBeUndefined();
   });

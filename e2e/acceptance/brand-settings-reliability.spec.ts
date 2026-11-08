@@ -4,7 +4,7 @@ import { sql, type AcceptanceEnvironment } from "../../test/e2e/environment";
 import { seedMerchant, type MerchantSeed } from "../../test/e2e/seed";
 
 const body = { voice: "direct", approved_claims: ["Established 1998"], prohibited_terms: ["Guaranteed"], languages: ["en"], facts: { hours: "11-22" }, expectedRevisionId: null };
-const settingsPath = (merchant: MerchantSeed) => `/en/owner/${merchant.slug}/settings/brand`;
+const settingsPath = (merchant: MerchantSeed) => `/en/owner/${merchant.slug}/business/profile`;
 const apiPath = (merchant: MerchantSeed) => `/api/workspaces/${merchant.workspaceId}/brand`;
 function seedBrand(environment: AcceptanceEnvironment, merchant: MerchantSeed, voice: "professional" | "unknown" = "professional") {
   sql(environment.db, `insert into brand_profiles(workspace_id,voice,approved_claims,prohibited_terms,languages,facts)
@@ -16,7 +16,7 @@ async function chooseVoice(page: Page, label: string) {
 }
 async function save(page: Page) {
   const saved = page.waitForResponse(response => response.request().method() === "PUT" && response.url().endsWith("/brand"));
-  await page.getByRole("button", { name: "Save current profile", exact: true }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   return saved;
 }
 
@@ -31,7 +31,7 @@ test("owner saves voice through the existing API and a fresh signed-in browser r
   expect(persisted.brand).toMatchObject({ workspaceId: merchant.workspaceId, voice: "direct", voiceConfigured: true, facts: { hours: "11-22" }, languages: ["en"], prohibitedTerms: ["Guaranteed"] });
   expect(persisted.brand.revisionId).toMatch(/^[0-9a-f-]{36}$/i);
   expect(sql(environment.db, `select voice from brand_profiles where workspace_id='${merchant.workspaceId}';`)).toBe("direct");
-  await expect(page.getByText("Current brand profile saved.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("brand-owner-saved.png"), fullPage: true });
 
   const fresh = await browser.newContext({ baseURL: environment.app });
@@ -42,8 +42,8 @@ test("owner saves voice through the existing API and a fresh signed-in browser r
     await freshPage.goto(settingsPath(merchant));
     await waitForHydration(freshPage);
     await expect(freshPage.getByRole("combobox", { name: "Choose voice" })).toHaveText(/Short and direct/);
-    await expect(freshPage.getByLabel("Approved claims (one per line)")).toHaveValue("Established 1998");
-    await expect(freshPage.getByLabel("Prohibited terms (one per line)")).toHaveValue("Guaranteed");
+    await expect(freshPage.getByLabel("Lines you're happy to say (one per line)")).toHaveValue("Established 1998");
+    await expect(freshPage.getByLabel("Words never to use (one per line)")).toHaveValue("Guaranteed");
     await expect(freshPage.getByLabel("Value", { exact: true })).toHaveValue("11-22");
     expect((await (await freshPage.request.get(apiPath(merchant))).json()).brand.revisionId).toBe(persisted.brand.revisionId);
     expect(sql(environment.db, `select count(*) from brand_profiles where workspace_id='${merchant.workspaceId}';`)).toBe("1");
@@ -63,14 +63,14 @@ test("failed save retains all inputs and retry reaches the real API once", async
     } else await route.continue();
   });
   await chooseVoice(page, "Short and direct");
-  await page.getByLabel("Approved claims (one per line)").fill("Draft claim retained");
-  await page.getByLabel("Prohibited terms (one per line)").fill("No promises");
+  await page.getByLabel("Lines you're happy to say (one per line)").fill("Draft claim retained");
+  await page.getByLabel("Words never to use (one per line)").fill("No promises");
   await page.getByLabel("Value", { exact: true }).fill("12-23");
   expect((await save(page)).status()).toBe(503);
   await expect(page.locator(".brand-page").getByRole("alert")).toBeFocused();
   await expect(page.getByRole("combobox", { name: "Choose voice" })).toHaveText(/Short and direct/);
-  await expect(page.getByLabel("Approved claims (one per line)")).toHaveValue("Draft claim retained");
-  await expect(page.getByLabel("Prohibited terms (one per line)")).toHaveValue("No promises");
+  await expect(page.getByLabel("Lines you're happy to say (one per line)")).toHaveValue("Draft claim retained");
+  await expect(page.getByLabel("Words never to use (one per line)")).toHaveValue("No promises");
   await expect(page.getByLabel("Value", { exact: true })).toHaveValue("12-23");
   expect(sql(environment.db, `select voice from brand_profiles where workspace_id='${merchant.workspaceId}';`)).toBe("professional");
   const retry = page.waitForResponse(response => response.request().method() === "PUT" && response.url().endsWith("/brand"));
@@ -89,21 +89,21 @@ test("two open settings pages enforce CAS and retain the losing draft until the 
   try {
     await stale.goto(settingsPath(merchant));
     await waitForHydration(stale);
-    await stale.getByLabel("Approved claims (one per line)").fill("Retained stale draft");
+    await stale.getByLabel("Lines you're happy to say (one per line)").fill("Retained stale draft");
     await chooseVoice(page, "Short and direct");
     expect((await save(page)).status()).toBe(200);
     const head = (await (await page.request.get(apiPath(merchant))).json()).brand.revisionId;
     expect((await save(stale)).status()).toBe(409);
-    await expect(stale.locator(".brand-page").getByRole("alert")).toContainText("Another save");
-    await expect(stale.getByLabel("Approved claims (one per line)")).toHaveValue("Retained stale draft");
-    await expect(stale.getByRole("button", { name: "Save current profile", exact: true })).toBeDisabled();
+    await expect(stale.locator(".brand-page").getByRole("alert")).toContainText("Someone else saved");
+    await expect(stale.getByLabel("Lines you're happy to say (one per line)")).toHaveValue("Retained stale draft");
+    await expect(stale.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
     expect((await (await page.request.get(apiPath(merchant))).json()).brand.revisionId).toBe(head);
     await stale.getByRole("button", { name: "Review latest profile" }).click();
     await expect(stale.getByRole("region", { name: "Latest saved profile" })).toContainText("Short and direct");
-    await expect(stale.getByLabel("Approved claims (one per line)")).toHaveValue("Retained stale draft");
+    await expect(stale.getByLabel("Lines you're happy to say (one per line)")).toHaveValue("Retained stale draft");
     await stale.getByRole("button", { name: "Use latest profile and replace my draft" }).click();
-    await expect(stale.getByLabel("Approved claims (one per line)")).toHaveValue("Established 1998");
-    await stale.getByLabel("Approved claims (one per line)").fill("Reviewed new claim");
+    await expect(stale.getByLabel("Lines you're happy to say (one per line)")).toHaveValue("Established 1998");
+    await stale.getByLabel("Lines you're happy to say (one per line)").fill("Reviewed new claim");
     const afterReview = await save(stale);
     expect(afterReview.status()).toBe(200);
     expect(afterReview.request().postDataJSON().expectedRevisionId).toBe(head);
@@ -117,9 +117,10 @@ for (const role of ["manager", "viewer"] as const) {
     seedBrand(environment, merchant);
     await signIn(page, environment, merchant, role);
     await page.goto(settingsPath(merchant));
-    await expect(page.getByText("The brand profile is read-only; only the owner can save a new version.")).toBeVisible();
+    await expect(page.getByText(role === "viewer" ? "You can look; ask the owner to make changes." : "You can read the business profile. Only the owner can save changes.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Ask the owner to change it", exact: true })).toBeDisabled();
     await expect(page.getByRole("combobox", { name: "Choose voice" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Save current profile" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
     expect((await page.request.get(apiPath(merchant))).status()).toBe(200);
     expect((await page.request.put(apiPath(merchant), { data: body })).status()).toBe(403);
     expect(sql(environment.db, `select voice from brand_profiles where workspace_id='${merchant.workspaceId}';`)).toBe("professional");
@@ -132,11 +133,11 @@ test("switching to another account and workspace clears the old draft and denies
   seedBrand(environment, other);
   await signIn(page, environment, merchant);
   await page.goto(settingsPath(merchant));
-  await page.getByLabel("Approved claims (one per line)").fill("Private old-account draft");
+  await page.getByLabel("Lines you're happy to say (one per line)").fill("Private old-account draft");
   expect((await page.request.post("/api/auth/sign-out")).status()).toBe(200);
   await signIn(page, environment, other);
   await page.goto(settingsPath(other));
-  await expect(page.getByLabel("Approved claims (one per line)")).toHaveValue("Established 1998");
+  await expect(page.getByLabel("Lines you're happy to say (one per line)")).toHaveValue("Established 1998");
   await expect(page.getByText("Private old-account draft", { exact: true })).toHaveCount(0);
   expect((await page.request.get(apiPath(merchant))).status()).toBe(403);
   expect((await page.request.put(apiPath(merchant), { data: body })).status()).toBe(403);
@@ -150,7 +151,7 @@ for (const voice of ["missing profile", "unknown"] as const) {
     await signIn(page, environment, merchant);
     await page.goto(settingsPath(merchant));
     await expect(page.getByRole("combobox", { name: "Choose voice" })).toHaveText(/Choose a voice/);
-    await page.getByRole("button", { name: "Save current profile", exact: true }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.locator(".brand-page").getByRole("alert")).toContainText("Choose a voice");
     expect(sql(environment.db, `select count(*) from brand_revisions where workspace_id='${merchant.workspaceId}' and source='save';`)).toBe("0");
     await chooseVoice(page, "Short and direct");

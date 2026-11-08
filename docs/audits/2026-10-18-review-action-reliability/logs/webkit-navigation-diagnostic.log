@@ -1,0 +1,32 @@
+
+Running 1 test using 1 worker
+
+
+
+(node:10712) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/1] [webkit] › e2e\acceptance\_navigation-probe.spec.ts:4:1 › diagnoses the isolated WebKit navigation boundary without credential capture
+  1) [webkit] › e2e\acceptance\_navigation-probe.spec.ts:4:1 › diagnoses the isolated WebKit navigation boundary without credential capture
+
+    Error: page.goto: Navigation to "http://localhost:52576/en/owner/acceptance-hk-6f122f3a/actions/d81fb76e-4c36-446b-8b4f-ad3a0858deb0" is interrupted by another navigation to "http://localhost:52576/en/owner/acceptance-hk-6f122f3a"
+    Call log:
+      - navigating to "http://localhost:52576/en/owner/acceptance-hk-6f122f3a/actions/d81fb76e-4c36-446b-8b4f-ad3a0858deb0", waiting until "load"
+
+
+       at ..\..\test\e2e\fixtures.ts:17
+
+      15 |     const goto = page.goto.bind(page);
+      16 |     page.goto = (async (url: string, options?: Parameters<Page["goto"]>[1]) => {
+    > 17 |       const response = await goto(url, options);
+         |                              ^
+      18 |       if (response?.headers()["content-type"]?.includes("text/html")) await waitForHydration(page);
+      19 |       return response;
+      20 |     }) as Page["goto"];
+        at _Page.goto (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\fixtures.ts:17:30)
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\e2e\acceptance\_navigation-probe.spec.ts:31:16
+
+    Error Context: test-results\review-action-reliability-20261018\browser\_navigation-probe-diagnose-b2bad--without-credential-capture-webkit\error-context.md
+
+
+  1 failed
+    [webkit] › e2e\acceptance\_navigation-probe.spec.ts:4:1 › diagnoses the isolated WebKit navigation boundary without credential capture

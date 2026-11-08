@@ -1,0 +1,63 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018
+> vitest run --exclude lib/evidence/safe-media.test.ts && vitest run lib/evidence/safe-media.test.ts && corepack pnpm -r test
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+
+ Test Files  463 passed (463)
+      Tests  5665 passed (5665)
+   Start at  01:06:33
+   Duration  244.13s (transform 12.88s, setup 131.76s, import 110.64s, tests 82.65s, environment 64.02s)
+
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+
+ Test Files  1 passed (1)
+      Tests  62 passed (62)
+   Start at  01:10:38
+   Duration  2.02s (transform 95ms, setup 276ms, import 129ms, tests 1.37s, environment 0ms)
+
+Scope: 4 of 5 workspace projects
+packages/region test$ vitest run
+packages/scoring test$ vitest run
+packages/region test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+packages/region test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+packages/region test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+packages/scoring test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+packages/scoring test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+packages/scoring test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+packages/region test:  RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018/packages/region
+packages/scoring test:  RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018/packages/scoring
+packages/region test:  Test Files  3 passed (3)
+packages/region test:       Tests  23 passed (23)
+packages/region test:    Start at  01:10:41
+packages/region test:    Duration  763ms (transform 98ms, setup 0ms, import 165ms, tests 24ms, environment 0ms)
+packages/region test: Done
+packages/scoring test:  Test Files  16 passed (16)
+packages/scoring test:       Tests  183 passed (183)
+packages/scoring test:    Start at  01:10:41
+packages/scoring test:    Duration  2.08s (transform 389ms, setup 0ms, import 767ms, tests 115ms, environment 1ms)
+packages/scoring test: Done
+packages/contracts test$ vitest run
+packages/contracts test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+packages/contracts test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+packages/contracts test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+packages/contracts test:  RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018/packages/contracts
+packages/contracts test:  Test Files  3 passed (3)
+packages/contracts test:       Tests  20 passed (20)
+packages/contracts test:    Start at  01:10:44
+packages/contracts test:    Duration  520ms (transform 76ms, setup 0ms, import 140ms, tests 15ms, environment 0ms)
+packages/contracts test: Done
+packages/scan-engine test$ vitest run
+packages/scan-engine test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+packages/scan-engine test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+packages/scan-engine test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+packages/scan-engine test:  RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018/packages/scan-engine
+packages/scan-engine test:  Test Files  28 passed (28)
+packages/scan-engine test:       Tests  299 passed (299)
+packages/scan-engine test:    Start at  01:10:45
+packages/scan-engine test:    Duration  4.00s (transform 551ms, setup 0ms, import 1.25s, tests 427ms, environment 2ms)
+packages/scan-engine test: Done

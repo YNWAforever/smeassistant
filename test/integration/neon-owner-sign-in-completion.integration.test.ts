@@ -82,13 +82,12 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon owner sign-in complet
 
     const finishClaim: CompletionPorts["finishClaim"] = async (mapped, flow) => {
       const outcome = await claimScan({
-        slug: flow.claim!, sessionUser: { id: mapped.id, email: mapped.email }, selfServiceEnabled: false,
-        lookupJobBySlug: claims.jobBySlug, hasViewerGrant: async () => false, lookupLeadEmail: claims.firstLeadEmail,
+        slug: flow.claim!, sessionUser: { id: mapped.id, email: mapped.email },
+        lookupJobBySlug: claims.jobBySlug,
         findWorkspaceForUser: async (userId) => {
           const found = await members.ownedWorkspace(userId);
           return found ? { id: found.workspaceId } : null;
         },
-        createWorkspace: claims.createWorkspaceWithOwner, attachJobToWorkspace: claims.attachJob,
       });
       return outcome.kind === "unavailable" ? null : `/en/owner/onboarding?claim=${flow.claim}&claimed=${outcome.kind}`;
     };

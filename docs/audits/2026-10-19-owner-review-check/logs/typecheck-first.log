@@ -1,0 +1,26 @@
+
+> sme-scanner-visibility-workspace@0.1.0 typecheck C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018
+> tsc --noEmit && corepack pnpm -r typecheck
+
+lib/workspace/owner-review-check.test.ts(44,40): error TS2322: Type '{ payload: { owner_check: { verified: true; versionId: string; latestVersionId: string; expectedRecordId: null; requestId: string; decision: string; reviewReference: string; note: string; evidenceAssetId: null; confirmBusiness: boolean; confirmReview: boolean; confirmReply: boolean; }; }; ... 8 more ...; created_at:...' is not assignable to type 'AuditEventRow'.
+  Types of property 'id' are incompatible.
+    Type 'string' is not assignable to type 'number'.
+lib/workspace/owner-review-check.test.ts(49,33): error TS2322: Type '{ workspace_id: string; entity_id: string; location_id: null; id: string; actor_type: "user"; actor_id: string; event: string; entity_type: string; created_at: string; payload: { owner_check: { ...; }; }; } | { ...; } | { ...; }' is not assignable to type 'AuditEventRow'.
+  Type '{ workspace_id: string; entity_id: string; location_id: null; id: string; actor_type: "user"; actor_id: string; event: string; entity_type: string; created_at: string; payload: { owner_check: { evidenceLabel: null; ... 10 more ...; confirmReply: boolean; }; }; }' is not assignable to type 'AuditEventRow'.
+    Types of property 'id' are incompatible.
+      Type 'string' is not assignable to type 'number'.
+lib/workspace/owner-review-check.test.ts(51,31): error TS2322: Type '{ event: string; id: string; workspace_id: string; location_id: null; actor_type: "user"; actor_id: string; entity_type: string; entity_id: string; created_at: string; payload: { owner_check: { evidenceLabel: null; ... 10 more ...; confirmReply: boolean; }; }; }' is not assignable to type 'AuditEventRow'.
+  Types of property 'id' are incompatible.
+    Type 'string' is not assignable to type 'number'.
+lib/workspace/owner-review-check.test.ts(56,40): error TS2322: Type '{ id: string; workspace_id: string; location_id: null; actor_type: "user"; actor_id: string; event: string; entity_type: string; entity_id: string; created_at: string; payload: { owner_check: { evidenceLabel: null; ... 10 more ...; confirmReply: boolean; }; }; }' is not assignable to type 'AuditEventRow'.
+  Types of property 'id' are incompatible.
+    Type 'string' is not assignable to type 'number'.
+lib/workspace/owner-review-check.test.ts(56,45): error TS2322: Type '{ id: string; created_at: string; payload: { owner_check: { versionId: string; decision: string; expectedRecordId: null; latestVersionId: string; requestId: string; reviewReference: string; note: string; evidenceAssetId: null; confirmBusiness: boolean; confirmReview: boolean; confirmReply: boolean; }; }; ... 6 more ...' is not assignable to type 'AuditEventRow'.
+  Types of property 'id' are incompatible.
+    Type 'string' is not assignable to type 'number'.
+lib/workspace/owner-review-check.ts(74,3): error TS2322: Type '{ id: number; versionId: string; decision: OwnerCheckDecision; reviewReference: string; note: string; evidenceAssetId: string | null; evidenceLabel: string | null; previousId: string | null; recordedAt: string; independent: false; }[]' is not assignable to type 'OwnerCheckRecord[]'.
+  Type '{ id: number; versionId: string; decision: OwnerCheckDecision; reviewReference: string; note: string; evidenceAssetId: string | null; evidenceLabel: string | null; previousId: string | null; recordedAt: string; independent: false; }' is not assignable to type 'OwnerCheckRecord'.
+    Types of property 'id' are incompatible.
+      Type 'number' is not assignable to type 'string'.
+lib/workspace/owner-review-check.ts(91,125): error TS2339: Property 'localeCompare' does not exist on type 'number'.
+ ELIFECYCLE  Command failed with exit code 2.

@@ -1,0 +1,31 @@
+
+Running 1 test using 1 worker
+
+
+
+(node:46980) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/1] [webkit] › e2e\acceptance\_navigation-probe.spec.ts:4:1 › diagnoses the isolated WebKit navigation boundary without credential capture
+  1) [webkit] › e2e\acceptance\_navigation-probe.spec.ts:4:1 › diagnoses the isolated WebKit navigation boundary without credential capture
+
+    TimeoutError: page.waitForFunction: Timeout 30000ms exceeded.
+
+       at ..\..\test\e2e\fixtures.ts:52
+
+      50 |  */
+      51 | export async function waitForHydration(page: Page): Promise<void> {
+    > 52 |   await page.waitForFunction(() => document.documentElement.dataset.hydrated === "true", undefined, { timeout: 30_000 });
+         |              ^
+      53 | }
+      54 | export async function requestSignInLink(page: Page, env: AcceptanceEnvironment, merchant: MerchantSeed, role: keyof MerchantSeed["emails"] = "owner", claim?: string) {
+      55 |   // Legacy-link contract setup only. The current code-entry UI is exercised by
+        at waitForHydration (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\fixtures.ts:52:14)
+        at _Page.page.goto (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\fixtures.ts:29:77)
+        at signIn (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\fixtures.ts:82:3)
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\e2e\acceptance\_navigation-probe.spec.ts:41:5
+
+    Error Context: test-results\review-action-reliability-20261018\browser\_navigation-probe-diagnose-b2bad--without-credential-capture-webkit\error-context.md
+
+
+  1 failed
+    [webkit] › e2e\acceptance\_navigation-probe.spec.ts:4:1 › diagnoses the isolated WebKit navigation boundary without credential capture

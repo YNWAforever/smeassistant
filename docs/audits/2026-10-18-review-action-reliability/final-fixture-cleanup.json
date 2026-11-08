@@ -1,0 +1,155 @@
+{
+  "recordedAt": "2026-10-18T17:24:26.4203574Z",
+  "operation": "read-only labelled-container metadata",
+  "latestRecordedFixture": "sme-neon-it-db-7812b1be383b",
+  "latestRecordedDatabase": "sme_neon_it_7812b1be383b",
+  "latestRecordedFixtureStillPresent": false,
+  "remaining": [
+    {
+      "id": "5a1126ceb4e449f67920af7ea2a76df6fe4e89fb8dfbe012af0be46dc2ad73b3",
+      "name": "/sme-neon-it-db-bc1b4b43e4df",
+      "created": "2026-10-17T13:01:11.272276061Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_bc1b4b43e4df"
+    },
+    {
+      "id": "76d2ca820b468145e304ab646fd67bc0cefe027f3f77cc923017b85ed59321c6",
+      "name": "/sme-neon-it-db-be5bea43444f",
+      "created": "2026-10-17T12:59:51.914715973Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_be5bea43444f"
+    },
+    {
+      "id": "f60e7da50b113f329b93aa799a91deaaf4dd5c4478aad9fc659520b87e3e80f1",
+      "name": "/sme-neon-it-db-c8512d39ba56",
+      "created": "2026-10-14T19:45:20.18573677Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_c8512d39ba56"
+    },
+    {
+      "id": "3b7cf1491a05c8ac97299e8c7878acc15520fc771a4a03da65800cff9206c0ef",
+      "name": "/sme-neon-it-db-753bcb7285d5",
+      "created": "2026-10-05T19:35:47.518334533Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_753bcb7285d5"
+    },
+    {
+      "id": "ee425fb2d5965361e4a4a9a288e7a83d2dd1767465f227438aa7bf5fd31d1d0e",
+      "name": "/sme-neon-it-db-c0c10477b8e2",
+      "created": "2026-10-04T08:34:54.452368385Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_c0c10477b8e2"
+    },
+    {
+      "id": "a3412ab6a25fad4d629d363b59c3c73237c8ac168a35dd0627b51769e9dd251e",
+      "name": "/sme-neon-it-db-bb5c44314faa",
+      "created": "2026-10-04T08:30:46.395903537Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_bb5c44314faa"
+    },
+    {
+      "id": "a7052d23f42ad4045f63245b2973d814809b2cd89fda86ec7b201e090c5d958e",
+      "name": "/sme-neon-it-db-0910ef89d05d",
+      "created": "2026-10-04T08:26:29.612683814Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_0910ef89d05d"
+    },
+    {
+      "id": "da7160bb0bbacf971506c3bf66860ecfd35309e3f70080b1a895637f3fcfc295",
+      "name": "/sme-neon-it-db-377194181072",
+      "created": "2026-10-03T08:47:59.193068455Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_377194181072"
+    },
+    {
+      "id": "618e28c3e2de8ef70c8ab98707343e307ae8ba0e0532afe7dad0bf52bd23aec3",
+      "name": "/sme-neon-it-db-f8f1bc4cbcfd",
+      "created": "2026-10-02T18:51:03.698160728Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_f8f1bc4cbcfd"
+    },
+    {
+      "id": "4374e12dca08f27cf14a8ceaf6840d16330531e69dd3fea68809c214242744e0",
+      "name": "/sme-neon-it-db-1fcfb612a385",
+      "created": "2026-10-02T14:46:17.852229232Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_1fcfb612a385"
+    },
+    {
+      "id": "d2c9ac1f295cba478c9274687707274ed6fc69b8eac200a7474ccf31e746035c",
+      "name": "/sme-neon-it-db-ca40a4c59863",
+      "created": "2026-10-02T01:44:07.641083718Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_ca40a4c59863"
+    },
+    {
+      "id": "1f37335a9661503036d4cc1f11bae13297c6bb2bba394c86915741533bfc5047",
+      "name": "/sme-neon-it-db-62f0c33996c7",
+      "created": "2026-09-27T08:53:12.099448235Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_62f0c33996c7"
+    },
+    {
+      "id": "2fffca59d5ee097d58e14ca1bf8bcedfcbc53c2463fb6bb9bf70b2597e387a1a",
+      "name": "/sme-neon-it-db-4af9e9776f27",
+      "created": "2026-09-27T00:06:24.25723751Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_4af9e9776f27"
+    },
+    {
+      "id": "4d58138fa081ecbb175f6b6a90893465a6f552acc594642eb4e9859ea807a9f8",
+      "name": "/sme-neon-it-db-8492c3fe8b81",
+      "created": "2026-09-27T00:06:11.906126025Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_8492c3fe8b81"
+    },
+    {
+      "id": "d1edf97f15fc710879173bd9c05f152eccac7ff89c496dc08776e7c498cb0eec",
+      "name": "/sme-neon-it-db-6e6949ee345c",
+      "created": "2026-09-26T23:07:49.661311285Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_6e6949ee345c"
+    },
+    {
+      "id": "6bde349f391838801ffe2d3ba002faffe96567f0e75b3d178e6eb01762853273",
+      "name": "/sme-neon-it-db-f0dfc705811e",
+      "created": "2026-09-26T22:59:11.171976218Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_f0dfc705811e"
+    },
+    {
+      "id": "c234d9623cbb2721a07f13faa9a4b5f0b75d5a30da59f87698ce2ab6ca2f644c",
+      "name": "/sme-neon-it-db-22b7669e8373",
+      "created": "2026-09-11T20:20:02.082118901Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_22b7669e8373"
+    },
+    {
+      "id": "6d42032e0e80a655f32a1eee03405920e26c2ae3cc05cf4482bcbd752fb172c2",
+      "name": "/sme-neon-it-db-70441b4938fc",
+      "created": "2026-09-11T20:18:36.379259033Z",
+      "state": "exited",
+      "network": "none",
+      "database": "sme_neon_it_70441b4938fc"
+    }
+  ],
+  "deletedInThisCheck": false,
+  "scope": "Other/older labelled containers preserved; labels alone are not cleanup authority"
+}

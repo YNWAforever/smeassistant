@@ -1,3 +1,4 @@
+import { conversationHomeEnabled } from "@/lib/workspace/conversation-flag";
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { membershipRepository } from "@/lib/repositories/membership";
@@ -28,6 +29,10 @@ const WORKSPACE_SLUG_RE = /^[a-z0-9-]{1,64}$/;
 export async function GET(req: Request) {
   const requestUrl = new URL(req.url);
   const origin = requestUrl.origin;
+  const gsc = requestUrl.searchParams.get("provider") === "gsc";
+  const returnLocation = gsc ? requestUrl.searchParams.get("location") : null;
+  if (returnLocation !== null && !WORKSPACE_SLUG_RE.test(returnLocation)) return NextResponse.json({error:"invalid_request"},{status:400});
+  if (gsc && !conversationHomeEnabled()) return NextResponse.json({error:"not_enabled"},{status:404});
 
   if (!googleOAuthConfigured()) {
     console.error("Google OAuth is not configured");
@@ -73,9 +78,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "no_workspace" }, { status: 403 });
     }
 
-    return NextResponse.redirect(
-      new URL(buildConsentUrl(signState(access.workspaceId, undefined, locale)), origin).toString(),
-    );
+    const state = gsc ? returnLocation ? signState(access.workspaceId, undefined, locale, "google_gsc", returnLocation) : signState(access.workspaceId, undefined, locale, "google_gsc") : signState(access.workspaceId, undefined, locale);
+    return NextResponse.redirect(new URL(gsc ? buildConsentUrl(state, undefined, "google_gsc") : buildConsentUrl(state), origin).toString());
   } catch (error) {
     console.error("Google OAuth start failed", error);
     return NextResponse.json({ error: "unavailable" }, { status: 500 });

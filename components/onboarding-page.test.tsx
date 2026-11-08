@@ -42,18 +42,18 @@ function render(props: Partial<Parameters<typeof OnboardingPage>[0]> = {}) {
 
 describe("OnboardingPage resume step", () => {
   it("starts at step 1 when nothing is owned yet", () => {
-    expect(render().textContent).toContain("Step 1 of 2");
+    expect(render().textContent).toContain("Step 2 of 3");
   });
 
   it("resumes from persisted ownership, with no query parameter involved", () => {
     // The OAuth callback no longer passes `claimed=1`; an owner returning to
     // the same URL must still land past the ownership step.
-    expect(render({ ownsWorkspace: true, gbpConnected: true, resumeStep: 3 }).textContent).toContain("Step 2 of 2");
+    expect(render({ ownsWorkspace: true, gbpConnected: true, resumeStep: 3 }).textContent).toContain("Step 3 of 3");
   });
 
   it("resumes at essentials with persisted fields once the claim route has created the location", () => {
     const root = render({ ownsWorkspace: true, gbpConnected: true, resumeStep: 4, saved });
-    expect(root.textContent).toContain("Step 2 of 2");
+    expect(root.textContent).toContain("Step 3 of 3");
     // Saved values win over the scan's guesses.
     const inputs = [...root.querySelectorAll("input")].map((node) => node.getAttribute("value"));
     expect(inputs).toContain("Kam Man House Ltd");
@@ -64,7 +64,7 @@ describe("OnboardingPage resume step", () => {
   it("ignores a stored voice this build does not know about", () => {
     // Falls back to the default rather than rendering a dead Select value.
     const root = render({ ownsWorkspace: true, resumeStep: 4, saved: { ...saved, voice: "sardonic" } });
-    expect(root.textContent).toContain("Step 2 of 2");
+    expect(root.textContent).toContain("Step 3 of 3");
   });
 });
 
@@ -109,7 +109,7 @@ describe("OnboardingPage staff-assignment fallback", () => {
 describe("OnboardingPage wrong-business escape", () => {
   it("offers a plain scan link while nothing is attached", () => {
     const root = render();
-    const escape = [...root.querySelectorAll("a")].find((node) => /not my business/i.test(node.textContent ?? ""));
+    const escape = [...root.querySelectorAll("a")].find((node) => /scan the right business/i.test(node.textContent ?? ""));
     expect(escape?.getAttribute("href")).toBe("/en/scan");
   });
 
@@ -117,7 +117,49 @@ describe("OnboardingPage wrong-business escape", () => {
     // Ownership is proven, never self-declared -- undoing it the same way would
     // be a hijack primitive, so the escape becomes a support instruction.
     const root = render({ ownsWorkspace: true, resumeStep: 1 });
-    expect([...root.querySelectorAll("a")].some((node) => /not my business/i.test(node.textContent ?? ""))).toBe(false);
+    expect([...root.querySelectorAll("a")].some((node) => /scan the right business/i.test(node.textContent ?? ""))).toBe(false);
     expect(root.textContent).toContain("Contact the Fimmick team");
+  });
+});
+
+describe("OnboardingPage first-run wizard (Phase 5)", () => {
+  it("shows three steps with Signed in already done", () => {
+    const steps = [...render().querySelectorAll(".onboarding-steps li")];
+    expect(steps.map((node) => node.getAttribute("data-state"))).toEqual(["done", "current", "todo"]);
+    expect(steps[1].getAttribute("aria-current")).toBe("step");
+    expect(steps[0].textContent).toContain("Signed in");
+  });
+
+  it("marks ownership done and shows the verified label once the owner is proven", () => {
+    const root = render({ ownsWorkspace: true, gbpConnected: true, resumeStep: 2, saved });
+    const steps = [...root.querySelectorAll(".onboarding-steps li")];
+    expect(steps.map((node) => node.getAttribute("data-state"))).toEqual(["done", "done", "current"]);
+    expect(root.querySelector(".onboarding-verified-strip")?.textContent).toContain("Verified with Google");
+  });
+
+  it("explains why Google beside the heading, never inside it", () => {
+    const root = render();
+    const row = root.querySelector(".onboarding-title-row");
+    expect(row?.querySelector("h3")?.textContent).toBe("Verify ownership with Google");
+    expect(row?.querySelector("button[aria-label]")).not.toBeNull();
+  });
+
+  it("keeps the wrong-business help behind a disclosure", () => {
+    const details = render().querySelector("details.onboarding-not-mine");
+    expect(details?.querySelector("summary")?.textContent).toBe("Not your business?");
+    expect(details?.hasAttribute("open")).toBe(false);
+  });
+
+  it("shows an error with a retry, not a misleading start-from-a-scan, when a lookup failed", () => {
+    const root = render({ evidence: null, lookupFailed: true });
+    expect(root.querySelector("[role=alert]")?.textContent).toContain("couldn't check this report");
+    expect(root.textContent).not.toContain("Start from a scan");
+    expect([...root.querySelectorAll("button")].some((node) => node.textContent === "Try again")).toBe(true);
+  });
+
+  it.each(["zh-HK", "zh-TW"] as const)("speaks %s throughout, with no English step labels", (locale) => {
+    const text = render({ locale }).textContent ?? "";
+    expect(text).toContain("驗證擁有權");
+    expect(text).not.toMatch(/Step \d|Signed in|Verify ownership/);
   });
 });

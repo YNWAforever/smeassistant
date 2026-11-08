@@ -18,7 +18,8 @@ import { withTransaction } from "../../lib/db/transaction";
 
 /**
  * Conversation Studio persistence on an owned disposable PostgreSQL 16
- * fixture (design §5, migration 0019). The Ruby/Docker harness is unavailable in
+ * fixture (design §5, migration 0021). The whole journal is replayed, so this
+ * also proves 0021 layers cleanly on the conversation workstream's 0019/0020.
  * this sandbox, so this file is written-but-not-executed here; it is the
  * verification the repository and the SQL owe the migration.
  *

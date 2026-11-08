@@ -56,6 +56,14 @@ describe("POST /api/actions/[actionId]/applied", () => {
     expect(ports.repo.assertApplied).not.toHaveBeenCalled();
   });
 
+  it("keeps the version-not-applicable refusal when approval changes after the early check", async () => {
+    ports.repo.approvedVersion.mockResolvedValue(true);
+    ports.repo.assertApplied.mockResolvedValue({ ok: false, reason: "version_not_applicable" });
+    const response = await POST(req({ output_version_id: "44444444-4444-4444-8444-444444444444" }), params);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "version_not_applicable" });
+  });
+
   it("rejects a malformed version id without touching the database", async () => {
     const res = await POST(req({ output_version_id: "nope" }), params);
     expect(res.status).toBe(400);

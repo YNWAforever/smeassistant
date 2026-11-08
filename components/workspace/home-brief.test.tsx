@@ -9,7 +9,6 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import { FixPackCard } from "@/components/workspace/fix-pack-card";
 import { HomeBriefView } from "@/components/workspace/home-brief";
 import { copy } from "@/lib/copy";
 import type { HomeBrief } from "@/lib/workspace/queries-pages";
@@ -32,7 +31,7 @@ function baseBrief(proof: HomeBrief["proof"]): HomeBrief {
     priority: null,
     openActions: [],
     proof,
-    month: { resolved: 0, regressed: 0, awaitingApproval: 0, completed: 0, measured: 0 },
+    month: { resolved: null, regressed: null, awaitingApproval: 0, completed: 0, measured: 0 },
     rescanCadenceDay: null,
     drafts: 0,
     agentStrip: { scout: false, priority: false, drafts: 0, awaiting: 0 },
@@ -64,6 +63,61 @@ function render(proof: HomeBrief["proof"], problems?: ReactNode) {
   );
   return root;
 }
+
+describe("returning owner version-bound follow-up", () => {
+  const followUp: NonNullable<HomeBrief["reviewFollowUp"]> = {
+    workspaceId: "ws-1", actionId: "applied-review", locationId: "loc-1",
+    title: { en: "Synthetic review reply", "zh-HK": "合成評論回覆", "zh-TW": "合成評論回覆" },
+    actionState: "completed", versionId: "saved-v2", versionNo: 2,
+    approvalState: "approved", deliveryState: "exported",
+    appliedAt: "2026-10-01T00:00:00Z", currentCheck: null, canRecord: true,
+    newerDraft: { id: "draft-v3", versionNo: 3 },
+  };
+  function home(candidate: HomeBrief["reviewFollowUp"], role: "owner" | "viewer" = "owner") {
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(<HomeBriefView locale="en" workspaceSlug="synthetic"
+      workspaceId="ws-1" workspaceName="Synthetic merchant" tier="lite" timezone="Asia/Hong_Kong"
+      locations={[{ slug: "central", name: "Synthetic Central" }]} role={role}
+      consentPolicyVersion="2026-07-28"
+      brief={{ ...baseBrief(null), locationSlug: "central", reviewFollowUp: candidate } as HomeBrief} />);
+    return root;
+  }
+  it("keeps completed V2 visible for a check while V3 remains a separate draft and pins both links", () => {
+    const root = home(followUp);
+    const card = root.querySelector('[data-testid="home-review-followup"]');
+    expect(card).not.toBeNull();
+    expect(card?.textContent).toContain("Version 2");
+    expect(card?.textContent).toContain("Applied (reported)");
+    expect(card?.textContent).toContain("Completed");
+    expect(card?.querySelector('a[data-next-check]')?.getAttribute("href"))
+      .toBe("/en/owner/synthetic/actions/applied-review?version=saved-v2&location=central");
+    expect(card?.querySelector('a[data-newer-draft]')?.getAttribute("href"))
+      .toBe("/en/owner/synthetic/actions/applied-review?version=draft-v3&location=central");
+    expect(card?.textContent).toMatch(/Version 3.*draft/i);
+    expect(card?.closest("details")?.hasAttribute("open")).toBe(false);
+  });
+  it("shows a read-only next step, hides foreign workspace follow-ups and keeps the true empty state", () => {
+    expect(home(followUp, "viewer").textContent).toContain("View saved check");
+    const foreign = home({ ...followUp, workspaceId: "another-workspace", title: { en: "Foreign secret", "zh-HK": "私密", "zh-TW": "私密" } });
+    expect(foreign.textContent).not.toContain("Foreign secret");
+    expect(foreign.querySelector('[data-testid="home-review-followup"]')).toBeNull();
+    expect(home(null).textContent).toContain("No action needs your decision right now");
+  });
+  it.each([
+    ["checked", "Owner checked · statement only", "Await independent confirmation"],
+    ["not_found", "Not found / content differs", "Locate the correct review"],
+    ["later", "Check deferred", "three manual checks"],
+    ["retracted", "Owner check withdrawn", "three manual checks"],
+  ] as const)("shows the %s owner's next step while preserving Completed and pending independent verification", (decision, label, next) => {
+    const root = home({ ...followUp, currentCheck: { id: "1", decision, recordedAt: "2026-10-19T03:00:00Z" } });
+    const card = root.querySelector('[data-testid="home-review-followup"]');
+    expect(card?.textContent).toContain(label);
+    expect(card?.textContent).toContain(next);
+    expect(card?.textContent).toContain("Completed");
+    expect(card?.textContent).toContain("Independent verification is pending");
+    expect(card?.querySelector('a[data-next-check]')?.getAttribute("href")).toContain("version=saved-v2");
+  });
+});
 
 describe("HomeBriefView proof card", () => {
   const baseProof = {
@@ -117,55 +171,20 @@ describe("HomeBriefView problems slot", () => {
   });
 });
 
-describe("HomeBriefView work packs (P4.2)", () => {
-  const props = {
-    locale: "en" as const,
-    workspaceSlug: "kam-man-house",
-    workspaceId: "ws-1",
-    workspaceName: "Kam Man House",
-    tier: "paid" as const,
-    timezone: "Asia/Hong_Kong",
-    locations: [{ slug: "yik-yam", name: "Yik Yam" }],
-    brief: baseBrief(null),
-    consentPolicyVersion: "2026-07-28",
-    fixPack: { workspaceId: "ws-1", role: "owner" as const },
-  };
-
-  function html(extra: Partial<React.ComponentProps<typeof HomeBriefView>> = {}): HTMLElement {
+// Phase 4: the Fix Pack drafts and the starter pack moved to Actions (Fix Pack view, New › Starter pack).
+describe("HomeBriefView without Fix Pack or starter pack cards (Phase 4)", () => {
+  it("renders neither card on Today", () => {
     const root = document.createElement("div");
-    root.innerHTML = renderToStaticMarkup(<HomeBriefView {...props} {...extra} />);
-    return root;
-  }
-
-  it("without workPacks renders exactly today's FixPackCard and no pack card", () => {
-    const root = html();
-    const expected = document.createElement("div");
-    expected.innerHTML = renderToStaticMarkup(<FixPackCard locale="en" workspaceId="ws-1" viewerRole="owner" actionsHref="/en/owner/kam-man-house/actions?view=drafts" />);
-    expect(root.querySelector(".fix-pack-card")?.outerHTML).toBe(expected.firstElementChild?.outerHTML);
+    root.innerHTML = renderToStaticMarkup(<HomeBriefView locale="en" workspaceSlug="kam-man-house" workspaceId="ws-1" workspaceName="Kam Man House" tier="paid" timezone="Asia/Hong_Kong" locations={[{ slug: "yik-yam", name: "Yik Yam" }]} brief={baseBrief(null)} consentPolicyVersion="2026-07-28" />);
+    expect(root.querySelector(".fix-pack-card")).toBeNull();
     expect(root.querySelector(".pack-card")).toBeNull();
     expect(root.textContent).not.toContain("Visibility starter pack");
-  });
-
-  it("with workPacks renders the pack card and the earlier-drafts mode instead of the full Fix Pack card", () => {
-    const root = html({
-      workPacks: {
-        enabled: true,
-        card: { workspaceId: "ws-1", workspaceSlug: "kam-man-house", role: "owner", location: { id: "loc-1", isAll: false }, inScope: true, usage: { approvedDeliveries: 1, allowance: 3 }, initialPack: null },
-        earlierDrafts: { workspaceId: "ws-1", role: "owner" },
-      },
-    });
-    expect(root.querySelector(".pack-card")).not.toBeNull();
-    expect(root.textContent).toContain("Start your visibility starter pack");
-    expect(root.textContent).toContain("This month: 1 of 3 used.");
-    // The earlier-drafts card renders nothing until a pending draft is known, and the full card's empty state is gone.
-    expect(root.querySelector(".fix-pack-card")).toBeNull();
-    expect(root.textContent).not.toContain("Fix Pack drafts are not available");
   });
 });
 
 /**
  * FA-04: home leads with the one thing to do today; the methodology stays one
- * tap away inside a closed 「為何可信」 disclosure.
+ * tap away inside a closed 「點解咁講」 disclosure.
  */
 describe("HomeBriefView today-first layout (FA-04)", () => {
   function priority(missing: string[] = []) {
@@ -174,12 +193,12 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
       { location: { id: actionRow.location_id, slug: "yik-yam", name: { en: "Yik Yam", "zh-HK": "奕蔭街", "zh-TW": "奕蔭街" } }, latestRun: null, latestVersion: null },
     );
   }
-  function view(opts: { locale?: "en" | "zh-HK" | "zh-TW"; tier?: "lite" | "paid"; role?: "owner" | "manager" | "viewer"; priority?: ReturnType<typeof priority> | null; withSnapshot?: boolean; openActionCount?: number; openActions?: HomeBrief["openActions"] } = {}) {
+  function view(opts: { locale?: "en" | "zh-HK" | "zh-TW"; tier?: "lite" | "paid"; role?: "owner" | "manager" | "viewer"; priority?: ReturnType<typeof priority> | null; withSnapshot?: boolean; openActionCount?: number; openActions?: HomeBrief["openActions"]; gettingStarted?: ReactNode; priorityPreview?: string } = {}) {
     const brief = baseBrief(null);
     brief.priority = opts.priority === undefined ? priority() : opts.priority;
-    Object.assign(brief, { openActionCount: opts.openActionCount });
+    Object.assign(brief, { openActionCount: opts.openActionCount, priorityPreview: opts.priorityPreview ?? null });
     if (opts.openActions) brief.openActions = opts.openActions;
-    if (opts.withSnapshot) brief.snapshot = snapshot;
+    if (opts.withSnapshot) { brief.snapshot = snapshot; brief.location = { id: "loc-1", slug: "yik-yam", name: "Yik Yam", isPrimary: true, address: null, district: null, placeId: null }; }
     const root = document.createElement("div");
     root.innerHTML = renderToStaticMarkup(
       <HomeBriefView
@@ -193,6 +212,7 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
         brief={brief}
         consentPolicyVersion="2026-07-28"
         role={opts.role}
+        gettingStarted={opts.gettingStarted}
       />,
     );
     return root;
@@ -218,24 +238,36 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     expect(root.querySelector(".brief-priority-card h2")?.closest("details")).toBeNull();
   });
 
-  it("offers short routes to all tasks and content creation without losing the branch", () => {
-    const shortcuts = view().querySelector(".owner-home-shortcuts");
-    expect(shortcuts).not.toBeNull();
-    expect(shortcuts?.querySelector('a[href="/en/owner/kam-man-house/actions?location=yik-yam"]')).not.toBeNull();
-    expect(shortcuts?.querySelector('a[href="/en/owner/kam-man-house/create?location=yik-yam"]')).not.toBeNull();
+  it("shows other tasks as one count and one link, without repeating cards or creation routes", () => {
+    const root = view({ openActionCount: 37, openActions: [priority()] });
+    const tasks = root.querySelector(".owner-tasks-disclosure");
+    // The task on the card above is not one of the "other" tasks.
+    expect(tasks?.textContent).toContain("36");
+    expect(tasks?.querySelectorAll("a")).toHaveLength(1);
+    expect(tasks?.querySelector("a")?.getAttribute("href")).toBe("/en/owner/kam-man-house/actions?location=yik-yam");
+    expect(tasks?.querySelector(".compact-action-list")).toBeNull();
+    expect(root.querySelector(".brief-priority-actions a")?.closest("details")).toBeNull();
+  });
+
+  it("shows recent results as one sentence and one Insights link without scores", () => {
+    const results = view({ withSnapshot: true }).querySelector(".owner-results-disclosure");
+    expect(results?.querySelectorAll("p")).toHaveLength(1);
+    expect(results?.querySelectorAll("a")).toHaveLength(1);
+    expect(results?.querySelector("a")?.getAttribute("href")).toBe("/en/owner/kam-man-house/insights?location=yik-yam");
+    expect(results?.querySelector(".brief-score-card")).toBeNull();
   });
 
   it("takes an existing draft straight to review instead of promising a new start", () => {
     const action = { ...priority(), latestVersion: { id: "version-1", versionNo: 2, approvalState: "draft" as const, deliveryState: "not_requested" as const } };
     const link = view({ priority: action }).querySelector(".brief-priority-actions a");
-    expect(link?.textContent).toContain("Review draft");
+    expect(link?.textContent).toContain("Check the draft");
     expect(link?.getAttribute("href")).toContain("/actions/");
   });
 
   it.each(["owner", "manager", "viewer"] as const)("offers an approved version only within the %s role", (role) => {
     const action = { ...priority(), latestVersion: { id: "version-1", versionNo: 2, approvalState: "approved" as const, deliveryState: "export_ready" as const } };
     const link = view({ priority: action, role }).querySelector(".brief-priority-actions a");
-    expect(link?.textContent).toContain(role === "viewer" ? "View task" : "Export approved version");
+    expect(link?.textContent).toContain(role === "viewer" ? "View task" : "Open and copy");
     expect(link?.getAttribute("href")).toContain("/actions/");
     if (role === "viewer") expect(link?.textContent).not.toContain("Export");
   });
@@ -245,10 +277,20 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     expect(view({ priority: action, role: "owner" }).querySelector(".brief-priority-actions a")?.textContent).toContain("View task");
   });
 
-  it("labels the card 今日要做 in every locale", () => {
-    expect(view({ locale: "en" }).querySelector(".brief-priority-card")?.textContent).toContain("Do this today");
-    expect(view({ locale: "zh-HK" }).querySelector(".brief-priority-card")?.textContent).toContain("今日要做");
-    expect(view({ locale: "zh-TW" }).querySelector(".brief-priority-card")?.textContent).toContain("今日要做");
+  it("leads zh-HK with 而家最應做 and one sentence, and keeps workflow chrome folded", () => {
+    const root = view({ locale: "zh-HK" });
+    expect(root.querySelector("h1")?.textContent).toBe("而家最應做");
+    expect(root.querySelector(".page-intro p:not(.eyebrow)")).toBeNull();
+    const card = root.querySelector(".brief-priority-card");
+    expect(card?.querySelector("h2")?.textContent).toBe("回覆未回覆的 Google 評論");
+    expect(card?.querySelector(".coach-sentence")?.textContent).toBe("7 則評論等待回覆。");
+    expect(card?.querySelector(".brief-action-meta")).toBeNull();
+    expect(card?.querySelector(".brief-priority-actions a")?.closest("details")).toBeNull();
+    const why = root.querySelector("details.owner-priority-evidence");
+    expect(why?.hasAttribute("open")).toBe(false);
+    expect(why?.querySelector(".brief-action-meta")).not.toBeNull();
+    expect(view({ locale: "en" }).querySelector("h1")?.textContent).toBe("Start with this today.");
+    expect(view({ locale: "zh-TW" }).querySelector("h1")?.textContent).toBe("今天先處理這一項");
   });
 
   it("names one verb on the card's button: Start, or Add the missing facts when inputs are missing", () => {
@@ -257,38 +299,52 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
     expect(view({ locale: "zh-HK", priority: priority() }).querySelector(".brief-priority-actions a")?.textContent).toContain("開始處理");
   });
 
-  it("folds the methodology into one closed 「為何可信」 disclosure", () => {
+  it("folds the methodology into one closed 「點解咁講」 disclosure", () => {
     const disclosure = view().querySelector("details.trust-disclosure");
     expect(disclosure).not.toBeNull();
     expect(disclosure!.hasAttribute("open")).toBe(false);
     expect(disclosure!.querySelector("summary")?.textContent).toContain("Why you can trust this");
-    for (const inside of [".workspace-agent-strip", ".integration-health-card", ".change-ledger-card", ".operational-footnote"]) {
+    for (const inside of [".brief-score-card", ".brief-proof-card", ".month-brief", ".why-now-box", ".workspace-agent-strip", ".integration-health-card", ".change-ledger-card", ".operational-footnote"]) {
       expect(disclosure!.querySelector(inside)).not.toBeNull();
     }
-    expect(view({ locale: "zh-HK" }).querySelector("details.trust-disclosure summary")?.textContent).toContain("為何可信");
+    expect(view({ locale: "zh-HK" }).querySelector("details.trust-disclosure summary")?.textContent).toContain("點解咁講");
   });
 
-  it("keeps the decision queue outside the disclosure", () => {
-    const root = view();
-    expect(root.querySelector(".pending-approval-card")).not.toBeNull();
-    expect(root.querySelector("details.trust-disclosure .pending-approval-card")).toBeNull();
-  });
-
-  it("shows the full open-action count outside the disclosure alongside the bounded preview", () => {
+  it("shows the full count in every locale without a bounded card preview", () => {
     const actions = [0, 1, 2].map((index) => ({ ...priority(), id: `action-${index}` }));
     for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
-      const root = view({ locale, openActionCount: 37, openActions: actions });
-      const queue = root.querySelector(".pending-approval-card");
-      expect(queue?.textContent).toContain(locale === "en" ? "37 open actions" : "共有 37 項待辦");
-      expect(queue?.querySelectorAll(".compact-action-list a")).toHaveLength(3);
-      expect(root.querySelector("details.trust-disclosure .pending-approval-card")).toBeNull();
+      const tasks = view({ locale, openActionCount: 37, openActions: actions }).querySelector(".owner-tasks-disclosure");
+      expect(tasks?.textContent).toContain("36");
+      expect(tasks?.querySelectorAll("a")).toHaveLength(1);
+      expect(tasks?.querySelector(".compact-action-list")).toBeNull();
     }
+  });
+
+  it("hides the other-tasks row when the card already shows the only open task", () => {
+    expect(view({ openActionCount: 1, openActions: [priority()] }).querySelector(".owner-tasks-disclosure")).toBeNull();
+  });
+
+  it("shows the opening of the draft the owner is about to check", () => {
+    const action = { ...priority(), latestVersion: { id: "version-1", versionNo: 2, approvalState: "draft" as const, deliveryState: "not_requested" as const } };
+    const root = view({ priority: action, priorityPreview: "Thank you for visiting us." });
+    expect(root.querySelector('[data-testid="home-draft-preview"]')?.textContent).toBe("Thank you for visiting us.");
+    expect(view({ priority: action }).querySelector('[data-testid="home-draft-preview"]')).toBeNull();
+  });
+
+  it("only puts the next setup step under the coach when there is no task yet", () => {
+    const marker = <div data-testid="next-setup">Next setup</div>;
+    const empty = view({ priority: null, gettingStarted: marker });
+    const step = empty.querySelector('[data-testid="next-setup"]');
+    expect(step).not.toBeNull();
+    expect(step?.closest("details")).toBeNull();
+    expect(view({ gettingStarted: marker }).querySelector('[data-testid="next-setup"]')).toBeNull();
+    expect(view({ priority: null, openActionCount: 1, gettingStarted: marker }).querySelector('[data-testid="next-setup"]')).toBeNull();
   });
 
   it("gives an empty week a concrete next step, naming Rescan only to someone who can use it", () => {
-    const paidOwner = view({ priority: null, withSnapshot: true, tier: "paid", role: "owner" }).querySelector(".brief-priority-card")?.textContent ?? "";
-    expect(paidOwner).toContain("Nothing new this week; check back after your next scan.");
-    expect(paidOwner).toContain("To check now, use Rescan.");
+    const paidOwner = view({ priority: null, withSnapshot: true, tier: "paid", role: "owner" }).querySelector(".owner-results-disclosure")?.textContent ?? "";
+    expect(paidOwner).toContain("Take another look at the shop when you are ready.");
+    expect(paidOwner).toContain("Rescan");
     for (const textOf of [
       view({ priority: null, withSnapshot: true, tier: "lite", role: "owner" }),
       view({ priority: null, withSnapshot: true, tier: "paid", role: "viewer" }),
@@ -297,7 +353,7 @@ describe("HomeBriefView today-first layout (FA-04)", () => {
       expect(text).toContain("Nothing new this week; check back after your next scan.");
       expect(text).not.toContain("Rescan");
     }
-    expect(view({ locale: "zh-HK", priority: null, withSnapshot: true, tier: "lite" }).querySelector(".brief-priority-card")?.textContent).toContain("本週沒有新行動，下次掃描後再看。");
+    expect(view({ locale: "zh-HK", priority: null, withSnapshot: true, tier: "lite" }).querySelector(".brief-priority-card")?.textContent).toContain("今個星期冇新嘢。下次掃完再睇。");
   });
 });
 
@@ -352,4 +408,72 @@ describe("HomeBriefView for an unscanned or unlinked workspace (F-19)", () => {
       expect(root.textContent).toMatch(/finished the analysis/);
     }
   });
+});
+
+describe("zh-HK shop language when the score is withheld", () => {
+  it("leads with the data gap and keeps the zero rule under 點解咁講", () => {
+    const brief = baseBrief(null);
+    brief.snapshot = { ...snapshot, overallScore: null, coverage: 0.6 };
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(
+      <HomeBriefView
+        locale="zh-HK"
+        workspaceSlug="kam-man-house"
+        workspaceId="ws-1"
+        workspaceName="Kam Man House"
+        tier="paid"
+        timezone="Asia/Hong_Kong"
+        locations={[{ slug: "yik-yam", name: "奕蔭街" }]}
+        brief={brief}
+        consentPolicyVersion="2026-07-28"
+        role="owner"
+      />,
+    );
+    const score = root.querySelector(".brief-score-card");
+    expect(score?.querySelector("h2")?.textContent).toBe("資料未夠，暫時未評");
+    expect(score?.textContent).toContain("呢次查到 60% 資料");
+    expect(score?.textContent).not.toContain("唔會當零分");
+    const trust = root.querySelector("details.trust-disclosure");
+    expect(trust?.hasAttribute("open")).toBe(false);
+    expect(trust?.querySelector("summary")?.textContent).toContain("點解咁講");
+    expect(trust?.textContent).toContain("唔會當零分");
+    expect(trust?.textContent).toContain("唔會自動發佈");
+    const text = root.textContent ?? "";
+    expect(text).not.toContain("AI 能見度團隊");
+    expect(text).not.toContain("覆蓋率");
+    expect(text).not.toContain("快照");
+    expect(root.querySelector("h1")?.textContent).toBe("而家冇嘢要你決定");
+  });
+});
+
+describe("month metrics without a comparable scan (guardrail 2)", () => {
+  it("shows resolved and regressed as unknown, never 0", () => {
+    const metrics = Array.from(render(null).querySelectorAll(".month-metrics article")).slice(0, 2);
+    for (const card of metrics) {
+      expect(card.querySelector("strong")?.textContent).toBe("—");
+      expect(card.textContent).toContain(copy.en.home.noComparable);
+    }
+  });
+  it("draws a flat glyph, not an up-trend, when there is no comparable change", () => {
+    const label = render(null).querySelector(".brief-score-card .card-label-row");
+    expect(label?.querySelector('[data-trend="flat"]')).not.toBeNull();
+    expect(label?.querySelector('[data-trend="up"]')).toBeNull();
+  });
+});
+
+it("uses a successful copy as Today's single coach card while another priority waits in To do", () => {
+  const priority = buildActionOverview(actionRow, { location: { id: "loc-1", slug: "central", name: { en: "Central", "zh-HK": "中環", "zh-TW": "中環" } }, latestRun: null, latestVersion: null });
+  const brief = { ...baseBrief(null), locationSlug: "central", priority, openActions: [priority], copyFollowUp: {
+    id: "41", workspaceId: "ws-1", actionId: "copied-action", locationId: "loc-1", versionId: "copied-v2", versionNo: 2,
+    title: { en: "Copied reply", "zh-HK": "複製咗嘅回覆", "zh-TW": "已複製的回覆" }, canRecord: true,
+  } } as HomeBrief;
+  const root = document.createElement("div");
+  root.innerHTML = renderToStaticMarkup(<HomeBriefView locale="zh-HK" workspaceSlug="shop" workspaceId="ws-1" workspaceName="Test shop" tier="lite" timezone="Asia/Hong_Kong" role="owner" locations={[{ slug: "central", name: "Central" }]} consentPolicyVersion="2026-07-28" brief={brief} />);
+  expect(root.querySelectorAll(".owner-brief-grid .brief-priority-card")).toHaveLength(1);
+  const card = root.querySelector(".owner-brief-grid .brief-priority-card");
+  expect(card?.querySelector("h2")?.textContent).toBe("你貼咗未？");
+  expect([...card!.querySelectorAll("button")].map(button => button.textContent)).toEqual(["貼咗", "未貼", "遲啲"]);
+  expect(card?.textContent).not.toMatch(/Completed|已套用|獨立核實|Version/);
+  // The waiting priority is not on screen, so it still counts in "other tasks".
+  expect(root.querySelector(".owner-tasks-disclosure .badge, .owner-tasks-disclosure [data-slot=badge]")?.textContent).toBe("1");
 });

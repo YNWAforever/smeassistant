@@ -35,7 +35,7 @@ describe("OfferPromotionPanel", () => {
   it("states the delivery unit and this month's usage before any request is made", () => {
     mount();
     expect(screen.getByText(
-      "Creates 2 drafts (Instagram, Google). Nothing is counted until you approve and export a draft; each one you export counts as 1 delivery. This month: 1 of 3 used.",
+      "Creates 2 drafts (Instagram, Google). Nothing counts until you confirm a draft and copy or export it; each one counts as 1 use. This month: 1 of 3 used.",
     )).toBeInTheDocument();
     expect(clientMocks.createPromotions).not.toHaveBeenCalled();
     expect(clientMocks.runAction).not.toHaveBeenCalled();
@@ -44,7 +44,7 @@ describe("OfferPromotionPanel", () => {
   it("leaves the usage sentence out when the allowance is unlimited", () => {
     mount({ usage: { approvedDeliveries: 7, allowance: null } });
     const disclosure = screen.getByText(/^Creates 2 drafts/);
-    expect(disclosure.textContent).toBe("Creates 2 drafts (Instagram, Google). Nothing is counted until you approve and export a draft; each one you export counts as 1 delivery.");
+    expect(disclosure.textContent).toBe("Creates 2 drafts (Instagram, Google). Nothing counts until you confirm a draft and copy or export it; each one counts as 1 use.");
     expect(disclosure.textContent).not.toContain("This month");
   });
 

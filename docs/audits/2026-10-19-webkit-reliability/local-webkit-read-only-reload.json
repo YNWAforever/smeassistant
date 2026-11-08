@@ -1,0 +1,154 @@
+{
+  "layer": "Owned local PostgreSQL + synthetic Auth/model fixtures; not hosted Google acceptance",
+  "browser": "webkit",
+  "version": "26.5",
+  "mobileViewport": {
+    "width": 390,
+    "height": 844
+  },
+  "desktopViewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "period": "2026-10",
+  "usage": [
+    {
+      "period": "2026-10",
+      "approved_deliveries": 1,
+      "allowance": 3
+    }
+  ],
+  "reads": [
+    {
+      "locale": "en",
+      "route": "action",
+      "load": "initial",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "en",
+      "route": "action",
+      "load": "reload",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "en",
+      "route": "billing",
+      "load": "initial",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "en",
+      "route": "billing",
+      "load": "reload",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "en",
+      "route": "completed",
+      "load": "initial",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "en",
+      "route": "completed",
+      "load": "reload",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "zh-HK",
+      "route": "action",
+      "load": "initial",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "zh-HK",
+      "route": "action",
+      "load": "reload",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "zh-HK",
+      "route": "billing",
+      "load": "initial",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "zh-HK",
+      "route": "billing",
+      "load": "reload",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "zh-HK",
+      "route": "completed",
+      "load": "initial",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "zh-HK",
+      "route": "completed",
+      "load": "reload",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "en",
+      "route": "action",
+      "load": "initial",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "en",
+      "route": "action",
+      "load": "reload",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "en",
+      "route": "billing",
+      "load": "initial",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "en",
+      "route": "billing",
+      "load": "reload",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "en",
+      "route": "completed",
+      "load": "initial",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "locale": "en",
+      "route": "completed",
+      "load": "reload",
+      "width": 390,
+      "scrollWidth": 390
+    }
+  ],
+  "mutations": [],
+  "pageErrors": [],
+  "hydrationErrors": [],
+  "requestErrors": [],
+  "durableRecordsUnchanged": true
+}

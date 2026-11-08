@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildConsentUrl,
+  refreshAccessToken,
   googleOAuthClaimConfigured,
   needsRefresh,
   signClaimState,
@@ -18,6 +19,7 @@ import {
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 function withKey(): void {
@@ -385,4 +387,28 @@ describe("signClaimState / verifyClaimState", () => {
     const connectState = signState("ws-1", "nonce-1");
     expect(verifyClaimState(connectState)).toBeNull();
   });
+});
+
+it("keeps GSC consent read-only and its provider discriminator inside signed state", () => {
+  const state = signState("workspace", "nonce", "en", "google_gsc");
+  expect(verifyState(state)?.provider).toBe("google_gsc");
+  const url = new URL(buildConsentUrl(state, undefined, "google_gsc"));
+  expect(url.searchParams.get("scope")).toBe("https://www.googleapis.com/auth/webmasters.readonly");
+  expect(url.searchParams.get("include_granted_scopes")).toBe("false");
+  expect(new URL(buildConsentUrl(signState("workspace"))).searchParams.get("scope")).toBe("https://www.googleapis.com/auth/business.manage");
+});
+
+it("preserves transient GSC refresh failures while distinguishing a rejected grant",async()=>{
+  vi.stubEnv("GOOGLE_OAUTH_CLIENT_ID","fixture-id");vi.stubEnv("GOOGLE_OAUTH_CLIENT_SECRET","fixture-secret");vi.stubEnv("GOOGLE_OAUTH_REDIRECT_URI","https://app.test/api/oauth/google/callback");
+  for(const status of [429,500,503]){
+    vi.stubGlobal("fetch",vi.fn().mockResolvedValue(new Response(JSON.stringify({error:"temporarily_unavailable"}),{status})));
+    await expect(refreshAccessToken("fixture-refresh",{throwOnTransient:true})).rejects.toThrow("google_token_unavailable");
+  }
+  vi.stubGlobal("fetch",vi.fn().mockRejectedValue(new DOMException("timed out","TimeoutError")));
+  await expect(refreshAccessToken("fixture-refresh",{throwOnTransient:true})).rejects.toMatchObject({name:"TimeoutError"});
+  vi.stubGlobal("fetch",vi.fn().mockResolvedValue(new Response(JSON.stringify({error:"invalid_grant"}),{status:400})));
+  expect(await refreshAccessToken("fixture-refresh",{throwOnTransient:true})).toBeNull();
+  vi.stubGlobal("fetch",vi.fn().mockResolvedValue(new Response(JSON.stringify({error:"invalid_client"}),{status:400})));
+  await expect(refreshAccessToken("fixture-refresh",{throwOnTransient:true})).rejects.toThrow("google_token_unavailable");
+  vi.unstubAllGlobals();vi.unstubAllEnvs();
 });

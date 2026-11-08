@@ -1,0 +1,25 @@
+C:\Program Files\nodejs\node_modules\corepack\dist\lib\corepack.cjs:12951
+    throw new Error(
+          ^
+
+Error: Error when performing the request to https://registry.npmjs.org/pnpm/-/pnpm-9.12.0.tgz; for troubleshooting help, see https://github.com/nodejs/corepack#troubleshooting
+    at fetch (C:\Program Files\nodejs\node_modules\corepack\dist\lib\corepack.cjs:12951:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async fetchUrlStream (C:\Program Files\nodejs\node_modules\corepack\dist\lib\corepack.cjs:12981:20)
+    at async download (C:\Program Files\nodejs\node_modules\corepack\dist\lib\corepack.cjs:13133:18)
+    at async installVersion (C:\Program Files\nodejs\node_modules\corepack\dist\lib\corepack.cjs:13229:55)
+    at async Engine.ensurePackageManager (C:\Program Files\nodejs\node_modules\corepack\dist\lib\corepack.cjs:13744:32)
+    at async Engine.executePackageManagerRequest (C:\Program Files\nodejs\node_modules\corepack\dist\lib\corepack.cjs:13855:25)
+    at async Object.runMain (C:\Program Files\nodejs\node_modules\corepack\dist\lib\corepack.cjs:14566:7) {
+  [cause]: [TypeError: fetch failed] {
+    [cause]: Error: getaddrinfo ENOTFOUND registry.npmjs.org
+        at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+      errno: -3008,
+      code: 'ENOTFOUND',
+      syscall: 'getaddrinfo',
+      hostname: 'registry.npmjs.org'
+    }
+  }
+}
+
+Node.js v24.18.0

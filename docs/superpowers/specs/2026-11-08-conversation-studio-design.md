@@ -14,13 +14,13 @@ The reference product (`ads-copilot-alpha.vercel.app`) is organised as `spaces/{
 
 | # | Decision | Rationale |
 |---|---|---|
-| S1 | `/studio` is a first-class owner surface and the first item in the workspace navigation. The top-bar assistant entry point becomes "Open Studio". Home stays as the read-only "today" brief; Create stays as a template shortcut but stops being the way work starts. | Keeps every existing route and acceptance case intact while making the conversation the default place to work. |
+| S1 | The Studio is the **persistent, model-backed mode of the existing conversation workbench** (approved integration Path A). Today remains the default workspace URL and the five destinations are unchanged; `/{locale}/owner/{workspaceSlug}/conversation` is the single entry point and shows an “Open Studio” link when both flags are on. | Keeps the approved Kinnso OS IA and the conversation workstream intact while adding real persistence and grounded model turns. |
 | S2 | Conversations are **persistent and private per member**. Rows live in Postgres; the rail lists them across sessions and devices. Each conversation belongs to `(workspace, created_by)`. | "Persistent, continuous chat" cannot be a client-side array. Private-by-default avoids leaking one manager's notes to another. |
 | S3 | A conversation is scoped to the workspace and an optional location, and each turn can carry `?location=` the same way every owner page does. The server re-authorizes the location on every turn. | Locale/market/scope rules already exist; the Studio must not invent a parallel one. |
 | S4 | Free text with continuity. Prior turns are sent to the model with a fresh, bounded **workspace briefing** (latest snapshot, comparable change, open actions, waiting versions, Google connection, brand facts, usage). | Continuity must not mean replaying stale state: the briefing is rebuilt from authorised rows on every turn. |
 | S5 | Work happens inline, but authority does not move. The Studio can produce a **draft** through the existing `runLiveAssistant` path (stored in `action_runs`), attach evidence chips and a next-step link, and show **Save as a version**. Approve/export/publish still happen only through the existing routes and pages. | Guardrails 5–7, 14, 15. The conversation gains no new mutation power. |
 | S6 | The old assistant sheet stays for public/demo surfaces and deep links; the **owner shell's top-bar trigger becomes "Open Studio"**. | Avoid breaking the public assistant contract while making the owner path chat-first. |
-| S7 | One flag, `CONVERSATION_STUDIO_ENABLED`, exactly `"true"`. Off: nav hidden, pages 404, API 404. Apply migration 0019 before enabling. | Matches the repo's existing feature-flag discipline; the migration is additive and manual. |
+| S7 | Two server-only flags: `CONVERSATION_HOME_ENABLED` (the existing workbench) and `CONVERSATION_STUDIO_ENABLED` (exactly `"true"`). The Studio requires both; off means no entry, `404` page and `404` API. Apply migration 0021 before enabling. | Matches the repo's feature-flag discipline; the migration is additive and manual. |
 
 ## 3. Experience
 
@@ -52,18 +52,19 @@ The reference product (`ads-copilot-alpha.vercel.app`) is organised as `spaces/{
 
 | Route | Auth | Purpose |
 |---|---|---|
-| `/{locale}/owner/{workspaceSlug}/studio` | member | Studio. SSR loads the rail, the context summary, prompt chips, and the conversation named by `?chat=` (messages paged newest-last). |
+| `/{locale}/owner/{workspaceSlug}/conversation` | member | The existing conversation workbench (flag `CONVERSATION_HOME_ENABLED`); shows the “Open Studio” entry when the Studio flag is on. |
+| `/{locale}/owner/{workspaceSlug}/conversation/studio` | member | Studio. SSR loads the rail, the context summary, prompt chips, and the conversation named by `?chat=` (messages paged newest-last). |
 | `POST /api/studio/conversations` | member | Create a conversation. |
 | `GET /api/studio/conversations` | member | List the caller's conversations (`workspaceId`, optional `locationId`). |
 | `GET /api/studio/conversations/[id]` | member | Read conversation + messages (`beforeSeq`, `limit`). |
 | `PATCH /api/studio/conversations/[id]` | member | Rename or archive. |
 | `POST /api/studio/conversations/[id]/messages` | member | Send a turn; responds `text/event-stream` (`StudioStreamEvent`). |
 
-All Studio routes return `404` while `CONVERSATION_STUDIO_ENABLED` is not true. Every route resolves membership with `authorizeWorkspaceRequest` and filters by `workspace_id` **and** `created_by` after that check. A conversation id from another workspace or another member is `404`, never `403`.
+All Studio routes return `404` while `CONVERSATION_STUDIO_ENABLED` is not true (and the workbench flag is off). Every route resolves membership with `authorizeWorkspaceRequest` and filters by `workspace_id` **and** `created_by` after that check. A conversation id from another workspace or another member is `404`, never `403`.
 
-## 5. Data model (migration `0019_studio_conversations.sql`)
+## 5. Data model (migration `0021_studio_conversations.sql`)
 
-Additive only. The next free ordinal is 0019 because `0018_content_version_retry_boundaries.sql` already occupies journal row 18 on `origin/main`. No existing table or function is modified.
+Additive only. The ordinal is 0021 because the conversation workstream already occupies journal rows 19 (`0019_conversation_resources.sql`) and 20 (`0020_conversation_search.sql`). No existing table or function is modified.
 
 ```sql
 studio_conversations(
@@ -106,7 +107,7 @@ Both tables: `ENABLE ROW LEVEL SECURITY`, `REVOKE ALL FROM PUBLIC`, `GRANT SELEC
 
 **Repository (`lib/repositories/studio.ts`):** typed methods only; the caller has already authorised. Every read filters `workspace_id`; actor-owned methods also filter `created_by`. `appendMessage` runs in one transaction: `SELECT … FOR UPDATE` on the conversation (scope + status), `seq = coalesce(max(seq),0)+1`, insert, touch the conversation, and derive the title from the suggestion only while the stored title is empty. Typed `StudioConversationNotFoundError` / `StudioConversationArchivedError` / `StudioLocationNotFoundError`; a foreign or missing conversation writes nothing.
 
-**Rollout (`docs/implementation/owner-platform-v1/rollout/apply-0019.sql`):** one DO block as `smeassistant_migrator` under `pg_advisory_xact_lock(1936549221, 3)`; refuses unless the journal is exactly 1–18 with the on-disk checksums; executes the 0019 text byte-for-byte; verifies tables, RLS, the five index definitions, the six FK delete rules, the two policies and the runtime/public grants; records journal row 19. Pinned by `tests/rollout-apply-0019.test.ts`.
+**Rollout (`docs/implementation/owner-platform-v1/rollout/apply-0021.sql`):** one DO block as `smeassistant_migrator` under `pg_advisory_xact_lock(1936549221, 3)`; refuses unless the journal is exactly 1–20 with the on-disk checksums; executes the 0021 text byte-for-byte; verifies tables, RLS, the five index definitions, the six FK delete rules, the two policies and the runtime/public grants; records journal row 21. Pinned by `tests/rollout-apply-0021.test.ts`.
 
 ## 6. Turn orchestration
 
@@ -181,12 +182,12 @@ List/create/read/patch routes validate ids, read after membership, filter by wor
 
 ## 8. UI
 
-- `app/[locale]/owner/[workspaceSlug]/studio/page.tsx` (server): `loadOwnerPage` → flag check → rail + `?chat=` detail + briefing/context summary + chips → `StudioView`.
+- `app/[locale]/owner/[workspaceSlug]/conversation/studio/page.tsx` (server): `loadOwnerPage` → both flag checks → rail + `?chat=` detail + briefing/context summary + chips → `StudioView`.
+- `components/workspace/conversation-view.tsx` gains an “Open Studio” entry (only when the Studio flag is on) and links to the nested route; the conversation shell stays active on `/conversation/*`.
 - `components/studio/studio-view.tsx` (client) owns: rail, active conversation, messages, streaming state, optimistic user message, URL sync (`history.replaceState` with `?chat=`/`?location=`), error banner, mobile drawers, context pane.
 - `components/studio/conversation-rail.tsx`, `message-thread.tsx`, `message-bubble.tsx`, `artifact-card.tsx`, `evidence-chips.tsx`, `composer.tsx`, `context-panel.tsx`, `empty-state.tsx`.
 - `lib/studio/client.ts`: never-throw `ClientResult` helpers mirroring `lib/workspace/client.ts`; `streamStudioMessage()` reads the SSE body with `TextDecoder`, dispatches typed events, supports `AbortController`.
-- Nav (`components/workspace-shell.tsx`): Studio is the first primary item (`MessagesSquare` icon), active on `/studio`; desktop and mobile nav. The top-bar assistant trigger becomes "Open Studio" when the flag is on; the sheet stays on public/demo surfaces. `ShellWorkspace.studioEnabled` is optional so no other caller changes.
-- Design tokens only: reuse `--paper`, `--border`, `--teal`, `--ink`, `--soft`, `--font-mono`, existing radii/shadows. New classes live in `app/studio.css` (imported from `app/layout.tsx` after the existing sheets). No Tailwind plugin changes, no global overrides.
+- Nav: no new owner destination. The workbench header carries the “Open Studio” entry; Today remains the default workspace URL and the five destinations are unchanged. Design tokens only: the Studio's classes live in `app/styles/screens/studio.css` (page layer, `screens` sub-layer). No global overrides.
 - Accessibility: `role="log"` + `aria-live="polite"` on the thread, labelled rail/nav/composer, focus moves to the composer on a new conversation, streaming status in a polite live region, keyboard-only rail navigation, reduced motion respected, contrast ≥ 4.5:1 for body text.
 - Responsive: ≥1200px three columns; 768–1199px rail + thread with context drawer; <768px single column with rail and context drawers, composer above the mobile nav.
 
@@ -207,42 +208,43 @@ All strings live in `lib/studio/copy.ts` (`studioText(locale)`), in en, zh-HK an
 
 ## 11. Rollout and rollback
 
-1. Apply `neon/migrations/0019_studio_conversations.sql` through the normal owner-runner process (`db:verify` on a disposable fixture first; then the deployment's migration owner, or `docs/implementation/owner-platform-v1/rollout/apply-0019.sql` in the SQL editor).
-2. Set `CONVERSATION_STUDIO_ENABLED=true` and redeploy. No other env var is required; the Studio uses the existing LLM gateway variables.
-3. Enabling is additive: existing pages, routes and the assistant sheet are untouched when the flag is off.
-4. Rollback: unset the flag and redeploy. Conversations remain in the database; no other feature reads them. Dropping the two tables is a separate, deliberate operation.
+1. Apply `neon/migrations/0021_studio_conversations.sql` through the normal owner-runner process (`db:verify` on a disposable fixture first; then the deployment's migration owner, or `docs/implementation/owner-platform-v1/rollout/apply-0021.sql` in the SQL editor). Journal must be exactly 1–20 first.
+2. Ensure `CONVERSATION_HOME_ENABLED=true` (the workbench), then set `CONVERSATION_STUDIO_ENABLED=true` and redeploy. The Studio uses the existing LLM gateway variables; no other env var is required.
+3. Enabling is additive: existing pages, routes, Today and the workbench are untouched when the Studio flag is off.
+4. Rollback: unset `CONVERSATION_STUDIO_ENABLED` and redeploy. Conversations remain in the database; no other feature reads them. Dropping the two tables is a separate, deliberate operation.
 
 ## 12. Verification matrix
 
 | Layer | What proves it |
 |---|---|
-| Migration | `db:verify` (owned PostgreSQL fixture): applied 0001–0019, replay empty, 44 tables / 522 columns / 228 constraints / 119 indexes / 10 triggers / 27 functions, 0 seeded rows |
+| Migration | `db:verify` (owned PostgreSQL fixture): applied 0001–0021, replay empty, 48 tables / 560 columns / 261 constraints / 132 indexes / 16 triggers / 33 functions, 0 seeded rows |
 | Repository | `lib/repositories/studio.test.ts` unit + `test/integration/studio-conversations.integration.test.ts` (Docker): scope, private-by-member, seq allocation, title derivation, archive, paging, FK rules |
 | Orchestrator | `lib/studio/orchestrator.test.ts`: every classification branch with injected LLM; provider failure after user persistence; evidence allowlist; viewer draft refusal; busy conversation; usage/cost stored |
 | Prompt/context | `lib/studio/prompt.test.ts`, `lib/studio/context.test.ts`: authorised rows only; scores copied not recomputed; prompt-injection fencing; locale |
 | Routes | `app/api/studio/**/route.test.ts`: flag off writes nothing; 401/403/404/400/409/429; SSE frame order; audit payload contains no text; cross-member 404 |
 | UI | jsdom component tests: rail/select/new chat, composer disabled while streaming, optimistic then server message, artifact save-as-version request shape, evidence chips, error banner, empty state, mobile drawer |
-| End-to-end | `e2e/acceptance/conversation-studio.spec.ts` (fixture identity): land on Studio, start a conversation, streamed answer, reload and find it in the rail, reopen history, no approve/export/publish control; second member sees an empty rail |
-| Gates | typecheck, lint, 5869 unit tests, 638 Docker integration tests, `next build`, secret-boundary gate, rollout pin |
+| End-to-end | `e2e/acceptance/conversation-studio.spec.ts` (fixture identity): Today default unchanged, workbench entry → `/conversation/studio`, start a conversation, streamed answer, reload and find it in the rail, reopen history, no approve/export/publish control; second member sees an empty rail |
+| Gates | typecheck, lint, full unit suite, Docker integration suite, `next build`, JS budget, secret-boundary gate, rollout pin |
 
 ## 13. File map / ownership
 
 - Shared contract: `lib/studio/types.ts`, `lib/studio/copy.ts`, `lib/pocket-assistant/contracts.ts` (`studio` surface), `app/api/assistant/run/route.ts` SURFACES, this document, `.env.example`, `docs/integration/DEPLOY.md`.
-- Data: `neon/migrations/0019_studio_conversations.sql`, `scripts/neon/catalog.ts`, `lib/db/schema/studio.ts` + `index.ts`, `lib/db/database.types.ts`, `lib/repositories/studio.ts` (+ tests), `test/integration/studio-conversations.integration.test.ts`, `docs/operations/check-missing-columns.sql`, `docs/implementation/owner-platform-v1/rollout/apply-0019.sql`.
+- Data: `neon/migrations/0021_studio_conversations.sql`, `scripts/neon/catalog.ts`, `lib/db/schema/studio.ts` + `index.ts`, `lib/db/database.types.ts`, `lib/repositories/studio.ts` (+ tests), `test/integration/studio-conversations.integration.test.ts`, `docs/operations/check-missing-columns.sql`, `docs/implementation/owner-platform-v1/rollout/apply-0021.sql`.
 - Server: `lib/llm.ts` additions, `lib/studio/{flag,context,prompt,orchestrator,turn-lock,errors}.ts` (+ tests), `app/api/studio/**` (+ tests), `lib/security/rate-limit.ts` (`studio_message`).
-- UI: `app/[locale]/owner/[workspaceSlug]/studio/page.tsx`, `components/studio/**` (+ tests), `app/studio.css`, `app/layout.tsx` (import only), `components/workspace-shell.tsx`, `components/product-ui.tsx` (optional field only), `lib/workspace/shell.ts`, `app/[locale]/owner/[workspaceSlug]/layout.tsx`, `lib/studio/client.ts`, `e2e/acceptance/conversation-studio.spec.ts`.
+- UI: `app/[locale]/owner/[workspaceSlug]/conversation/studio/page.tsx`, `components/studio/**` (+ tests), `components/workspace/conversation-view.tsx` (entry), `app/styles/screens/studio.css` + `app/globals.css` (import), `components/workspace-shell.tsx` (conversation-prefix chrome), `lib/studio/client.ts`, `e2e/acceptance/conversation-studio.spec.ts`.
 - Report: `docs/implementation/owner-platform-v1/CONVERSATION-STUDIO-REPORT.md`.
 
 ## 14. Deliberately out of scope (v1.1+)
 
 Automatic conversation titles from the model (v1 derives from the first message), cross-member shared threads, attachments/uploads in the composer, voice, true token streaming for the explain/draft branches, regenerated answers, message editing/deletion, inline approve/export (stays on the action page by design), and a public (unauthenticated) Studio. None of these is needed to satisfy the persistent-continuous-chat requirement.
 
-## 15. Implementation outcome (2026-11-08)
+## 15. Implementation outcome (2026-11-09, Path A)
 
-Delivered on `feat/conversation-studio`; the full record and evidence are in `docs/implementation/owner-platform-v1/CONVERSATION-STUDIO-REPORT.md`.
+Delivered on `feat/conversation-studio`, rebased/merged onto the current Kinnso OS `main`; the full record and evidence are in `docs/implementation/owner-platform-v1/CONVERSATION-STUDIO-REPORT.md`.
 
-- **Migration number is 0019, not the originally sketched 0018:** `0018_content_version_retry_boundaries.sql` already occupies journal row 18 on `origin/main`. Files, flag docs and this spec say 0019; the rollout statement requires journal 1–18 and records row 19.
-- **Verified locally:** `db:verify` (applied 0001–0019, replay empty, 44 tables / 522 columns / 228 constraints / 119 indexes), typecheck, lint (0 errors), 5877 unit tests (5875 pass in the full parallel run; two timing-flaky unrelated suites pass 20/20 in isolation), 638/638 Docker integration tests, `next build`, the Studio acceptance spec 2/2 in Chromium against a streaming fixture, the secret-boundary gate (92 artifacts), and the rollout pin 5/5.
+- **Path A integration:** `main` already shipped the approved conversation workbench (`/conversation`, `CONVERSATION_HOME_ENABLED`) and migrations 0019/0020. The Studio is now its persistent, model-backed mode behind `CONVERSATION_STUDIO_ENABLED` + `CONVERSATION_HOME_ENABLED`, mounted at `/conversation/studio`, entered from the workbench. **Today remains the default workspace URL**; earlier sketches of a Studio-first nav/root redirect were withdrawn.
+- **Migration number is 0021**, layered on the conversation workstream's 0019/0020. No existing object is modified; the rollout pins journal 1–20 and records row 21.
+- **Verified locally:** `db:verify` (0001–0021, replay empty, 48 tables / 560 columns / 261 constraints / 132 indexes / 16 triggers / 33 functions), typecheck, lint, the full unit and Docker integration suites, `next build`, JS budget, the Studio acceptance spec against a real fixture stack, the secret-boundary gate and the rollout pin (exact numbers in the report).
 - **Small contract additions:** `StudioCopy.rail.rename`, `StudioCopy.thread.loadEarlier` and `StudioCopy.header.openStudio`; `AssistantSurface` gains `studio` (the sheet never renders it) so `runLiveAssistant` audits the real surface.
-- **E2E is opt-in:** `test/e2e/safety.ts` forwards `CONVERSATION_STUDIO_ENABLED` only when the runner sets it, so the existing acceptance suite is unchanged and the Studio spec runs only with `CONVERSATION_STUDIO_ENABLED=true`.
-- **Not run:** hosted deployment, hosted migration, real-gateway streaming smoke test. The fixture LLM returns non-streamed JSON, so the browser e2e exercised the non-streaming fallback; `llmChatStreamDetailed`'s SSE path is unit-tested against stubbed frames.
+- **E2E is opt-in:** `test/e2e/safety.ts` forwards both conversation flags only when the runner sets `CONVERSATION_STUDIO_ENABLED=true`, so the default acceptance suite is unchanged.
+- **Not run:** hosted deployment, hosted migration, real-gateway streaming smoke test.

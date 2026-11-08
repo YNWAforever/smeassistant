@@ -11,7 +11,7 @@ export function reportsRepository(client?: Pick<Pool, "query">): ReportStore & {
         region: string;
         business_objective: string | null;
     } | null>;
-    readShareCard(slug: string): Promise<Pick<PublicReportJob, "business_name" | "overall_score" | "module_scores"> | null>;
+    readShareCard(slug: string): Promise<Pick<PublicReportJob, "business_name" | "overall_score" | "module_scores" | "module_results"> | null>;
 } {
     async function rows<T extends QueryResultRow>(sql: string, values: unknown[]): Promise<T[]> {
         try {
@@ -84,6 +84,6 @@ LIMIT 25 OFFSET $2`, [jobId, offset]);
             region: string;
             business_objective: string | null;
         }>("SELECT id,share_slug,region,business_objective FROM audit_jobs WHERE share_slug=$1", [slug]))[0] ?? null; },
-        async readShareCard(slug) { return (await rows<Pick<PublicReportJob, "business_name" | "overall_score" | "module_scores">>("SELECT business_name,overall_score::float8 AS overall_score,module_scores FROM audit_jobs WHERE share_slug=$1", [slug]))[0] ?? null; },
+        async readShareCard(slug) { return (await rows<Pick<PublicReportJob, "business_name" | "overall_score" | "module_scores" | "module_results">>("SELECT business_name,overall_score::float8 AS overall_score,module_scores,module_results FROM audit_jobs WHERE share_slug=$1", [slug]))[0] ?? null; },
     };
 }

@@ -51,13 +51,13 @@ describe("FixPackCard empty state", () => {
   it("shows an empty queue rather than an unavailable service", async () => {
     const text = (await mount([])).textContent ?? "";
     expect(text).not.toMatch(/prepared for you by the Fimmick team/i);
-    expect(text).toContain("No staff drafts to review.");
+    expect(text).toContain("No drafts from the Fimmick team");
     expect(text).not.toMatch(/not available|separate Fimmick|Planned/i);
   });
 
   it("sends the owner to their own drafts", async () => {
     const container = await mount([]);
-    const link = [...container.querySelectorAll("a")].find((node) => /Open drafts/i.test(node.textContent ?? ""));
+    const link = [...container.querySelectorAll("a")].find((node) => /Open your drafts/i.test(node.textContent ?? ""));
     expect(link?.getAttribute("href")).toBe("/en/owner/kam-man-house/actions?view=drafts");
     expect(container.querySelector('a[href="/en/owner/kam-man-house/create?location=all"]')).not.toBeNull();
   });
@@ -68,7 +68,7 @@ describe("FixPackCard empty state", () => {
     await act(async () => {
       result = render(<FixPackCard locale={locale} workspaceId="ws-1" viewerRole="owner" />);
     });
-    expect(result.container.textContent).toContain("目前沒有待審閱的職員草稿");
+    expect(result.container.textContent).toContain("Fimmick 團隊準備的草稿");
     expect(result.container.textContent).not.toContain("暫時無法取得");
   });
 
@@ -78,7 +78,7 @@ describe("FixPackCard empty state", () => {
     await act(async () => {
       result = render(<FixPackCard locale="en" workspaceId="ws-1" viewerRole="owner" />);
     });
-    expect(result.container.textContent).not.toContain("No staff drafts to review.");
+    expect(result.container.textContent).not.toContain("No drafts from the Fimmick team");
     expect(result.container.textContent).toContain("Could not load");
   });
 
@@ -156,6 +156,6 @@ describe("FixPackCard mode=earlier (P4.2)", () => {
     expect(container.textContent).toContain("Already approved text.");
     expect(container.textContent).not.toContain("Earlier staff drafts");
     cleanup();
-    expect((await mount([])).textContent).toContain("No staff drafts to review.");
+    expect((await mount([])).textContent).toContain("No drafts from the Fimmick team");
   });
 });

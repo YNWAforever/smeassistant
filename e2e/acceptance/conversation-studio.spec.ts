@@ -4,16 +4,16 @@ import { sql, type AcceptanceEnvironment } from "../../test/e2e/environment";
 /**
  * Conversation Studio acceptance (docs/superpowers/specs/2026-11-08-conversation-studio-design.md §12).
  *
- * Prerequisites, both deliberate:
+ * Prerequisites, all deliberate:
  * 1. `CONVERSATION_STUDIO_ENABLED=true` in the acceptance app environment
- *    (test/e2e/environment.ts isolatedEnv). With the flag off the page 404s by
- *    design, so the spec skips instead of asserting absent behaviour.
- * 2. Migration 0019 (studio_conversations/studio_messages) applied to the
+ *    (test/e2e/safety.ts isolatedEnv), which also enables the conversation
+ *    workbench. With either flag off the page 404s by design, so the spec skips.
+ * 2. Migration 0021 (studio_conversations/studio_messages) applied to the
  *    fixture database the acceptance harness starts.
  *
- * NOT RUN in the development sandbox (no Docker/DB, Playwright cannot boot the
- * fixture stack). Written against the same fixture identity/sign-in helpers as
- * the other acceptance specs.
+ * The Studio is the persistent, model-backed mode of the conversation
+ * workbench: Today remains the default workspace URL, and the workbench is the
+ * single entry point.
  */
 
 const STUDIO_ENABLED = process.env.CONVERSATION_STUDIO_ENABLED === "true";
@@ -35,7 +35,7 @@ async function setModelScript(environment: AcceptanceEnvironment) {
 }
 
 test.describe("Conversation Studio", () => {
-  test.skip(!STUDIO_ENABLED, "requires CONVERSATION_STUDIO_ENABLED=true in the acceptance app env plus migration 0019");
+  test.skip(!STUDIO_ENABLED, "requires CONVERSATION_STUDIO_ENABLED=true in the acceptance app env plus migration 0021");
 
   test("an owner starts one continuous conversation from a starter and reloads back into its history", async ({ page, merchant, environment }) => {
     await setModelScript(environment);
@@ -44,25 +44,21 @@ test.describe("Conversation Studio", () => {
     const requested: string[] = [];
     page.on("request", (request) => { requested.push(`${request.method()} ${new URL(request.url()).pathname}`); });
 
-    // 1. The Studio is the primary surface: the workspace root redirects to it,
-    //    navigation leads with it, the shell offers the top-bar entry, and an
-    //    empty conversation is a question with starters.
+    // 1. Today remains the default workspace URL (Path A decision).
     await page.goto(`/en/owner/${merchant.slug}`);
-    await page.waitForURL(new RegExp(`/en/owner/${merchant.slug}/studio`));
-    await expect(page.getByRole("link", { name: "Conversation studio" })).toBeVisible();
-    await expect(page.locator(".workspace-sidebar").getByRole("link", { name: "Studio" })).toBeVisible();
+    await waitForHydration(page);
+    await expect(page).not.toHaveURL(/\/conversation/);
+
+    // The conversation workbench is the single entry point to the Studio.
+    await page.goto(`/en/owner/${merchant.slug}/conversation`);
+    await expect(page.locator(".conversation-studio-entry")).toBeVisible();
+    await page.locator(".conversation-studio-entry").click();
+    await page.waitForURL(new RegExp(`/en/owner/${merchant.slug}/conversation/studio`));
     await expect(page.locator(".studio-root")).toBeVisible();
     await expect(page.locator(".studio-thread")).toHaveAttribute("role", "log");
     await expect(page.locator(".studio-thread")).toHaveAttribute("aria-live", "polite");
     await expect(page.getByRole("heading", { name: "What should we work on?" })).toBeVisible();
     await expect(page.getByText("Nothing is approved, exported or published from this conversation")).toBeVisible();
-
-    // The read-only Today brief moved to /today and is still one click away.
-    await page.locator('.workspace-sidebar a[href*="/today"]').click();
-    await expect(page).toHaveURL(new RegExp(`/en/owner/${merchant.slug}/today`));
-    await expect(page.locator(".owner-brief-grid")).toBeVisible();
-    await page.goto(`/en/owner/${merchant.slug}/studio`);
-    await expect(page.locator(".studio-root")).toBeVisible();
 
     // 2. A starter sends a real turn: create conversation, then stream the answer.
     const created = page.waitForResponse((response) => response.url().endsWith("/api/studio/conversations") && response.request().method() === "POST" && response.status() === 201);
@@ -82,7 +78,7 @@ test.describe("Conversation Studio", () => {
     // The answer is the model's prose, not the classifier's raw JSON envelope.
     await expect(thread.locator(".studio-message-assistant").last()).not.toContainText('"intent"');
     await expect(page.locator(".studio-pending")).toHaveCount(0, { timeout: 90_000 });
-    await expect(page).toHaveURL(new RegExp(`/studio\\?.*chat=${conversation.id}`));
+    await expect(page).toHaveURL(new RegExp(`/conversation/studio\\?.*chat=${conversation.id}`));
     expect(sql(environment.db, `select count(*) from studio_messages where conversation_id='${conversation.id}';`)).toBe("2");
     expect(sql(environment.db, `select count(*) from studio_conversations where id='${conversation.id}' and workspace_id='${merchant.workspaceId}';`)).toBe("1");
     // v1.1: the first-turn classifier names the conversation; the rail shows it.
@@ -114,7 +110,7 @@ test.describe("Conversation Studio", () => {
   test("conversations are private per member: a teammate in the same workspace starts with an empty rail", async ({ page, merchant, environment }) => {
     await setModelScript(environment);
     await signIn(page, environment, merchant, "owner");
-    await page.goto(`/en/owner/${merchant.slug}/studio`);
+    await page.goto(`/en/owner/${merchant.slug}/conversation/studio`);
     await page.getByRole("button", { name: "What should I do first?" }).click();
     await expect(page.locator(".studio-message-assistant").last()).toContainText("Start with the unanswered reviews", { timeout: 90_000 });
     const conversation = sql(environment.db, `select id from studio_conversations where workspace_id='${merchant.workspaceId}' and created_by=(select id from app_users where email='${merchant.emails.owner}');`);
@@ -124,7 +120,7 @@ test.describe("Conversation Studio", () => {
     await signIn(page, environment, merchant, "viewer");
 
     // The rail is the viewer's own list: the owner's conversation is absent.
-    await page.goto(`/en/owner/${merchant.slug}/studio`);
+    await page.goto(`/en/owner/${merchant.slug}/conversation/studio`);
     await expect(page.getByRole("heading", { name: "What should we work on?" })).toBeVisible();
     await expect(page.locator(".studio-rail")).not.toContainText("What should I do first");
 

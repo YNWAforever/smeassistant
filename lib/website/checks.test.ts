@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { EMPTY_WEBSITE_CHECKS, inspectHtml, runWebsiteChecks, summarise, WEBSITE_CHECK_KEYS } from "./checks";
+import { describe, expect, it, vi } from "vitest";
+import { EMPTY_WEBSITE_CHECKS, inspectHtml, runWebsiteChecks, runWebsiteChecksWithUrl, summarise, WEBSITE_CHECK_KEYS } from "./checks";
+
+// Replace DNS only; keep URL, address and redirect validation real.
+vi.mock("node:dns/promises", () => ({ Resolver: class {
+  resolve4() { return Promise.resolve(["93.184.216.34"]); }
+  resolve6() { return Promise.resolve([]); }
+  cancel() {}
+} }));
 
 const GOOD_HTML = `<!doctype html><html lang="zh-HK"><head>
 <title>錦汶館 Kam Man House · Happy Valley café</title>
@@ -73,6 +80,57 @@ describe("inspectHtml", () => {
 });
 
 describe("runWebsiteChecks", () => {
+  it.each([
+    "http://127.0.0.1/admin", "https://127.0.0.1/admin", "https://10.0.0.1/",
+    "https://169.254.169.254/", "https://[::1]/", "https://[::ffff:127.0.0.1]/",
+    "https://localhost/", "https://user:password@example.test/",
+  ])("refuses unsafe destinations before making a request: %s", async (url) => {
+    const fetcher = vi.fn(async () => new Response(GOOD_HTML, { headers: { "content-type": "text/html" } }));
+    expect(await runWebsiteChecksWithUrl(url, { fetch: fetcher })).toEqual({ checks: EMPTY_WEBSITE_CHECKS, finalUrl: null });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("checks redirect targets before any follow-up request", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 302, headers: { location: "https://10.0.0.1/admin" } }));
+    expect(await runWebsiteChecksWithUrl("https://example.test", { fetch: fetcher })).toEqual({ checks: EMPTY_WEBSITE_CHECKS, finalUrl: null });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ redirect: "manual" });
+  });
+
+  it("retains the validated final URL across public redirects", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 301, headers: { location: "/menu" } }))
+      .mockResolvedValueOnce(new Response(GOOD_HTML, { headers: { "content-type": "text/html" } }));
+    const result = await runWebsiteChecksWithUrl("https://example.test", { fetch: fetcher });
+    expect(result.finalUrl).toBe("https://example.test/menu");
+    expect(result.checks.passed).toBe(15);
+  });
+
+  it("cancels oversized streamed bodies instead of reading then slicing", async () => {
+    const cancelled = vi.fn();
+    let pulls = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls += 1;
+        if (pulls < 10) controller.enqueue(new Uint8Array(256 * 1024));
+        else controller.close();
+      },
+      cancel: cancelled,
+    });
+    const result = await runWebsiteChecks("https://example.test", {
+      fetch: async () => new Response(body, { headers: { "content-type": "text/html" } }),
+    });
+    expect(result).toEqual(EMPTY_WEBSITE_CHECKS);
+    expect(cancelled).toHaveBeenCalledOnce();
+    expect(pulls).toBeLessThan(10);
+  });
+
+  it("refuses non-HTML responses without interpreting them as evidence", async () => {
+    expect(await runWebsiteChecks("https://example.test", {
+      fetch: async () => new Response(GOOD_HTML, { headers: { "content-type": "application/json" } }),
+    })).toEqual(EMPTY_WEBSITE_CHECKS);
+  });
+
   it("returns evaluated = 0 when the fetch fails", async () => {
     const result = await runWebsiteChecks("https://down.example.test", {
       fetch: (async () => {

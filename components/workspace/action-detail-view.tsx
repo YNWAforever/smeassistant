@@ -1,9 +1,11 @@
 import { ActionDetailClient } from "@/components/workspace/action-detail-client"
+import { ActionProgress } from "@/components/workspace/action-progress"
 import type { PrototypeLocale } from "@/lib/copy"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import type { OfferCardData } from "@/components/workspace/action-detail-client"
 import type { ActionDetail, AuditEventRow } from "@/lib/workspace/queries-pages"
 import type { PublishPanel } from "@/lib/publishing/page-state"
+import type { OwnerCheckContext } from "@/lib/workspace/owner-review-check"
 
 export interface ActionDetailViewProps {
   locale: PrototypeLocale
@@ -23,6 +25,9 @@ export interface ActionDetailViewProps {
   initialVersionId?: string | null
   /** P4.6: the Google publish card's data; null hides it (any other template, or a failed read). */
   publishPanel?: PublishPanel | null
+  ownerCheck?: OwnerCheckContext
+  ownerCheckIdentity?: string
+  embedded?: boolean
 }
 
 /**
@@ -33,5 +38,10 @@ export interface ActionDetailViewProps {
  * re-renders from the database, never from optimistic state.
  */
 export function ActionDetailView(props: ActionDetailViewProps) {
-  return <ActionDetailClient {...props} />
+  return (
+    <>
+      <ActionDetailClient {...props} />
+      <ActionProgress versions={props.detail.versions} locale={props.locale} showFlow={false} />
+    </>
+  )
 }

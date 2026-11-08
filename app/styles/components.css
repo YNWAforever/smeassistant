@@ -1,0 +1,58 @@
+/*
+ * Kinnso OS component kit (components/kinnso/*). Token-only: no literal
+ * colours, so light and workspace-dark both follow tokens.css.
+ */
+
+.kinnso-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--shadow-xs);
+}
+
+.kinnso-link {
+  text-underline-offset: 3px;
+}
+.kinnso-link:hover {
+  text-decoration: underline;
+}
+
+.kinnso-button-brand {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+.kinnso-button-brand:hover:not(:disabled) {
+  background: var(--brand-hover);
+}
+
+/* States */
+.kinnso-state {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+/* Illustrated states carry their own colours; the partial state keeps a tinted icon. */
+.kinnso-state-partial .kinnso-state-icon > span { background: var(--warning-soft); color: var(--warning-text); }
+
+/* Approval bar */
+.kinnso-approval-bar {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--paper) 94%, transparent);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(12px);
+}
+
+/* Version diff: underline and strike as well as colour. */
+.kinnso-diff-added {
+  background: var(--success-soft);
+  color: var(--success-text);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+.kinnso-diff-removed {
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  text-decoration: line-through;
+}
+

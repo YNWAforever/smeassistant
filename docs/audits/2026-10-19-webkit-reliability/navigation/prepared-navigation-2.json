@@ -1,0 +1,164 @@
+{
+  "layer": "Owned synthetic local DB/Auth fixtures; no credentials, bodies or Auth query strings captured",
+  "browser": "webkit",
+  "version": "26.5",
+  "events": [
+    {
+      "ms": 211,
+      "kind": "request",
+      "path": "/api/auth/verify",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 439,
+      "kind": "request",
+      "path": "/auth/callback",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 439,
+      "kind": "response",
+      "path": "/api/auth/verify",
+      "status": 303,
+      "contentType": null,
+      "encoding": null,
+      "transfer": null,
+      "corsOrigin": null
+    },
+    {
+      "ms": 455,
+      "kind": "request",
+      "path": "/en/owner/sign-in/complete",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 456,
+      "kind": "response",
+      "path": "/auth/callback",
+      "status": 307,
+      "contentType": null,
+      "encoding": null,
+      "transfer": null,
+      "corsOrigin": null
+    },
+    {
+      "ms": 648,
+      "kind": "response",
+      "path": "/en/owner/sign-in/complete",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "encoding": "gzip",
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 1842,
+      "kind": "request",
+      "path": "/api/owner/sign-in/complete",
+      "method": "POST",
+      "type": "fetch"
+    },
+    {
+      "ms": 1925,
+      "kind": "response",
+      "path": "/api/owner/sign-in/complete",
+      "status": 200,
+      "contentType": "application/json",
+      "encoding": null,
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 1943,
+      "kind": "request",
+      "path": "/en/owner/acceptance-hk-91b0071a",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 2054,
+      "kind": "response",
+      "path": "/en/owner/acceptance-hk-91b0071a",
+      "status": 200,
+      "contentType": "text/x-component",
+      "encoding": "gzip",
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 2701,
+      "kind": "request",
+      "path": "/api/workspaces/91b0071a-0533-453c-8910-0f79c4c49084/fix-pack-drafts",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 2704,
+      "kind": "request",
+      "path": "/api/workspaces/91b0071a-0533-453c-8910-0f79c4c49084/fix-pack-drafts",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 2785,
+      "kind": "response",
+      "path": "/api/workspaces/91b0071a-0533-453c-8910-0f79c4c49084/fix-pack-drafts",
+      "status": 200,
+      "contentType": "application/json",
+      "encoding": null,
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 2792,
+      "kind": "response",
+      "path": "/api/workspaces/91b0071a-0533-453c-8910-0f79c4c49084/fix-pack-drafts",
+      "status": 200,
+      "contentType": "application/json",
+      "encoding": null,
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 3327,
+      "kind": "authenticated_home"
+    },
+    {
+      "ms": 4489,
+      "kind": "request",
+      "path": "/en/owner/acceptance-hk-91b0071a/actions/50e31c54-24aa-41be-9f28-7fd289b0d4ad",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 4701,
+      "kind": "response",
+      "path": "/en/owner/acceptance-hk-91b0071a/actions/50e31c54-24aa-41be-9f28-7fd289b0d4ad",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "encoding": "gzip",
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 7187,
+      "kind": "request",
+      "path": "/en/owner/acceptance-hk-91b0071a/actions/50e31c54-24aa-41be-9f28-7fd289b0d4ad",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 7432,
+      "kind": "response",
+      "path": "/en/owner/acceptance-hk-91b0071a/actions/50e31c54-24aa-41be-9f28-7fd289b0d4ad",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "encoding": "gzip",
+      "transfer": "chunked",
+      "corsOrigin": null
+    }
+  ]
+}

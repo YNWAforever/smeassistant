@@ -34,8 +34,8 @@ describe("problem copy", () => {
   });
 
   it("uses the dead-letter line for a stuck scan whatever the action", () => {
-    expect(nextStepText("en", problem({ kind: "scan_dead_lettered", ownerAction: "none" }))).toBe("It closes automatically within 24 hours; you can then rescan.");
-    expect(nextStepText("en", problem({ ownerAction: "rescan" }))).toBe("Run a new scan for this location.");
-    expect(nextStepText("en", problem({ ownerAction: "none" }))).toBe("An owner, or a manager for this location, can act on this.");
+    expect(nextStepText("en", problem({ kind: "scan_dead_lettered", ownerAction: "none" }))).toBe("It closes by itself within 24 hours; then you can scan again.");
+    expect(nextStepText("en", problem({ ownerAction: "rescan" }))).toBe("Scan this shop again.");
+    expect(nextStepText("en", problem({ ownerAction: "none" }))).toBe("The owner, or the manager of this shop, can fix this.");
   });
 });

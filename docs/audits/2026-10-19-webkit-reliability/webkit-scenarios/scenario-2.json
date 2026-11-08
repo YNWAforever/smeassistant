@@ -1,0 +1,14 @@
+{
+  "environment": "owned local DB/Auth/model fixtures; no real provider",
+  "observedAt": "2026-10-18T18:57:11.791Z",
+  "result": "PASS",
+  "requiredFactBlockedBeforeModel": true,
+  "inventedOutputWithheld": true,
+  "savedBody": "Thank you for your kind review. We appreciate you sharing your feedback.",
+  "version": {
+    "runId": "ed76509e-bba6-40d1-a091-fa835f8e03d4",
+    "state": "succeeded",
+    "versionId": "591194f5-6060-4e80-b355-66122770c3a0",
+    "versionNo": 1
+  }
+}

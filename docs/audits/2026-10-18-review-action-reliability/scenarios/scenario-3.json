@@ -1,0 +1,13 @@
+{
+  "environment": "owned local DB/Auth/model fixtures; no real provider",
+  "observedAt": "2026-10-18T17:16:29.720Z",
+  "result": "PASS",
+  "selectedLocation": "1301761a-c2a4-48c6-a96b-b1069a30fd56",
+  "excludedOtherBranchAndImportedAddress": true,
+  "version": {
+    "runId": "b45eff20-fea4-4a7c-9c3d-94993315285b",
+    "state": "succeeded",
+    "versionId": "93e74c74-f123-498e-a486-8af75857605f",
+    "versionNo": 1
+  }
+}

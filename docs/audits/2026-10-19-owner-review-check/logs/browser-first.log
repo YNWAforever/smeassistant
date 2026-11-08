@@ -1,0 +1,5 @@
+Error: Cannot find module 'C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\node_modules\@sme-scanner\scan-engine\src\sensitive-name' imported from C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\lib\report\sanitize-proof.ts
+Did you mean to import "file:///C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-owner-focus-20261015/packages/scan-engine/src/sensitive-name.ts"?
+    at eval (<anonymous>:1:1)
+
+Error: No tests found

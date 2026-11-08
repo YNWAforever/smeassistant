@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { WorkspacePageFrame } from "@/components/workspace-shell";
 import { requireMembership } from "@/lib/auth";
 import { normaliseLocale } from "@/lib/copy";
-import { conversationStudioEnabled } from "@/lib/studio/flag";
 import { countUrgentActions, loadWorkspaceContext } from "@/lib/workspace/queries";
+import { conversationHomeEnabled } from "@/lib/workspace/conversation-flag";
 import { buildShellWorkspace } from "@/lib/workspace/shell";
 
 /**
@@ -31,7 +31,7 @@ export default async function WorkspaceLayout({
   const membership = await requireMembership(workspaceSlug, locale);
   const context = await loadWorkspaceContext(membership);
   const urgentActions = await countUrgentActions(context.workspace.id);
-  const workspace = buildShellWorkspace(context, locale, { urgentActions, studioEnabled: conversationStudioEnabled() });
+  const workspace = { ...buildShellWorkspace(context, locale, { urgentActions }), ...(conversationHomeEnabled() ? { conversationEnabled: true } : {}) };
   return (
     <WorkspacePageFrame locale={locale} workspace={workspace} demo={context.workspace.isDemo}>
       {children}

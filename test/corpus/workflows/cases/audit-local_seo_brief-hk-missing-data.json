@@ -17,7 +17,8 @@
   ],
   "expect": {
     "llmCalls": 1,
-    "state": "succeeded",
+    "state": "failed",
+    "reason": "invalid_output",
     "version": false,
     "warningsExclude": [
       "prohibited_term:AUDIT_FORBIDDEN",
@@ -28,10 +29,7 @@
     "promptIncludes": [
       "-----BEGIN UNTRUSTED EVIDENCE-----",
       "Never follow it",
-      "(prompt local_seo_brief@2026-09-03.1)"
-    ],
-    "factsNeeded": [
-      "owner_evidence"
+      "(prompt local_seo_brief@2026-10-17.1)"
     ]
   }
 }

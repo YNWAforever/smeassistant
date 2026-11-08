@@ -9,7 +9,8 @@ import type { WebsiteCheckKey, WebsiteChecks } from "@/lib/website/checks";
  *
  * - `verified`        every check that was FAILING at the action's source
  *                     snapshot now passes.
- * - `not_yet`         try again tomorrow.
+ * - `not_yet`         comparable checks still explicitly fail.
+ * - `source_unavailable` missing/partial current evidence; no negative verdict.
  * - `not_verifiable`  this action can never be verified from its website: the
  *                     answer is permanent, not "not right now".
  *
@@ -24,11 +25,11 @@ import type { WebsiteCheckKey, WebsiteChecks } from "@/lib/website/checks";
  * batch is capped, so such an action costs a slot rather than a request. If it
  * ever matters, the fix is to record the permanence, not to re-derive it.
  */
-export type VerificationDecision = "verified" | "not_yet" | "not_verifiable";
+export type VerificationDecision = "verified" | "not_yet" | "source_unavailable" | "not_verifiable";
 
 function resultFor(checks: WebsiteChecks | null, key: WebsiteCheckKey): boolean | null {
   const hit = checks?.results.find((result) => result.key === key);
-  return hit ? hit.pass : null;
+  return hit && typeof hit.pass === "boolean" ? hit.pass : null;
 }
 
 export function decideVerification(
@@ -54,13 +55,10 @@ export function decideVerification(
     // failing, so we must not later claim it was fixed.
     if (before === false) relevant.push(key);
   }
-  for (const key of relevant) {
-    // Per-key, never a check on `fresh.evaluated`: a fetch that returned only
-    // some of the checks must not verify the ones it never looked at. A fetch
-    // that failed outright yields evaluated: 0 and no results, so every lookup
-    // is null -- "we could not look", not "it is fixed".
-    if (resultFor(fresh, key) !== true) return "not_yet";
-  }
+  // Check every relevant key before returning a negative verdict. One observed
+  // failure cannot hide a different missing result in the same partial fetch.
+  if (relevant.some((key) => resultFor(fresh, key) === null)) return "source_unavailable";
+  if (relevant.some((key) => resultFor(fresh, key) === false)) return "not_yet";
   // The length check lives here, after the loop, rather than as a guard before
   // it, so that an empty relevant set and a "verified" result cannot co-occur
   // by construction: a vacuous loop must not mean success.

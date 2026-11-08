@@ -7,8 +7,9 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: 
 import { AccessRequestForm } from "@/components/workspace/access-request-form";
 
 function render(market: "hk" | "tw", isChinese = false) {
+  const locale = isChinese ? "zh-HK" : "en";
   const root = document.createElement("div");
-  root.innerHTML = renderToStaticMarkup(<AccessRequestForm slug="abc123" market={market} isChinese={isChinese} />);
+  root.innerHTML = renderToStaticMarkup(<AccessRequestForm slug="abc123" market={market} locale={locale} />);
   return root;
 }
 

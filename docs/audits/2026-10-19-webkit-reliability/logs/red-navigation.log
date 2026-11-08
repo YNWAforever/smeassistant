@@ -1,0 +1,32 @@
+
+Running 1 test using 1 worker
+
+
+
+(node:45944) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/1] [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:5:1 › an authenticated fixture can navigate to an action and reload without fetch or hydration failures
+  1) [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:5:1 › an authenticated fixture can navigate to an action and reload without fetch or hydration failures
+
+    Error: page.goto: Navigation to "http://localhost:51309/en/owner/acceptance-hk-2ebf38f6/actions/143c4270-b25e-4962-bf36-4fa930330c99" is interrupted by another navigation to "http://localhost:51309/en/owner/acceptance-hk-2ebf38f6"
+    Call log:
+      - navigating to "http://localhost:51309/en/owner/acceptance-hk-2ebf38f6/actions/143c4270-b25e-4962-bf36-4fa930330c99", waiting until "load"
+
+
+       at ..\..\test\e2e\fixtures.ts:17
+
+      15 |     const goto = page.goto.bind(page);
+      16 |     page.goto = (async (url: string, options?: Parameters<Page["goto"]>[1]) => {
+    > 17 |       const response = await goto(url, options);
+         |                              ^
+      18 |       if (response?.headers()["content-type"]?.includes("text/html")) await waitForHydration(page);
+      19 |       return response;
+      20 |     }) as Page["goto"];
+        at _Page.goto (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\fixtures.ts:17:30)
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\e2e\acceptance\webkit-navigation-regression.spec.ts:56:24
+
+    Error Context: test-results\webkit-reliability-20261019\red-navigation\webkit-navigation-regressi-3d5dd-fetch-or-hydration-failures-webkit\error-context.md
+
+
+  1 failed
+    [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:5:1 › an authenticated fixture can navigate to an action and reload without fetch or hydration failures

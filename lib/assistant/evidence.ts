@@ -27,7 +27,7 @@ export interface BuildEvidenceInput {
 export type ModuleKey = "google_business" | "instagram" | "search_ai" | "website";
 
 export const MODULE_NAMES: Record<ModuleKey, LocalizedText> = {
-  google_business: localized("Google Business", "Google 商戶", "Google 商家"),
+  google_business: localized("Google Business", "Google 商家檔案", "Google 商家"),
   instagram: localized("Instagram", "Instagram"),
   search_ai: localized("Search & AI surfaces", "搜尋與 AI 版面"),
   website: localized("Website", "網站"),
@@ -36,7 +36,7 @@ export const MODULE_NAMES: Record<ModuleKey, LocalizedText> = {
 const COMPOSITE_LABEL = localized("Composite score change", "綜合評分變化");
 const SCORE_LABEL = localized("Visibility score", "能見度評分");
 const COVERAGE_LABEL = localized("Measured coverage", "已量度覆蓋率");
-const SCANNER = localized("SME Scanner", "SME Scanner");
+const SCANNER = localized("Kinnso OS", "Kinnso OS");
 const YES = localized("yes", "是");
 const NO = localized("no", "否");
 const WITHHELD = localized("withheld", "已保留");

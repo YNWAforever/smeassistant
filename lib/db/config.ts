@@ -12,8 +12,16 @@ const SECURE_SSLMODES = new Set(["require", "verify-ca", "verify-full"]);
 
 function requireSecureSslModeInProduction(url: URL): void {
   if (process.env.NODE_ENV !== "production") return;
-  const sslmode = url.searchParams.get("sslmode");
-  if (!sslmode || !SECURE_SSLMODES.has(sslmode)) throw new Error("database_configuration_insecure");
+  const modes = url.searchParams.getAll("sslmode");
+  const compatibility = url.searchParams.getAll("uselibpqcompat");
+  // URLSearchParams.get reads the first value, while pg keeps the last.
+  // pg also reparses a nested connectionString after parsing the outer URL.
+  // Reject those ambiguities before the driver can override the checked TLS.
+  if (modes.length !== 1 || !SECURE_SSLMODES.has(modes[0])
+    || compatibility.length > 1 || url.searchParams.has("connectionString")
+    || (compatibility[0] === "true" && modes[0] !== "verify-full")) {
+    throw new Error("database_configuration_insecure");
+  }
 }
 
 function validatedPostgresUrl(value: string | undefined, missingAllowed = false): string | undefined {
@@ -37,12 +45,23 @@ function validatedPostgresUrl(value: string | undefined, missingAllowed = false)
 // verify-full, and logs a SECURITY WARNING on every pool start saying so
 // (it surfaced as the most frequent "error" in the Vercel runtime logs).
 // Spelling out the mode pg applies keeps the TLS behaviour identical and
-// removes the noise. An explicit uselibpqcompat choice is left alone.
+// removes the noise. Only true enables libpq semantics; those explicit choices
+// remain untouched outside production and must use verify-full in production.
 function withExplicitVerifyFull(candidate: string): string {
   const url = new URL(candidate);
   const sslmode = url.searchParams.get("sslmode");
-  if ((sslmode !== "require" && sslmode !== "verify-ca") || url.searchParams.has("uselibpqcompat")) return candidate;
-  return candidate.replace(/([?&])sslmode=(require|verify-ca)(?=&|$)/, "$1sslmode=verify-full");
+  if (process.env.NODE_ENV === "production") {
+    // Force WHATWG query serialization even for verify-full. pg's legacy
+    // parser re-encodes the whole URL if it sees raw spaces or malformed '%',
+    // which otherwise hides an encoded sslmode key from its TLS configuration.
+    url.searchParams.set("sslmode", "verify-full");
+    return url.href;
+  }
+  if ((sslmode !== "require" && sslmode !== "verify-ca") || url.searchParams.get("uselibpqcompat") === "true") return candidate;
+  // Parse and serialize instead of matching the raw text: percent-encoded
+  // parameter names/values must receive the same canonical driver options.
+  url.searchParams.set("sslmode", "verify-full");
+  return url.href;
 }
 
 export function readDatabaseConfig(env: Record<string, string | undefined>): DatabaseConfig {

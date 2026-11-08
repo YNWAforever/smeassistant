@@ -1,0 +1,12 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:integration /workspace/smeassistant
+> vitest run --config vitest.integration.config.ts
+
+
+ RUN  v4.1.11 /workspace/smeassistant
+
+
+ Test Files  57 passed (57)
+      Tests  635 passed (635)
+   Start at  02:53:32
+   Duration  357.91s (transform 2.93s, setup 306ms, import 18.58s, tests 327.83s, environment 5ms)

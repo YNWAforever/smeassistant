@@ -1,0 +1,12 @@
+{
+  "recordedAt": "2026-10-18T18:51:32.2889198Z",
+  "reason": "Interrupted first browser run after desktop test used mobile viewport",
+  "containerId": "31fb9b63cf0dd54f680f89531112652b17d06aaab1f626b9248ffa6d14a84612",
+  "container": "sme-neon-it-db-8e0624bf9dae",
+  "database": "sme_neon_it_8e0624bf9dae",
+  "appPort": 54857,
+  "appPortClosed": true,
+  "identityAndLabelsChecked": true,
+  "removed": true,
+  "otherResourcesTouched": false
+}

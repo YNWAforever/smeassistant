@@ -12,7 +12,7 @@ type Executor = Pick<Pool | PoolClient, "query">;
  * A generation run is written by three separate statements — queue(), start(),
  * finish() — inside one HTTP request. When the platform kills that request
  * between start() and finish() the row stays `running` forever: nothing else
- * ever writes it, `canGenerate` in components/workspace/action-detail-client.tsx
+ * ever writes it, `canGenerate` in components/workspace/action-detail/use-action-editor.ts
  * stays false, and the owner's Generate button is dead permanently.
  *
  * There is no migration here on purpose. scripts/neon/catalog.ts::verifyCatalog

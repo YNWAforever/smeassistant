@@ -1,0 +1,58 @@
+
+Running 2 tests using 1 worker
+
+
+
+(node:32996) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/2] [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:78:1 › an authenticated fixture can navigate to an action and reload without fetch or hydration failures
+  1) [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:78:1 › an authenticated fixture can navigate to an action and reload without fetch or hydration failures
+
+    Error: page.goto: Navigation to "http://localhost:50455/en/owner/acceptance-hk-d9f89d8e/actions/392bd481-6ea6-4e95-bdd5-5049fcf6fb1d" is interrupted by another navigation to "http://localhost:50455/en/owner/acceptance-hk-d9f89d8e"
+    Call log:
+      - navigating to "http://localhost:50455/en/owner/acceptance-hk-d9f89d8e/actions/392bd481-6ea6-4e95-bdd5-5049fcf6fb1d", waiting until "load"
+
+
+       at ..\..\test\e2e\fixtures.ts:17
+
+      15 |     const goto = page.goto.bind(page);
+      16 |     page.goto = (async (url: string, options?: Parameters<Page["goto"]>[1]) => {
+    > 17 |       const response = await goto(url, options);
+         |                              ^
+      18 |       if (response?.headers()["content-type"]?.includes("text/html")) await waitForPageReady(page);
+      19 |       return response;
+      20 |     }) as Page["goto"];
+        at _Page.goto (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\test\e2e\fixtures.ts:17:30)
+        at checkNavigation (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\e2e\acceptance\webkit-navigation-regression.spec.ts:61:24)
+
+    Error Context: test-results\webkit-reliability-20261019\ready-navigation\webkit-navigation-regressi-3d5dd-fetch-or-hydration-failures-webkit\error-context.md
+
+
+
+(node:53012) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[2/2] [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:82:1 › native HTTP behind a rejecting proxy preserves authenticated action navigation
+  2) [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:82:1 › native HTTP behind a rejecting proxy preserves authenticated action navigation
+
+    Error: page.goto: Navigation to "http://localhost:54882/en/owner/acceptance-hk-f028d45c/actions/3b00788f-c486-47cf-b85c-80a0925103e4" is interrupted by another navigation to "http://localhost:54882/en/owner/acceptance-hk-f028d45c"
+    Call log:
+      - navigating to "http://localhost:54882/en/owner/acceptance-hk-f028d45c/actions/3b00788f-c486-47cf-b85c-80a0925103e4", waiting until "load"
+
+
+      59 |     record({ kind: "authenticated_home" });
+      60 |     const action = `/en/owner/${merchant.slug}/actions/${merchant.actionId}`;
+    > 61 |     expect((await page.goto(action))?.status()).toBe(200);
+         |                        ^
+      62 |     await waitForPageReady(page);
+      63 |     await expect(page.locator(".action-detail-page")).toBeVisible();
+      64 |     expect((await page.reload())?.status()).toBe(200);
+        at checkNavigation (C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\e2e\acceptance\webkit-navigation-regression.spec.ts:61:24)
+        at C:\Users\laich\Documents\smescanner\.worktrees\smeassistant-local-seo-completed-state-20261018\e2e\acceptance\webkit-navigation-regression.spec.ts:98:5
+
+    Error Context: test-results\webkit-reliability-20261019\ready-navigation\webkit-navigation-regressi-a4028-enticated-action-navigation-webkit\error-context.md
+
+
+  2 failed
+    [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:78:1 › an authenticated fixture can navigate to an action and reload without fetch or hydration failures
+    [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:82:1 › native HTTP behind a rejecting proxy preserves authenticated action navigation

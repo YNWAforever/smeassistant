@@ -8,7 +8,7 @@ describe("allowanceText", () => {
   });
 
   it("says unlimited for paid, in the requested locale", () => {
-    expect(allowanceText("zh-HK", "paid")).toBe("每月不限核准後交付次數");
+    expect(allowanceText("zh-HK", "paid")).toBe("每月次數不限");
   });
 });
 

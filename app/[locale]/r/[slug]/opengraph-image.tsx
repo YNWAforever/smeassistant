@@ -8,8 +8,8 @@ import { reportsRepository } from "@/lib/repositories/reports";
 
 /**
  * Ported verbatim from upstream `apps/web/app/[locale]/r/[slug]/opengraph-image.tsx`
- * → `@sme-scanner/contracts`). It reads the legacy `module_scores` column, not
- * `module_results`, because the share card predates the coverage-aware payload.
+ * → `@sme-scanner/contracts`). Module chips come from `module_results` (legacy
+ * rows fall back to `module_scores`); an unmeasured module gets no chip, never 0.
  *
  * The page itself is `noindex` (see page.tsx); this card exists for deliberate
  * link shares, which noindex does not govern.
@@ -17,7 +17,7 @@ import { reportsRepository } from "@/lib/repositories/reports";
 export const runtime = "nodejs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "SME Scanner visibility report";
+export const alt = "Kinnso OS visibility report";
 
 const RING: Record<ScoreBand, string> = {
   good: "#16a34a",
@@ -55,7 +55,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
             <div style={{ display: "flex", fontSize: 28, color: "#6b7280" }}>/ 100</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", fontSize: 52, fontWeight: 700, color: "#18181b" }}>{card.found ? card.businessName : "SME Scanner"}</div>
+            <div style={{ display: "flex", fontSize: 52, fontWeight: 700, color: "#18181b" }}>{card.found ? card.businessName : "Kinnso OS"}</div>
             <div style={{ display: "flex", fontSize: 30, color: "#6b7280", marginTop: 12 }}>{tagline}</div>
             {card.found && (
               <div style={{ display: "flex", gap: 16, marginTop: 24 }}>
@@ -68,7 +68,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
             )}
           </div>
         </div>
-        <div style={{ display: "flex", color: ACCENT, fontSize: 28, fontWeight: 700, letterSpacing: 1 }}>FIMMICK · SME SCANNER</div>
+        <div style={{ display: "flex", color: ACCENT, fontSize: 28, fontWeight: 700, letterSpacing: 1 }}>KINNSO OS · BY FIMMICK</div>
       </div>
     ),
     { ...size, fonts: fonts.length ? fonts : undefined },

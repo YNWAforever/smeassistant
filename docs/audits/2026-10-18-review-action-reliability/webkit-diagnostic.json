@@ -1,0 +1,31 @@
+{
+  "capturedAt": "2026-10-18T15:26:47.7723119Z",
+  "layer": "Live Playwright WebKit authentication boundary; not a DOM snapshot test",
+  "status": "BLOCKED_AUTHENTICATION",
+  "nodeProcessId": 33784,
+  "browser": "WebKit 26.5",
+  "contextIndex": 0,
+  "contextCount": 1,
+  "pageIndex": 0,
+  "pageCount": 1,
+  "viewport": {
+    "width": 390,
+    "height": 664
+  },
+  "workspace": "SMEAssistant UAT cb1419df",
+  "actionId": "9c2b8cf3-eee3-4d37-9902-98924205aa4a",
+  "appOrigin": "https://smeassistant.vercel.app",
+  "observedLandingPath": "/en/owner/sign-in",
+  "appAuthProxy": "/api/auth",
+  "upstreamAuthOriginStatus": "Previously observed Neon Auth target; not reinitialized in this bounded attempt",
+  "httpRedirectStatus": "NOT_CAPTURED",
+  "agentStartedGoogleFlow": false,
+  "authenticationBypassed": false,
+  "cookieOrTokenTransferred": false,
+  "cookieTokenOtpOrHarExported": false,
+  "authenticatedHydrationRequestsPersistenceOverflow": "NOT_RUN",
+  "authenticatedEnglishReload": "NOT_RUN",
+  "authenticatedChineseReload": "NOT_RUN",
+  "realSafariDevice": "NOT_RUN",
+  "stoppingCondition": "No real UAT session established in the unique identified context. Stop login loop and continue independent local work."
+}

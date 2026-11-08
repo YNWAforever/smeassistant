@@ -3,6 +3,7 @@ import { buildTrendModel, type StoredDiff, type TrendModel } from "@/lib/trends/
 import { localized, type ActionState, type FactType, type LocalizedText } from "@/lib/domain";
 import { loadAuthorizedEvidence } from "@/lib/evidence/load-authorized";
 import type { EvidenceGalleryItem } from "@/lib/report/view-model";
+import { sanitizeReportProof } from "@/lib/report/sanitize-proof";
 import { inLocationScope, type Membership } from "@/lib/auth";
 import { getPool } from "@/lib/db/client";
 import { pauseState } from "@/lib/budgets/pause";
@@ -23,6 +24,8 @@ import { filterSelectedReviews, scannedReviewKey, selectScannedReviews } from "@
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { currentPeriod, type LocationSummary, type WorkspaceContext } from "@/lib/workspace/queries";
 import { monthWindow } from "@/lib/workspace/month-window";
+import type { HomeCopyFollowUp } from "@/lib/workspace/copy-follow-up";
+import { selectHomeReviewFollowUp, type HomeReviewFollowUp } from "@/lib/workspace/home-review-follow-up";
 import { actionListFilters, type DueFilter } from "@/lib/workspace/action-list-filters";
 import { reapStrandedRuns } from "@/lib/workspace/run-reaper";
 import { rowToSnapshot, type ScanDiffRow, type SnapshotRecord } from "@/lib/workspace/snapshots";
@@ -64,11 +67,18 @@ export interface HomeBrief {
   snapshot: SnapshotRecord | null;
   changed: HomeChanged;
   priority: ActionOverview | null;
+  /** The opening of the priority's latest version, so Today shows what the owner is about to check. */
+  priorityPreview?: string | null;
   openActions: ActionOverview[];
   /** Total in the authorized scope; openActions is only the bounded first page. */
   openActionCount?: number;
+  /** Recent applied review reply; completion and its exact saved version stay independent of a new draft. */
+  reviewFollowUp?: HomeReviewFollowUp | null;
+  /** Only a clipboard-confirmed copy creates this question; it does not mean posted. */
+  copyFollowUp?: HomeCopyFollowUp | null;
   proof: HomeProof | null;
-  month: { resolved: number; regressed: number; awaitingApproval: number; completed: number; measured: number };
+  /** `resolved`/`regressed` are null without a comparable diff: unknown, never 0 (guardrail 2). */
+  month: { resolved: number | null; regressed: number | null; awaitingApproval: number; completed: number; measured: number };
   /**
    * Day of the month the location's monthly rescan cadence falls on, or null
    * when no cadence is recorded. Deliberately not a date: nothing dispatches a
@@ -186,6 +196,8 @@ export interface MeasurementRow {
  * `audit_jobs.raw_data` through the same selector.
  */
 export interface ScanInputEvidence {
+  /** Existing sanitized business Maps page, never an exact review URL. */
+  mapsUrl?: string | null;
   key: "reviews_without_response";
   source: "gbp_reviews";
   factType: FactType;
@@ -306,6 +318,8 @@ export interface InsightsModel {
   trend: TrendModel;
   aeoTrend: AeoTrendModel;
   metricCards: MetricCard[];
+  /** True only when the head scan has a comparable diff; the ledger is empty otherwise. */
+  ledgerComparable: boolean;
   ledger: { resolved: string[]; regressed: string[]; decayed: string[] };
   perLocation: InsightsLocationSummary[];
   deliveries: DeliveredWorkRow[];
@@ -414,9 +428,9 @@ const NONE_SAVED = localized("None saved", "尚未儲存", "尚未儲存");
 const FROM_BRAND_SETTINGS = localized("From Brand settings", "來自品牌設定", "來自品牌設定");
 const FROM_WORKSPACE_RECORD = localized("From the workspace record", "來自工作台記錄", "來自工作台紀錄");
 const FROM_LATEST_SCAN = localized("From the latest scan", "來自最新掃描", "來自最新掃描");
-const FROM_ASSETS = localized("From Assets", "來自素材", "來自素材");
+const FROM_ASSETS = localized("From photos and menus", "來自相片同餐牌", "來自照片與菜單");
 const ASSET_RIGHTS_LABEL: Record<string, LocalizedText> = {
-  approved: localized("Approved", "已核准", "已核准"),
+  approved: localized("Approved", "已確認", "已確認"),
   needs_review: localized("Needs review", "需要審閱", "需要審閱"),
   rejected: localized("Rejected", "已拒絕", "已拒絕"),
 };
@@ -437,7 +451,7 @@ async function buildBusinessContext(ctx: WorkspaceContext, row: ActionRow, actio
     { key: "brand_voice", label: localized("Brand voice", "品牌語氣", "品牌語氣"), value: localized(brand.voice, brand.voice), origin: FROM_BRAND_SETTINGS },
     {
       key: "approved_claims",
-      label: localized("Approved claims", "已核准聲稱", "已核准聲明"),
+      label: localized("Approved claims", "已確認聲稱", "已確認聲明"),
       value: brand.approvedClaims.length ? localized(brand.approvedClaims.join(" · "), brand.approvedClaims.join(" · ")) : NONE_SAVED,
       origin: FROM_BRAND_SETTINGS,
     },
@@ -465,8 +479,8 @@ async function buildBusinessContext(ctx: WorkspaceContext, row: ActionRow, actio
     if (provided.text_only === true) {
       rows.push({
         key: "asset_rights",
-        label: localized("Asset", "素材", "素材"),
-        value: localized("Text-only post; no asset attached", "純文字貼文，未附素材", "純文字貼文，未附素材"),
+        label: localized("Photo", "相片", "照片"),
+        value: localized("Text-only post; no asset attached", "純文字帖文，冇附相", "純文字貼文，未附照片"),
         origin: FROM_ASSETS,
       });
     } else {
@@ -474,10 +488,10 @@ async function buildBusinessContext(ctx: WorkspaceContext, row: ActionRow, actio
       const asset = assetId ? await assetRepository().get(ctx.workspace.id, assetId) : null;
       rows.push({
         key: "asset_rights",
-        label: localized("Asset rights", "素材版權", "素材版權"),
+        label: localized("Photo rights", "相片版權", "照片版權"),
         value: asset
           ? { en: `${asset.filename} · ${ASSET_RIGHTS_LABEL[asset.rights_status]?.en ?? asset.rights_status}`, "zh-HK": `${asset.filename} · ${ASSET_RIGHTS_LABEL[asset.rights_status]?.["zh-HK"] ?? asset.rights_status}`, "zh-TW": `${asset.filename} · ${ASSET_RIGHTS_LABEL[asset.rights_status]?.["zh-TW"] ?? asset.rights_status}` }
-          : localized("No asset selected yet", "尚未選擇素材", "尚未選擇素材"),
+          : localized("No asset selected yet", "未揀相", "尚未選擇照片"),
         origin: FROM_ASSETS,
       });
     }
@@ -660,6 +674,14 @@ export async function getIntegrations(ctx: WorkspaceContext, latest?: SnapshotRe
 // Home brief (§3.5.5)
 // ---------------------------------------------------------------------------
 
+/** First ~140 characters of a draft, whitespace collapsed; null when there is no text. */
+export function previewText(body: string | null): string | null {
+  const text = body?.replace(/\s+/g, " ").trim() ?? "";
+  if (!text) return null;
+  const chars = Array.from(text);
+  return chars.length > 140 ? `${chars.slice(0, 140).join("").trimEnd()}…` : text;
+}
+
 export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope): Promise<HomeBrief> {
   const repository = workspaceReadRepository();
   const location = resolveLocation(ctx, scope);
@@ -677,7 +699,8 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
 
   const period = currentPeriod(ctx.workspace.timezone);
   const window = monthWindow(period, ctx.workspace.timezone);
-  const [measurements, draftVersions, completed, schedules] = await read("home", () => Promise.all([
+  const allowedLocationIds = ctx.membership.role === "manager" ? ctx.membership.locationScope : null;
+  const [measurements, draftVersions, completed, schedules, reviewCandidates, copyFollowUp] = await read("home", () => Promise.all([
     // Scoped to the same location as the rest of the brief. These three were
     // workspace-wide while the snapshot, diff, open actions and schedule beside
     // them were location-scoped, so under a location the proof card could show
@@ -688,9 +711,15 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
     repository.draftVersions(workspaceId, location?.id ?? null),
     repository.completedActions(workspaceId, window, location?.id ?? null),
     location?.placeId ? repository.schedules(workspaceId, [location.placeId]) : Promise.resolve([]),
+    repository.homeReviewCandidates(workspaceId, location?.id ?? null, allowedLocationIds),
+    repository.homeCopyFollowUp(workspaceId, location?.id ?? null, allowedLocationIds),
   ]));
   const proofRow = measurements[0] ?? null;
   const drafts = draftVersions.length;
+  const priorityPreview = priority?.latestVersion
+    ? previewText((await read("home", () => repository.versions(workspaceId, [priority.id])))
+      .find((version) => version.id === priority.latestVersion?.id)?.body ?? null)
+    : null;
   const [integrations, evidence] = await Promise.all([getIntegrations(ctx, snapshot), loadHomeEvidence(snapshot?.jobId ?? null)]);
 
   return {
@@ -699,6 +728,11 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
     snapshot,
     changed,
     priority,
+    priorityPreview,
+    copyFollowUp: copyFollowUp ? { ...copyFollowUp, canRecord: ctx.membership.role !== "viewer" && (ctx.membership.role !== "manager" || allowedLocationIds === null || copyFollowUp.locationId !== null && allowedLocationIds.includes(copyFollowUp.locationId)) } : null,
+    reviewFollowUp: selectHomeReviewFollowUp(reviewCandidates, {
+      workspaceId, locationId: location?.id ?? null, allowedLocationIds, role: ctx.membership.role,
+    }),
     openActions,
     openActionCount: openList.counts.all,
     proof: proofRow
@@ -714,8 +748,8 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
         }
       : null,
     month: {
-      resolved: diff?.comparable ? diff.resolved_findings.length : 0,
-      regressed: diff?.comparable ? diff.regressed_findings.length : 0,
+      resolved: diff?.comparable ? diff.resolved_findings.length : null,
+      regressed: diff?.comparable ? diff.regressed_findings.length : null,
       awaitingApproval: drafts,
       completed: completed.length,
       measured: completed.filter((row) => row.measurement_state === "measured").length,
@@ -723,7 +757,8 @@ export async function getHomeBrief(ctx: WorkspaceContext, scope: LocationScope):
     rescanCadenceDay: cadenceDay(schedules[0] ?? null),
     drafts,
     agentStrip: { scout: Boolean(snapshot), priority: openActions.length > 0, drafts, awaiting: drafts },
-    ledger: diff ? { resolved: diff.resolved_findings, regressed: diff.regressed_findings, decayed: diff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
+    // Change only across a comparable pair (guardrail 3); the UI labels these "latest comparable scan".
+    ledger: diff?.comparable ? { resolved: diff.resolved_findings, regressed: diff.regressed_findings, decayed: diff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
     integrations,
     evidence,
   };
@@ -798,10 +833,12 @@ export async function loadScanInputEvidence(
   if (snapshot.workspaceId !== workspaceId) return [];
   if (row.location_id && snapshot.locationId !== row.location_id) return [];
   if (!inLocationScope(membership, snapshot.locationId)) return [];
-  const selection = selectScannedReviews(await db.assistantReviewData(workspaceId, snapshot.jobId));
+  const rawReviewData = await db.assistantReviewData(workspaceId, snapshot.jobId);
+  const selection = selectScannedReviews(rawReviewData);
   if (!selection.sampled.length) return [];
   return [{
     key: "reviews_without_response",
+    mapsUrl: sanitizeReportProof(rawReviewData, []).gbp?.mapsUrl ?? null,
     source: "gbp_reviews",
     factType: "Observed",
     snapshotId: snapshot.id,
@@ -898,6 +935,7 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
       trend: buildTrendModel(null),
       aeoTrend: buildAeoTrendModel([]),
       metricCards: [],
+      ledgerComparable: false,
       ledger: { resolved: [], regressed: [], decayed: [] },
       perLocation,
       deliveries: [],
@@ -936,7 +974,8 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
     trend: buildTrendModel(toStoredDiff(headDiff)),
     aeoTrend: buildAeoTrendModel(aeoRows),
     metricCards: metricCards(head, base, Boolean(headDiff?.comparable)),
-    ledger: headDiff ? { resolved: headDiff.resolved_findings, regressed: headDiff.regressed_findings, decayed: headDiff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
+    ledgerComparable: Boolean(headDiff?.comparable),
+    ledger: headDiff?.comparable ? { resolved: headDiff.resolved_findings, regressed: headDiff.regressed_findings, decayed: headDiff.decayed_findings } : { resolved: [], regressed: [], decayed: [] },
     perLocation,
     deliveries,
   };
@@ -946,8 +985,10 @@ export async function getInsights(ctx: WorkspaceContext, scope: LocationScope): 
 // Activity, calendar, notifications
 // ---------------------------------------------------------------------------
 
-export async function getActivity(ctx: WorkspaceContext, opts: { limit?: number } = {}): Promise<AuditEventRow[]> {
-  return read("activity", () => workspaceReadRepository().activity(ctx.workspace.id, opts.limit ?? 100));
+export async function getActivity(ctx: WorkspaceContext, opts: { limit?: number; verificationFor?: { actionId: string; locationId: string | null } } = {}): Promise<AuditEventRow[]> {
+  return read("activity", () => opts.verificationFor
+    ? workspaceReadRepository().activity(ctx.workspace.id, opts.limit ?? 100, opts.verificationFor)
+    : workspaceReadRepository().activity(ctx.workspace.id, opts.limit ?? 100));
 }
 
 export async function getCalendar(ctx: WorkspaceContext, scope:LocationScope='all'): Promise<CalendarModel> {

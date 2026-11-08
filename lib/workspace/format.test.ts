@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { basisLabel, buildExportText, comparisonReasonText, ordinal } from "./format";
+import { basisLabel, buildExportText, comparisonReasonText, formatDateTime, numericOrNull, ordinal, signed } from "./format";
+
+describe("formatDateTime", () => {
+  it.each([
+    ["en", "31 Oct 2026, 04:09"],
+    ["zh-HK", "2026年10月31日 上午4:09"],
+    ["zh-TW", "2026年10月31日 凌晨4:09"],
+  ] as const)("formats the Preview instant at Singapore wall-clock time in %s", (locale, expected) => {
+    expect(formatDateTime("2026-10-30T20:09:08.000Z", locale, "Asia/Singapore")).toBe(expected);
+    expect(formatDateTime("2026-10-31T04:09:08+08:00", locale, "Asia/Singapore")).toBe(expected);
+  });
+
+  it("honours a different workspace timezone for the same instant", () => {
+    expect(formatDateTime("2026-10-30T20:09:08.000Z", "zh-HK", "America/New_York")).toBe("2026年10月30日 下午4:09");
+  });
+});
 
 describe("ordinal", () => {
   it("covers every day a monthly cadence can fall on", () => {
@@ -19,8 +34,8 @@ describe("comparisonReasonText", () => {
       "INSUFFICIENT_INDEPENDENT_CHANNELS",
       "NO_DIFF",
     ]) {
-      const en = comparisonReasonText(code, false);
-      const zh = comparisonReasonText(code, true);
+      const en = comparisonReasonText(code, "en");
+      const zh = comparisonReasonText(code, "zh-HK");
       expect(en).not.toBe("");
       expect(zh).not.toBe("");
       expect(en).not.toBe(zh);
@@ -33,13 +48,13 @@ describe("comparisonReasonText", () => {
   it("never echoes an unrecognised code back to the owner", () => {
     // The previous Insights catalogue fell through to `reason ?? default`, so a
     // new engine code would have surfaced raw on the page.
-    expect(comparisonReasonText("SOME_FUTURE_CODE", false)).toBe("No comparable scan yet");
-    expect(comparisonReasonText("SOME_FUTURE_CODE", true)).toBe("尚無可比較掃描");
+    expect(comparisonReasonText("SOME_FUTURE_CODE", "en")).toBe("No comparable scan yet");
+    expect(comparisonReasonText("SOME_FUTURE_CODE", "zh-HK")).toBe("未可以同上次比");
   });
 
   it("handles a missing reason", () => {
-    expect(comparisonReasonText(null, false)).toBe("No comparable scan yet");
-    expect(comparisonReasonText(undefined, true)).toBe("尚無可比較掃描");
+    expect(comparisonReasonText(null, "en")).toBe("No comparable scan yet");
+    expect(comparisonReasonText(undefined, "zh-HK")).toBe("未可以同上次比");
   });
 });
 
@@ -112,5 +127,20 @@ describe("buildExportText", () => {
   it("localizes the instructions and disclaimer in zh-HK and zh-TW", () => {
     expect(buildExportText({ ...base, templateKey: "website-basics", locale: "zh-HK" })).toContain("網站編輯器");
     expect(buildExportText({ ...base, templateKey: "website-basics", locale: "zh-TW" })).toContain("網站編輯器");
+  });
+});
+
+describe("numericOrNull", () => {
+  it("keeps a missing value unknown instead of coercing it to 0", () => {
+    expect(numericOrNull(null)).toBeNull();
+    expect(numericOrNull(undefined)).toBeNull();
+    expect(numericOrNull("")).toBeNull();
+    expect(numericOrNull("not a number")).toBeNull();
+    expect(signed(numericOrNull(null), 1)).toBe("—");
+  });
+  it("parses Postgres numerics and keeps a real zero", () => {
+    expect(numericOrNull("40.5")).toBe(40.5);
+    expect(numericOrNull(0)).toBe(0);
+    expect(signed(numericOrNull("-11"), 1)).toBe("-11");
   });
 });

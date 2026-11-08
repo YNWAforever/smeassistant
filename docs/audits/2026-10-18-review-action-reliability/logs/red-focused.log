@@ -1,0 +1,241 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ components/product-ui.test.tsx (8 tests | 1 failed) 1303ms
+   × labels Live as feature availability, without claiming publication 88ms (retry x1)
+ ❯ lib/verify/website-sweep.test.ts (17 tests | 3 failed) 87ms
+     × retains an auditable result and source for 'observed external change' 59ms (retry x1)
+     × retains an auditable result and source for 'no external change observed' 4ms (retry x1)
+     × retains an auditable result and source for 'unavailable source' 3ms (retry x1)
+ ❯ lib/verify/decide.test.ts (11 tests | 3 failed) 17ms
+     × is source_unavailable when the fresh fetch evaluated only some relevant checks 9ms (retry x1)
+     × is source_unavailable when the fresh fetch never evaluated a relevant check 1ms (retry x1)
+     × does not turn partial evidence into a negative verdict when another check still fails 1ms (retry x1)
+ ❯ components/workspace/action-detail-client.test.tsx (98 tests | 1 failed) 15353ms
+     × does not promise that a routine scan can verify a specific Google review reply 231ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/product-ui.test.tsx > labels Live as feature availability, without claiming publication
+ FAIL  components/product-ui.test.tsx > labels Live as feature availability, without claiming publication
+TestingLibraryElementError: Unable to find an element with the text: Feature available. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <span
+      class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground cap-live"
+      data-slot="badge"
+      data-variant="outline"
+    >
+      Live
+    </span>
+  </div>
+</body>
+ ❯ Object.getElementError ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../smeassistant-owner-focus-20261015/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ components/product-ui.test.tsx:30:17
+     28| it("labels Live as feature availability, without claiming publication"…
+     29|   render(<CapabilityBadge value="Live" />);
+     30|   expect(screen.getByText("Feature available", { exact: true })).toBeV…
+       |                 ^
+     31|   expect(screen.queryByText("Live", { exact: true })).toBeNull();
+     32| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+ FAIL  lib/verify/decide.test.ts > decideVerification > is source_unavailable when the fresh fetch evaluated only some relevant checks
+ FAIL  lib/verify/decide.test.ts > decideVerification > is source_unavailable when the fresh fetch evaluated only some relevant checks
+AssertionError: expected 'not_yet' to be 'source_unavailable' // Object.is equality
+
+Expected: "source_unavailable"
+Received: "not_yet"
+
+ ❯ lib/verify/decide.test.ts:70:57
+     68|     const prior = checks({ title: false, meta_description_50_160: true…
+     69|     const fresh = checks({ title: true });
+     70|     expect(decideVerification(THREE, { prior, fresh })).toBe("source_u…
+       |                                                         ^
+     71|   });
+     72|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/16]⎯
+
+ FAIL  lib/verify/decide.test.ts > decideVerification > is source_unavailable when the fresh fetch never evaluated a relevant check
+ FAIL  lib/verify/decide.test.ts > decideVerification > is source_unavailable when the fresh fetch never evaluated a relevant check
+AssertionError: expected 'not_yet' to be 'source_unavailable' // Object.is equality
+
+Expected: "source_unavailable"
+Received: "not_yet"
+
+ ❯ lib/verify/decide.test.ts:77:22
+     75|     // not "it is fixed".
+     76|     const decision = decideVerification(["faq_schema"], { prior: check…
+     77|     expect(decision).toBe("source_unavailable");
+       |                      ^
+     78|   });
+     79|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/16]⎯
+
+ FAIL  lib/verify/decide.test.ts > decideVerification > does not turn partial evidence into a negative verdict when another check still fails
+ FAIL  lib/verify/decide.test.ts > decideVerification > does not turn partial evidence into a negative verdict when another check still fails
+AssertionError: expected 'not_yet' to be 'source_unavailable' // Object.is equality
+
+Expected: "source_unavailable"
+Received: "not_yet"
+
+ ❯ lib/verify/decide.test.ts:84:9
+     82|       prior: checks({ title: false, single_h1: false }),
+     83|       fresh: checks({ title: false }),
+     84|     })).toBe("source_unavailable");
+       |         ^
+     85|   });
+     86| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/16]⎯
+
+ FAIL  lib/verify/website-sweep.test.ts > runWebsiteVerification > retains an auditable result and source for 'observed external change'
+ FAIL  lib/verify/website-sweep.test.ts > runWebsiteVerification > retains an auditable result and source for 'observed external change'
+AssertionError: expected "vi.fn()" to be called with arguments: [ [ ObjectContaining{…} ], …(1) ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    [
+-     ObjectContaining {
++     {
+        "id": "act-1",
+-       "verification": ObjectContaining {
+-         "checkedAt": "2026-10-18T02:00:00.000Z",
+-         "checks": [
+-           "faq_schema",
+-         ],
+-         "outcome": "verified",
+-         "sourceUrl": "https://example.test",
+-       },
+        "workspace_id": "ws-1",
+      },
+    ],
+    "2026-10-18T02:00:00.000Z",
+  ]
+
+
+Number of calls: 1
+
+ ❯ lib/verify/website-sweep.test.ts:56:27
+     54|     const now = new Date("2026-10-18T02:00:00Z");
+     55|     await runWebsiteVerification(r as never, transport as never, { now…
+     56|     expect(r.markChecked).toHaveBeenCalledWith([expect.objectContainin…
+       |                           ^
+     57|       id: "act-1",
+     58|       workspace_id: "ws-1",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/16]⎯
+
+ FAIL  lib/verify/website-sweep.test.ts > runWebsiteVerification > retains an auditable result and source for 'no external change observed'
+ FAIL  lib/verify/website-sweep.test.ts > runWebsiteVerification > retains an auditable result and source for 'no external change observed'
+AssertionError: expected "vi.fn()" to be called with arguments: [ [ ObjectContaining{…} ], …(1) ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    [
+-     ObjectContaining {
++     {
+        "id": "act-1",
+-       "verification": ObjectContaining {
+-         "checkedAt": "2026-10-18T02:00:00.000Z",
+-         "checks": [
+-           "faq_schema",
+-         ],
+-         "outcome": "not_yet",
+-         "sourceUrl": "https://example.test",
+-       },
+        "workspace_id": "ws-1",
+      },
+    ],
+    "2026-10-18T02:00:00.000Z",
+  ]
+
+
+Number of calls: 1
+
+ ❯ lib/verify/website-sweep.test.ts:56:27
+     54|     const now = new Date("2026-10-18T02:00:00Z");
+     55|     await runWebsiteVerification(r as never, transport as never, { now…
+     56|     expect(r.markChecked).toHaveBeenCalledWith([expect.objectContainin…
+       |                           ^
+     57|       id: "act-1",
+     58|       workspace_id: "ws-1",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/16]⎯
+
+ FAIL  lib/verify/website-sweep.test.ts > runWebsiteVerification > retains an auditable result and source for 'unavailable source'
+ FAIL  lib/verify/website-sweep.test.ts > runWebsiteVerification > retains an auditable result and source for 'unavailable source'
+AssertionError: expected "vi.fn()" to be called with arguments: [ [ ObjectContaining{…} ], …(1) ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    [
+-     ObjectContaining {
++     {
+        "id": "act-1",
+-       "verification": ObjectContaining {
+-         "checkedAt": "2026-10-18T02:00:00.000Z",
+-         "checks": [
+-           "faq_schema",
+-         ],
+-         "outcome": "source_unavailable",
+-         "sourceUrl": "https://example.test",
+-       },
+        "workspace_id": "ws-1",
+      },
+    ],
+    "2026-10-18T02:00:00.000Z",
+  ]
+
+
+Number of calls: 1
+
+ ❯ lib/verify/website-sweep.test.ts:56:27
+     54|     const now = new Date("2026-10-18T02:00:00Z");
+     55|     await runWebsiteVerification(r as never, transport as never, { now…
+     56|     expect(r.markChecked).toHaveBeenCalledWith([expect.objectContainin…
+       |                           ^
+     57|       id: "act-1",
+     58|       workspace_id: "ws-1",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/16]⎯
+
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > does not promise that a routine scan can verify a specific Google review reply
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > does not promise that a routine scan can verify a specific Google review reply
+AssertionError: expected ' Back to actionsOwnerOnlineHighApplie…' to contain 'Current sources cannot verify this sp…'
+
+Expected: "Current sources cannot verify this specific Google review reply."
+Received: " Back to actionsOwnerOnlineHighApplied (reported)LiveAction titleAction summaryYik Yamabout 10 minutesUnassignedDirect next stepWait for the next scanDue —View source and workflowScan evidenceGoogle Business Profile · 1 Sept 2026, 18:00FindingResponse rate fell to 18%ActionPriority factors recordedAgent inputInputs ready5RunNot run yet6Output versionNo version yet7ApprovalNo version yet8ExportAvailable after exact-version approval9MeasurementNot eligibleDraft & approvalSource evidenceWorkflow statesVersion & audit historyGenerated outputReview reply workflowNo version yetObservedSource findingResponse rate fell to 18%1 Sept 2026, 18:00 · Source preserved as evidenceDraft0 charactersBrand guardrail checkGenerated content uses owner-confirmed facts only.Not checked This version was not agent-checked (edited by hand).Do not add ingredients, allergens, pricing or offer dates unless the owner confirmed them.Revise with operator as a new version Generate a draft Save manual edits as a new versionNo saved draft yetYou marked this applied on — · not independently verifiedWithdrawing takes back the claim. The record of it stays in activity. Withdraw this markApproval decisionOne safe owner decisionApproval applies only to this immutable version. Any edit must be saved as a new version and approved again.Reviewer comment Approve No version yet Request changes Reject draftDeliveryExport the approved versionRequires connectionNo verified direct-publishing connector is present. One approved delivery is counted only after exact-version approval and export. Export approved version Copy text Publish directly · Connection requiredNo version yet · No version yetApproval does not publish; usage counts after export Save Approve"
+
+ ❯ components/workspace/action-detail-client.test.tsx:156:30
+    154|         auditRows={[]} locations={[]} approvedAssets={[]} />,
+    155|     );
+    156|     expect(root.textContent).toContain("Current sources cannot verify …
+       |                              ^
+    157|     expect(root.querySelector(".action-detail-next strong")?.textConte…
+    158|     expect(root.querySelector(".action-detail-badges")?.textContent).t…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/16]⎯
+
+
+ Test Files  4 failed (4)
+      Tests  8 failed | 126 passed (134)
+   Start at  23:31:41
+   Duration  36.97s (transform 3.54s, setup 3.15s, import 14.71s, tests 16.76s, environment 26.04s)

@@ -1,0 +1,26 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ components/workspace/action-detail-client.test.tsx (108 tests | 1 failed | 107 skipped) 669ms
+     × offers version-bound owner checks after a review reply was applied, without claiming independent verification 663ms (retry x1)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > offers version-bound owner checks after a review reply was applied, without claiming independent verification
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > offers version-bound owner checks after a review reply was applied, without claiming independent verification
+AssertionError: expected null not to be null
+ ❯ components/workspace/action-detail-client.test.tsx:152:59
+    150|     value.versions = [versionRow({ id: "version-2", version_no: 2, app…
+    151|     const root = verificationMarkup(value);
+    152|     expect(root.querySelector(".owner-review-check")).not.toBeNull();
+       |                                                           ^
+    153|     expect(root.querySelector(".action-verification-result")?.textCont…
+    154|     expect(root.querySelector(".owner-review-check")?.textContent).toC…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 107 skipped (108)
+   Start at  16:03:41
+   Duration  22.27s (transform 910ms, setup 5.03s, import 5.01s, tests 669ms, environment 10.59s)

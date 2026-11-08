@@ -1,0 +1,14 @@
+
+Running 2 tests using 1 worker
+
+
+
+(node:49488) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/2] [webkit] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+(node:15372) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[2/2] [chromium] › e2e\acceptance\audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+  2 passed (3.6m)

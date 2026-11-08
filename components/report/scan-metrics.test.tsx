@@ -53,7 +53,7 @@ describe("scan metrics", () => {
   expect(text).toContain("Recorded comments: 3");
   expect(text).toContain("Historical zeros may mean missing counts");
   expect(text).toContain("No confirmed appearance in captured surface");
-  expect(text).toContain("Observation date unavailable");
+  expect(text).toContain("Date not recorded");
  });
 });
 

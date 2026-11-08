@@ -9,6 +9,7 @@ import {
   resolveLocaleRedirect,
   signInRedirectFor,
 } from "@/lib/funnel/locale-redirect";
+import { resolveWorkspaceRedirect } from "@/lib/workspace/route-redirects";
 
 /** Locale routing and fresh managed-session gate; application routes enforce membership. */
 export async function proxy(request: NextRequest) {
@@ -19,6 +20,9 @@ export async function proxy(request: NextRequest) {
     url.pathname = legacy;
     return NextResponse.redirect(url, 308);
   }
+  // Phase 4: old workspace pages moved under the five destinations; the query is kept.
+  const moved = resolveWorkspaceRedirect(pathname, search);
+  if (moved) return NextResponse.redirect(new URL(moved, request.url), 308);
   const target = resolveLocaleRedirect(pathname);
   if (target) {
     const url = request.nextUrl.clone();

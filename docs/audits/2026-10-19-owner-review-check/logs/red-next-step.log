@@ -1,0 +1,29 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ components/workspace/action-detail-client.test.tsx (110 tests | 1 failed | 109 skipped) 118ms
+     × advances the next step after an owner check while retaining unknown independent verification 116ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/workspace/action-detail-client.test.tsx > focused draft review > advances the next step after an owner check while retaining unknown independent verification
+AssertionError: expected 'Check the reply in Google' to be 'Await independent confirmation' // Object.is equality
+
+Expected: "Await independent confirmation"
+Received: "Check the reply in Google"
+
+ ❯ components/workspace/action-detail-client.test.tsx:165:75
+    163|       recordedAt: "2026-10-19T00:00:00Z", independent: false }] };
+    164|     const root = verificationMarkup(value, [], "en", context);
+    165|     expect(root.querySelector(".action-detail-next strong")?.textConte…
+       |                                                                           ^
+    166|     expect(root.querySelector(".action-verification-result")?.textCont…
+    167|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 109 skipped (110)
+   Start at  16:39:59
+   Duration  2.46s (transform 635ms, setup 257ms, import 1.37s, tests 118ms, environment 531ms)

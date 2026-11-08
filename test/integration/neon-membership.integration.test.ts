@@ -149,11 +149,10 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Neon membership boundaries
   expect(await claims.attachJob(id,a)).toBe(false);
   expect([a,b]).toContain((await claims.jobBySlug("claim-1"))?.workspace_id);
  });
- it("chooses earliest non-null lead and deduplicates open access requests", async () => {
+ it("checks recorded lead recipients and deduplicates open access requests", async () => {
   const user=await resolveApplicationUser(identity());
   const id=(await runtime.query("INSERT INTO audit_jobs(business_name,share_slug) VALUES('Shop','claim-1') RETURNING id")).rows[0].id;
   await runtime.query("INSERT INTO leads(job_id,email,created_at) VALUES($1,NULL,'2000-01-01'),($1,'first@example.test','2001-01-01'),($1,'later@example.test','2002-01-01')",[id]);
-  expect(await claims.firstLeadEmail(id)).toBe("first@example.test");
   expect(await claims.isLeadRecipient("claim-1","later@example.test")).toBe(true);
   expect(await claims.isLeadRecipient("claim-1","LATER@Example.test")).toBe(true);
   expect(await claims.isLeadRecipient("claim-1","stranger@example.test")).toBe(false);

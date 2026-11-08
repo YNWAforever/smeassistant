@@ -38,12 +38,12 @@ const COPY: Record<MailKind, Record<Locale, MailCopy>> = {
     },
     "zh-HK": {
       subject: "重新掃描完成：{business}",
-      body: "{business} 的最新掃描已完成。開啟工作台查看更新後的證據及行動：{workspaceUrl}",
+      body: "{business} 的最新掃描已完成。開啟工作台查看更新後的證據及待辦：{workspaceUrl}",
       footer: "你收到此電郵，是因為你在此工作台開啟了重新掃描電郵。停止接收：{unsubscribeUrl}",
     },
     "zh-TW": {
       subject: "重新掃描完成：{business}",
-      body: "{business} 的最新掃描已完成。開啟工作台查看更新後的證據與行動：{workspaceUrl}",
+      body: "{business} 的最新掃描已完成。開啟工作台查看更新後的證據與待辦：{workspaceUrl}",
       footer: "你收到這封電子郵件，是因為你在這個工作台開啟了重新掃描通知。停止接收：{unsubscribeUrl}",
     },
   },

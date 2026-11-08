@@ -19,7 +19,13 @@ async function healthy(url:string,child?:ChildProcess) {
  for(let i=0;i<120;i++){if(child?.exitCode!=null) throw new Error("Acceptance Next process exited before readiness");try{if((await fetch(url,{signal:AbortSignal.timeout(1000)})).ok)return;}catch{}await new Promise(r=>setTimeout(r,500));}
  throw new Error(`Acceptance service not healthy: ${new URL(url).origin}`);
 }
-export async function startEnvironment(requestedPort?:number):Promise<AcceptanceEnvironment> {
+export interface AcceptanceDatabaseGate {
+ tmpfs?:boolean;
+ quiet?:boolean;
+ beforeUse(fixture:NeonDatabaseFixture):Promise<void>;
+ runtimeReady?(databaseUrl:string):void;
+}
+export async function startEnvironment(requestedPort?:number, databaseGate?:AcceptanceDatabaseGate):Promise<AcceptanceEnvironment> {
  for(const file of [".env",".env.local",".env.development",".env.development.local"])if(existsSync(file))throw new Error(`Acceptance refuses ${file}`);
  let fixture:NeonDatabaseFixture|undefined,next:ChildProcess|undefined;
  let appPortReservation:ReservedLoopbackPort|undefined;
@@ -37,20 +43,25 @@ export async function startEnvironment(requestedPort?:number):Promise<Acceptance
     // Hold the port while the database, Auth and LLM fixtures bind their own ports.
     appPortReservation=await reserveLoopbackPort(requestedPort);
     const appPort=appPortReservation.port;
-    fixture=await startNeonDatabaseFixture("test");
+    fixture=await startNeonDatabaseFixture("test",{tmpfs:databaseGate?.tmpfs});
+    // A caller may require independently inspected identity before migrations
+    // or any database client. The existing exact-ID cleanup still owns failure.
+    await databaseGate?.beforeUse(fixture);
     owned.set(fixture.containerName,fixture.databaseName);
     const owner=new Pool({connectionString:fixture.databaseUrl,connectionTimeoutMillis:10_000,statement_timeout:30_000});
     try {await owner.query("CREATE ROLE sme_app_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS");await applyMigrations(owner);await owner.query("CREATE ROLE fixture_runtime LOGIN PASSWORD 'fixture-only' IN ROLE sme_app_runtime");}finally{await owner.end();}
     const runtime=new URL(fixture.databaseUrl);runtime.username="fixture_runtime";runtime.password="fixture-only";
+    databaseGate?.runtimeReady?.(runtime.href);
     const app=`http://localhost:${appPort}`,secret=randomBytes(32).toString("hex");
     identity=await startIdentityServer(app,secret);llm=await startLlmServer();
     mkdirSync("test-results",{recursive:true});
-    const output=createWriteStream("test-results/fixture-next.log",{flags:"a"});
+    const output=databaseGate?.quiet ? null : createWriteStream("test-results/fixture-next.log",{flags:"a"});
     await appPortReservation.release();
     // Local shared dependency junctions are outside Turbopack's filesystem root.
     // Opt in explicitly for that checkout; CI keeps its default bundler.
     next=spawn(process.execPath,["node_modules/next/dist/bin/next","dev",...(process.env.SME_TEST_WEBPACK==="1"?["--webpack"]:[]),"--hostname","127.0.0.1","--port",String(appPort)],{env:isolatedEnv({app,api:identity.url,llm:llm.url,databaseUrl:runtime.href,identitySecret:secret}),stdio:["ignore","pipe","pipe"],windowsHide:true,detached:process.platform!=="win32"});
-    next.stdout?.pipe(output);next.stderr?.pipe(output);next.once("exit",()=>output.end());
+    if(output){next.stdout?.pipe(output);next.stderr?.pipe(output);next.once("exit",()=>output.end());}
+    else {next.stdout?.resume();next.stderr?.resume();}
     await healthy(`${app}/en/owner/sign-in`,next);
     const control = async (path: string, body: object) => {
       const response = await fetch(`${identity!.url}${path}`, { method: "POST", headers: { authorization: `Bearer ${secret}`, "content-type": "application/json", "x-fixture-origin": app }, body: JSON.stringify(body) });

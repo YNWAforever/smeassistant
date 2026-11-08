@@ -1,0 +1,10 @@
+
+Running 2 tests using 1 worker
+
+
+
+(node:49920) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/2] [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:81:1 › an authenticated fixture can navigate to an action and reload without fetch or hydration failures
+[2/2] [webkit] › e2e\acceptance\webkit-navigation-regression.spec.ts:85:1 › native HTTP behind a rejecting proxy preserves authenticated action navigation
+  2 passed (1.0m)

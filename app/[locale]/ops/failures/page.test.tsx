@@ -52,7 +52,7 @@ describe("/ops/failures", () => {
     expect(root.textContent).toContain("COLLECTION_FAILED");
     expect(root.textContent).toContain("SCAN-3FA85F");
     expect(root.textContent).toContain("kam-man-house");
-    expect(root.textContent).toContain("The scan stopped responding after three attempts.");
+    expect(root.textContent).toContain("The scan got stuck after three tries.");
     expect(root.textContent).toContain("Release for one more attempt");
     expect(root.querySelector('a[href*="/owner/"]')).toBeNull();
   });

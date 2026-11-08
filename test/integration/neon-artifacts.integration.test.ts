@@ -137,6 +137,34 @@ describe.runIf(process.env.NEON_INTEGRATION === '1')('Neon artifact persistence 
   expect((await runtime.query("SELECT count(*)::int AS n FROM audit_events WHERE workspace_id=$1 AND event='version.approved'",[workspace])).rows[0].n).toBe(1);
   expect((await runtime.query("SELECT count(*)::int AS n FROM audit_events WHERE workspace_id=$1 AND event='delivery.exported'",[workspace])).rows[0].n).toBe(1);
  });
+ it('does not inherit approval or charge a delivery when an edited approved reply is exported before reapproval', async () => {
+  const {workspace,action}=await setup(),repo=artifactRepository(runtime);
+  const first=await repo.createOutputVersion(input(action,'Approved original reply'));
+  await repo.approveOutputVersion(first.version_id,actor,'Reviewed version 1');
+  const originalApproval=(await runtime.query(
+   'SELECT approval_state,approved_by,approved_at,reviewer_comment FROM output_versions WHERE id=$1',[first.version_id],
+  )).rows[0];
+  const second=await repo.createOutputVersion({...input(action,'Edited reply still awaiting approval'),baseVersionId:first.version_id});
+  const snapshot=async()=>({
+   versions:(await runtime.query('SELECT id,version_no,body,approval_state,approved_by,approved_at,delivery_state,first_exported_at FROM output_versions WHERE action_id=$1 ORDER BY version_no',[action])).rows,
+   deliveries:(await runtime.query('SELECT id FROM deliveries WHERE workspace_id=$1 ORDER BY id',[workspace])).rows,
+   usage:(await runtime.query('SELECT period,approved_deliveries,allowance FROM workspace_usage WHERE workspace_id=$1 ORDER BY period',[workspace])).rows,
+   audit:(await runtime.query('SELECT id,event,entity_id,payload FROM audit_events WHERE workspace_id=$1 ORDER BY id',[workspace])).rows,
+  });
+  const before=await snapshot();
+  expect(second.version_no).toBe(2);
+  expect(before.versions[1]).toMatchObject({
+   approval_state:'draft',approved_by:null,approved_at:null,delivery_state:'not_requested',first_exported_at:null,
+  });
+  expect(before.deliveries).toEqual([]);
+  expect(before.usage).toEqual([]);
+  expect(before.audit.filter(row=>row.event==='version.approved')).toHaveLength(1);
+  await expect(repo.exportOutputVersion(second.version_id,actor,'export','unapproved-edited-reply')).rejects.toThrow('not_approved');
+  expect(await snapshot()).toEqual(before);
+  expect((await runtime.query(
+   'SELECT approval_state,approved_by,approved_at,reviewer_comment FROM output_versions WHERE id=$1',[first.version_id],
+  )).rows[0]).toEqual(originalApproval);
+ });
  it('deduplicates concurrent and response-lost manual saves without allowing a different stale first edit', async () => {
   const {workspace,action}=await setup(),repo=artifactRepository(runtime);
   const request=input(action,'First saved text');

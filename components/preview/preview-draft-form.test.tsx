@@ -10,7 +10,7 @@ const LOCALES: PrototypeLocale[] = ["en", "zh-HK", "zh-TW"];
 const REASONS = ["already_used", "job_limit", "ip_limit", "daily_limit", "budget", "paused", "unavailable", "invalid_input"] as const;
 const REVIEW = "The roast goose was cold and the wait was long. 燒鵝凍咗 SECRET-INPUT";
 
-// The workspace guardrail copy (components/workspace/action-detail-client.tsx), worded for a visitor
+// The workspace guardrail copy (lib/copy-action.ts), worded for a visitor
 // who has nothing to approve.
 const WARNING_TEXT = {
   compensation_promise: {
@@ -142,8 +142,8 @@ describe("PreviewDraftForm", () => {
     expect(copy["zh-HK"].funnel.preview.notKept).toBe("此草稿不會保留，如需要請立即複製。");
     expect(copy["zh-TW"].funnel.preview.notKept).toBe("此草稿不會保留，如需要請立即複製。");
     expect(copy.en.funnel.preview.cta).toBe("Verify ownership to save and approve drafts");
-    expect(copy["zh-HK"].funnel.preview.cta).toBe("驗證擁有權以儲存及核准草稿");
-    expect(copy["zh-TW"].funnel.preview.cta).toBe("驗證擁有權以儲存並核准草稿");
+    expect(copy["zh-HK"].funnel.preview.cta).toBe("驗證擁有權以儲存及確認草稿");
+    expect(copy["zh-TW"].funnel.preview.cta).toBe("驗證擁有權以儲存並確認草稿");
     expect(copy.en.funnel.preview.submit).toBe("Draft a reply");
     expect(copy["zh-HK"].funnel.preview.submit).toBe("草擬回覆");
     expect(copy["zh-TW"].funnel.preview.submit).toBe("草擬回覆");

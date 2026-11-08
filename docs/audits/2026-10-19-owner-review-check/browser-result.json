@@ -1,0 +1,6 @@
+{
+  "command": "corepack pnpm exec playwright test --config playwright.owner-check.config.ts --output test-results/owner-review-check-20261019/browser-final",
+  "exitCode": 0,
+  "finishedAt": "2026-10-19T08:54:21.2479512Z",
+  "layer": "Offline loopback memory HTTP fixture; no real DB/Auth/Google"
+}

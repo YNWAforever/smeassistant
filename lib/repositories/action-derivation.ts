@@ -9,6 +9,7 @@ import { resolveEvidenceInputs } from '../workspace/evidence-inputs';
 import { completionId } from '../workspace/completion-id';
 import { WEBSITE_FAQ_TRIGGER, type TemplateKey } from '../workspace/templates';
 import { OPEN_ACTION_STATES } from '../domain';
+import { recurringActionParent, type CompletedAction } from '../workspace/action-recurrence';
 
 function asStrings(value:unknown):string[]{return Array.isArray(value)?value.filter((v):v is string=>typeof v==='string'):[];}
 
@@ -73,9 +74,48 @@ export function actionDerivationRepository(db:Pick<Pool,'query'>):ActionDerivati
   // enough here, though runtime generation always has a usable value regardless.
   const resolvedInputs=resolveEvidenceInputs({rawData:job.raw_data,brand:brand?{voice:brand.voice??'warm',languages:asStrings(brand.languages),approvedClaims:asStrings(brand.approved_claims)}:null});
   const derived=deriveActions({snapshot,findings,latestDiff:diff,brandProfileExists:Boolean(brand),googleConnection:google,industry:workspace?.industry??null,existingDrafts:new Set(drafts.map(row=>row.template_key)),resolvedInputs,now:opts.now});
+  // The partial unique index intentionally leaves completed history alone.
+  // Check that history before inserting, otherwise a retry of the very same
+  // scan creates a fresh reminder immediately after the owner completes it.
+  // Lock existing rows as well as the derivation scope so a concurrent owner
+  // completion cannot turn an expected open upsert into a new insertion.
+  type PriorAction=CompletedAction & {action_state:string;evidence:Record<string,unknown>|null};
+  const history=(await db.query<PriorAction>(`SELECT a.id,a.workspace_id,a.location_id,a.template_key,a.action_state,
+   a.completed_at::text,a.source_finding_keys,a.evidence FROM actions a
+   WHERE a.workspace_id=$1 AND a.location_id IS NOT DISTINCT FROM $2::uuid
+   AND a.template_key=ANY($3::text[]) AND (a.action_state='completed' OR a.action_state=ANY($4::text[]))
+   ORDER BY a.completed_at DESC NULLS LAST,a.updated_at DESC,a.id DESC FOR UPDATE OF a`,
+  [ws,loc,derived.filter(action=>action.source==='finding').map(action=>action.templateKey),OPEN_ACTION_STATES])).rows;
+  let baseline:Awaited<ReturnType<typeof loadSnapshotById>>=null;
+  let baselineStartedAt:string|null=null;
+  let baselineKeys:ReadonlySet<string>=new Set();
+  if(snapshot.comparableTo && history.some(action=>action.action_state==='completed')) {
+   baseline=await loadSnapshotById(snapshots,snapshot.comparableTo);
+   if(baseline && baseline.workspaceId===ws && baseline.locationId===loc) {
+    const baseJob=await snapshots.job(baseline.jobId);
+    if(baseJob?.workspace_id===ws && baseJob.location_id===loc) {
+     baselineStartedAt=baseJob.created_at;
+     baselineKeys=new Set((await snapshots.findings(baseline.jobId)).map(row=>row.finding_key));
+    }
+   }
+  }
   const result:DerivationResult={created:0,updated:0,completed:0,expired:0};
   const now=(opts.now??new Date()).toISOString();
   for(const action of derived) {
+   let followUpOfActionId:string|null=null;
+   if(action.source==='finding') {
+    const prior=history.filter(row=>row.template_key===action.templateKey);
+    const open=prior.find(row=>row.action_state!=='completed');
+    const completed=prior.find(row=>row.action_state==='completed');
+    if(open) {
+     const parent=open.evidence?.followUpOfActionId;
+     if(typeof parent==='string' && prior.some(row=>row.id===parent && row.action_state==='completed'))followUpOfActionId=parent;
+    } else if(completed) {
+     followUpOfActionId=recurringActionParent({action,completed,snapshot,baseline,baselineScanStartedAt:baselineStartedAt,baselineFindingKeys:baselineKeys,diff});
+     if(!followUpOfActionId)continue;
+    }
+   }
+   const evidence={...action.evidence,...(followUpOfActionId?{followUpOfActionId}:{})};
    const row=(await db.query<{created:boolean}>(`INSERT INTO actions(workspace_id,location_id,template_key,source,source_finding_keys,source_snapshot_id,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,required_inputs,capability,dedupe_key,action_state,measurement_state,updated_at)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'not_eligible',$18)
     ON CONFLICT(dedupe_key) WHERE action_state NOT IN ('completed','dismissed','cancelled','expired') DO UPDATE SET
@@ -102,7 +142,7 @@ export function actionDerivationRepository(db:Pick<Pool,'query'>):ActionDerivati
                    WHERE COALESCE(actions.provided_inputs->>k.key,'')='')
       THEN 'needs_input' ELSE actions.action_state END
     WHERE actions.workspace_id=EXCLUDED.workspace_id AND actions.location_id IS NOT DISTINCT FROM EXCLUDED.location_id AND actions.template_key=EXCLUDED.template_key
-    RETURNING (xmax=0) AS created`,[ws,loc,action.templateKey,action.source,action.sourceFindingKeys,snapshotId,JSON.stringify(action.title),JSON.stringify(action.summary),JSON.stringify(action.evidence),action.priority,action.priorityScore,JSON.stringify(action.priorityFactors),action.effortMinutes,JSON.stringify(action.requiredInputs),action.capability,action.dedupeKey,action.requiredInputs.length?'needs_input':'recommended',now])).rows[0];
+    RETURNING (xmax=0) AS created`,[ws,loc,action.templateKey,action.source,action.sourceFindingKeys,snapshotId,JSON.stringify(action.title),JSON.stringify(action.summary),JSON.stringify(evidence),action.priority,action.priorityScore,JSON.stringify(action.priorityFactors),action.effortMinutes,JSON.stringify(action.requiredInputs),action.capability,action.dedupeKey,action.requiredInputs.length?'needs_input':'recommended',now])).rows[0];
    if(!row)throw new Error('derivation_scope_mismatch');
    if(row.created)result.created++;else result.updated++;
   }

@@ -19,7 +19,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       SCAN_SOURCES: fixture
       VITEST_MAX_WORKERS: 1
@@ -73,8 +73,14 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: First-load JS budget per route
+        run: pnpm test:js-budget
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Conversation Stage 1 (offline real components)
+        run: pnpm e2e:conversation
 
       - name: End-to-end tests
         run: pnpm e2e

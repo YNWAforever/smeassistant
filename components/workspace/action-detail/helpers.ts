@@ -1,0 +1,60 @@
+import { copy, type PrototypeLocale } from "@/lib/copy"
+import type { VersionRow } from "@/lib/workspace/queries-pages"
+
+// Mutation controls stay disabled until their client event handlers are attached.
+export const subscribeHydration = () => () => {}
+export const clientHydrated = () => true
+export const serverHydrated = () => false
+
+export function subscribeOnline(callback: () => void) {
+  window.addEventListener("online", callback)
+  window.addEventListener("offline", callback)
+  return () => {
+    window.removeEventListener("online", callback)
+    window.removeEventListener("offline", callback)
+  }
+}
+
+export function runProgress(state: string | undefined): number {
+  if (state === "queued") return 20
+  if (state === "running") return 64
+  if (state === "failed" || state === "timed_out" || state === "cancelled") return 0
+  return state ? 100 : 0
+}
+
+/**
+ * Who wrote this version. Three-way rather than two, because "the operator
+ * drafted it" and "an agent run produced it" are different provenance and both
+ * differ from a hand edit -- and a version carries an approval, so the label is
+ * an accountability claim, not decoration.
+ */
+export function originLabel(origin: VersionRow["origin"], locale: PrototypeLocale): string {
+  const t = copy[locale].actionTabs.origin
+  if (origin === "agent_run") return t.agent_run
+  if (origin === "assistant") return t.assistant
+  return t.member
+}
+
+/**
+ * What the input form PATCHes into provided_inputs, and the run-only extras.
+ * Choosing "text only" persists `text_only: true` beside the
+ * `asset_or_text_only: "text_only"` marker: the marker alone never satisfies
+ * the server's asset rule (only `text_only === true` or an approved asset id
+ * does), so without the flag a later regenerate or assistant draft would be
+ * blocked again on a decision the owner already made.
+ */
+export function ownerInputPatch(
+  neededKeys: readonly string[],
+  inputValues: Readonly<Record<string, string>>,
+): { provided: Record<string, unknown>; runInputs: Record<string, unknown> } {
+  const provided: Record<string, unknown> = {}
+  const runInputs: Record<string, unknown> = {}
+  for (const key of neededKeys) {
+    const value = inputValues[key] ?? ""
+    if (key === "asset_or_text_only") {
+      if (value === "text_only") { provided[key] = "text_only"; provided.text_only = true }
+      else if (value) { provided[key] = "asset"; provided.asset_id = value; runInputs.asset_id = value }
+    } else if (value.trim()) provided[key] = value.trim()
+  }
+  return { provided, runInputs }
+}

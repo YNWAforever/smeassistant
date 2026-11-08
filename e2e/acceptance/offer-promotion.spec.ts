@@ -16,7 +16,7 @@ async function clickUntil(target: Locator, opened: Locator) {
   }).toPass({ timeout: 60000 });
 }
 
-// zh-HK strings, from lib/copy-workspace.ts (offers) and components/workspace/action-detail-client.tsx.
+// zh-HK strings, from lib/copy-workspace.ts (offers) and lib/copy-action.ts.
 const OFFER_CHANGED = "優惠在這份草稿撰寫後已更改。請按目前的優惠重新生成草稿。";
 
 test("an offer becomes two drafts, one is approved and exported, and an edited offer refuses the stale draft", async ({ page, merchant, environment }) => {
@@ -25,7 +25,7 @@ test("an offer becomes two drafts, one is approved and exported, and an edited o
   expect(used()).toBe("0");
 
   // 1. Create an offer (HKD 1280, today through today + 14) and confirm it.
-  await page.goto(`/zh-HK/owner/${merchant.slug}/offers`);
+  await page.goto(`/zh-HK/owner/${merchant.slug}/actions/new?mode=offer`);
   await clickUntil(page.getByRole("button", { name: "新增優惠" }), page.locator("#offer-title"));
   await page.locator("#offer-location").selectOption({ label: "Primary" });
   await page.locator("#offer-title").fill("Autumn tasting set");
@@ -52,7 +52,7 @@ test("an offer becomes two drafts, one is approved and exported, and an edited o
   await card.getByRole("button", { name: "建立草稿", exact: true }).click();
   const rows = card.locator(".evidence-list li");
   await expect(rows).toHaveCount(2);
-  await expect(card.getByText("草稿已備妥")).toHaveCount(2, { timeout: 90000 });
+  await expect(card.getByText("草稿已寫好")).toHaveCount(2, { timeout: 90000 });
   const instagram = rows.filter({ hasText: "Instagram" }).getByRole("link", { name: "開啟草稿" });
   const google = rows.filter({ hasText: "Google" }).getByRole("link", { name: "開啟草稿" });
   const instagramHref = (await instagram.getAttribute("href"))!;
@@ -63,17 +63,19 @@ test("an offer becomes two drafts, one is approved and exported, and an edited o
 
   // 3. Approve and export the Instagram draft: usage goes up by exactly one.
   await page.goto(instagramHref);
-  await expect(page.getByRole("button", { name: "核准第 1 版" }).first()).toBeEnabled();
-  await clickUntil(page.getByRole("button", { name: "核准第 1 版" }).first(), page.getByRole("dialog"));
-  await page.getByRole("dialog").getByRole("button", { name: "核准第 1 版" }).click();
-  await expect(page.getByRole("button", { name: /匯出已核准版本/ }).first()).toBeEnabled();
+  await expect(page.locator(".approval-panel").getByRole("button", { name: "確認呢一版", exact: true })).toBeEnabled();
+  await clickUntil(page.locator(".approval-panel").getByRole("button", { name: "確認呢一版", exact: true }), page.getByRole("dialog"));
+  await page.getByRole("dialog").getByRole("button", { name: "確認呢一版", exact: true }).click();
+  const why = page.locator("details.owner-workflow-disclosure");
+  await why.locator(":scope > summary").click();
+  await expect(why.getByRole("button", { name: "下載文字檔", exact: true })).toBeEnabled();
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: /匯出已核准版本/ }).first().click();
+  await why.getByRole("button", { name: "下載文字檔", exact: true }).click();
   expect((await download).suggestedFilename()).toMatch(/-v1\.md$/);
   await expect.poll(used).toBe("1");
 
   // 4. Change the price to 1180 (back to a draft), then confirm it again.
-  await page.goto(`/zh-HK/owner/${merchant.slug}/offers`);
+  await page.goto(`/zh-HK/owner/${merchant.slug}/actions/new?mode=offer`);
   const again = page.locator(".offer-card", { hasText: "Autumn tasting set" });
   await clickUntil(again.getByRole("button", { name: "編輯" }), page.locator("#offer-price"));
   await page.locator("#offer-price").fill("1180");
@@ -89,7 +91,7 @@ test("an offer becomes two drafts, one is approved and exported, and an edited o
   // every Approve control, and the server still refuses a direct approve with 409 offer_changed.
   await page.goto(googleHref);
   await expect(page.getByTestId("offer-stale-banner")).toContainText(OFFER_CHANGED);
-  const approves = page.getByRole("button", { name: /^核准/ });
+  const approves = page.getByRole("button", { name: "確認呢一版", exact: true });
   await expect(approves.first()).toBeVisible();
   for (const button of await approves.all()) await expect(button).toBeDisabled();
   await expect(page.locator("body")).not.toContainText("offer_changed");

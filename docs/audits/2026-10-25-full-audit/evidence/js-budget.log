@@ -1,0 +1,46 @@
+
+> sme-scanner-visibility-workspace@0.1.0 test:js-budget /workspace/smeassistant
+> node scripts/check-route-js.mjs
+
+ok    268 / 300 KB  /[locale]/owner/[workspaceSlug]/actions/[actionId]
+ok    248 / 300 KB  /[locale]/owner/[workspaceSlug]/actions/new
+ok    240 / 300 KB  /[locale]/owner/[workspaceSlug]/actions/(queue)
+ok    236 / 300 KB  /[locale]/owner/[workspaceSlug]/business/assets
+ok    235 / 300 KB  /[locale]/owner/[workspaceSlug]/business/profile
+ok    233 / 300 KB  /[locale]/owner/[workspaceSlug]/settings/notifications
+ok    233 / 300 KB  /[locale]/owner/[workspaceSlug]/settings/team
+ok    231 / 300 KB  /[locale]/owner/[workspaceSlug]/settings/activity
+ok    230 / 300 KB  /[locale]/owner/[workspaceSlug]/(today)
+ok    230 / 300 KB  /[locale]/owner/[workspaceSlug]/business/integrations
+ok    228 / 300 KB  /[locale]/owner/[workspaceSlug]/packs/[packId]
+ok    222 / 240 KB  /[locale]/scan
+ok    219 / 300 KB  /[locale]/owner/[workspaceSlug]/insights
+ok    219 / 300 KB  /[locale]/owner/[workspaceSlug]/settings/plan
+ok    218 / 300 KB  /[locale]/owner/[workspaceSlug]/business/locations
+ok    217 / 300 KB  /[locale]/owner/[workspaceSlug]/business
+ok    217 / 300 KB  /[locale]/owner/[workspaceSlug]/settings
+ok    217 / 240 KB  /[locale]
+ok    215 / 240 KB  /[locale]/unlock/[slug]
+ok    214 / 240 KB  /[locale]/dev/design-system
+ok    210 / 240 KB  /[locale]/r/[slug]
+ok    210 / 240 KB  /[locale]/sample-report
+ok    208 / 240 KB  /[locale]/owner/onboarding
+ok    206 / 240 KB  /[locale]/start/[slug]
+ok    205 / 240 KB  /[locale]/methodology
+ok    205 / 240 KB  /[locale]/scanning/[jobId]
+ok    201 / 240 KB  /[locale]/owner/sign-in
+ok    201 / 240 KB  /[locale]/trust
+ok    200 / 240 KB  /[locale]/demo-workspace
+ok    200 / 240 KB  /[locale]/owner/sign-in/complete
+ok    200 / 240 KB  /[locale]/unsubscribe
+ok    199 / 240 KB  /[locale]/legal/privacy
+ok    199 / 240 KB  /[locale]/legal/terms
+ok    199 / 240 KB  /[locale]/pricing
+ok    195 / 240 KB  /[locale]/owner/select-workspace
+ok    155 / 240 KB  /[locale]/ops/failures
+ok    153 / 240 KB  /[locale]/ops/access-requests/[requestId]
+ok    152 / 240 KB  /[locale]/r/[slug]/recover
+ok    144 / 240 KB  /[locale]/ops/access-requests
+ok    141 / 240 KB  /_not-found
+ok    141 / 240 KB  /
+ok    130 / 240 KB  /_global-error

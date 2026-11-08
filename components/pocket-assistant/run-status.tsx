@@ -1,13 +1,16 @@
 import { CircleAlert, LoaderCircle } from "lucide-react"
 
-export function AssistantRunStatus({ state, isChinese, mode = "demo" }: { state: "idle" | "running" | "failed"; isChinese: boolean; mode?: "demo" | "live" }) {
+import { copy, type PrototypeLocale } from "@/lib/copy"
+
+export function AssistantRunStatus({ state, locale, mode = "demo" }: { state: "idle" | "running" | "failed"; locale: PrototypeLocale; mode?: "demo" | "live" }) {
   if (state === "idle") return null
+  const t = copy[locale].assistantSheet.runStatus
   return (
     <div className={`assistant-run-status is-${state}`} role={state === "failed" ? "alert" : "status"}>
       {state === "running" ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}
       <div>
-        <strong>{state === "running" ? (mode === "live" ? (isChinese ? "正在讀取工作台證據快照" : "Reading the workspace evidence snapshot") : (isChinese ? "正在讀取固定示範證據" : "Reading the fixed demo evidence")) : (isChinese ? "暫時未能完成" : "The run could not complete")}</strong>
-        <span>{state === "running" ? (isChinese ? "答案只用每次掃描各自的證據，不接受其他商戶資料。" : "Answers use each scan's own evidence; no other business's data is accepted.") : (isChinese ? "現有內容仍保留，失敗不會扣除交付額。" : "Existing work is preserved and no delivery is consumed.")}</span>
+        <strong>{state === "running" ? (mode === "live" ? t.readingLive : t.readingDemo) : t.failed}</strong>
+        <span>{state === "running" ? t.runningNote : t.failedNote}</span>
       </div>
     </div>
   )

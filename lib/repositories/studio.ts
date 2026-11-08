@@ -23,7 +23,7 @@ import {
 
 /**
  * Conversation Studio persistence on plain `pg`
- * (neon/migrations/0019_studio_conversations.sql, design §5).
+ * (neon/migrations/0021_studio_conversations.sql, design §5).
  *
  * The caller has already authorised the workspace membership; this module adds
  * the second, non-negotiable rule: a conversation is private to the member who

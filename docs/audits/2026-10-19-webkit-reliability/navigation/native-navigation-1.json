@@ -1,0 +1,246 @@
+{
+  "layer": "Owned synthetic local DB/Auth fixtures; no credentials, bodies or Auth query strings captured",
+  "browser": "webkit",
+  "version": "26.5",
+  "events": [
+    {
+      "ms": 2705,
+      "kind": "request",
+      "path": "/api/auth/verify",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 2951,
+      "kind": "request",
+      "path": "/auth/callback",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 2952,
+      "kind": "response",
+      "path": "/api/auth/verify",
+      "status": 303,
+      "contentType": null,
+      "encoding": null,
+      "transfer": null,
+      "corsOrigin": null
+    },
+    {
+      "ms": 3556,
+      "kind": "request",
+      "path": "/en/owner/sign-in/complete",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 3556,
+      "kind": "response",
+      "path": "/auth/callback",
+      "status": 307,
+      "contentType": null,
+      "encoding": null,
+      "transfer": null,
+      "corsOrigin": null
+    },
+    {
+      "ms": 5198,
+      "kind": "response",
+      "path": "/en/owner/sign-in/complete",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "encoding": "gzip",
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 6422,
+      "kind": "request",
+      "path": "/api/owner/sign-in/complete",
+      "method": "POST",
+      "type": "fetch"
+    },
+    {
+      "ms": 7603,
+      "kind": "request",
+      "path": "/_next/static/webpack/2b7a110e38370714.webpack.hot-update.json",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 7804,
+      "kind": "response",
+      "path": "/_next/static/webpack/2b7a110e38370714.webpack.hot-update.json",
+      "status": 200,
+      "contentType": "application/json; charset=UTF-8",
+      "encoding": null,
+      "transfer": null,
+      "corsOrigin": null
+    },
+    {
+      "ms": 7974,
+      "kind": "response",
+      "path": "/api/owner/sign-in/complete",
+      "status": 200,
+      "contentType": "application/json",
+      "encoding": null,
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 7990,
+      "kind": "request",
+      "path": "/en/owner/acceptance-hk-f077a04f",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 10278,
+      "kind": "request",
+      "path": "/_next/static/webpack/1baf649f7a693311.webpack.hot-update.json",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 10473,
+      "kind": "response",
+      "path": "/_next/static/webpack/1baf649f7a693311.webpack.hot-update.json",
+      "status": 200,
+      "contentType": "application/json; charset=UTF-8",
+      "encoding": null,
+      "transfer": null,
+      "corsOrigin": null
+    },
+    {
+      "ms": 12239,
+      "kind": "response",
+      "path": "/en/owner/acceptance-hk-f077a04f",
+      "status": 200,
+      "contentType": "text/x-component",
+      "encoding": "gzip",
+      "transfer": "chunked",
+      "corsOrigin": null
+    },
+    {
+      "ms": 13339,
+      "kind": "request",
+      "path": "/api/workspaces/f077a04f-0201-4d6f-8bbc-0f0b09042b67/fix-pack-drafts",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 13342,
+      "kind": "request",
+      "path": "/api/workspaces/f077a04f-0201-4d6f-8bbc-0f0b09042b67/fix-pack-drafts",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "ms": 13734,
+      "kind": "authenticated_home"
+    },
+    {
+      "ms": 13739,
+      "kind": "requestfailed",
+      "path": "/api/workspaces/f077a04f-0201-4d6f-8bbc-0f0b09042b67/fix-pack-drafts",
+      "type": "fetch",
+      "navigation": false,
+      "failure": "Load request cancelled"
+    },
+    {
+      "ms": 13740,
+      "kind": "requestfailed",
+      "path": "/api/workspaces/f077a04f-0201-4d6f-8bbc-0f0b09042b67/fix-pack-drafts",
+      "type": "fetch",
+      "navigation": false,
+      "failure": "Load request cancelled"
+    },
+    {
+      "ms": 13740,
+      "kind": "request",
+      "path": "/en/owner/acceptance-hk-f077a04f/actions/39425576-43bc-48f4-a483-a9e0c9953ad6",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 14217,
+      "kind": "pageerror",
+      "message": "/localhost:65117/_next/static/webpack/141d979fff9248c5.webpack.hot-update.json due to access control checks.",
+      "stack": [
+        "Fetch API cannot load /_next/static/webpack/141d979fff9248c5.webpack.hot-update.json due to access control checks.",
+        "    at unknown (/_next/static/chunks/webpack.js)"
+      ]
+    },
+    {
+      "ms": 14231,
+      "kind": "hmr_reload",
+      "runtimeError": false,
+      "stack": "Load failed"
+    },
+    {
+      "ms": 14247,
+      "kind": "requestfailed",
+      "path": "/en/owner/acceptance-hk-f077a04f/actions/39425576-43bc-48f4-a483-a9e0c9953ad6",
+      "type": "document",
+      "navigation": true,
+      "failure": "Load request cancelled"
+    },
+    {
+      "ms": 14249,
+      "kind": "request",
+      "path": "/en/owner/acceptance-hk-f077a04f",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 14685,
+      "kind": "pageerror",
+      "message": "/localhost:65117/en/owner/acceptance-hk-f077a04f?[redacted] due to access control checks.",
+      "stack": [
+        "Fetch API cannot load /en/owner/acceptance-hk-f077a04f due to access control checks.",
+        "    at createFetch (:246:26)"
+      ]
+    },
+    {
+      "ms": 14716,
+      "kind": "pageerror",
+      "message": "/localhost:65117/__nextjs_original-stack-frames due to access control checks.",
+      "stack": [
+        "Fetch API cannot load /__nextjs_original-stack-frames due to access control checks.",
+        "    at eM (:15440:28)",
+        "    at unknown (:21275:46)",
+        "    at rC (:19028:18)",
+        "    at n (:21275:27)",
+        "    at ly (:6585:51)",
+        "    at sh (:7709:51)",
+        "    at sp (:7696:86)"
+      ]
+    },
+    {
+      "ms": 14731,
+      "kind": "requestfailed",
+      "path": "/en/owner/acceptance-hk-f077a04f",
+      "type": "document",
+      "navigation": true,
+      "failure": "Load request cancelled"
+    },
+    {
+      "ms": 14734,
+      "kind": "request",
+      "path": "/en/owner/acceptance-hk-f077a04f",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "ms": 17704,
+      "kind": "response",
+      "path": "/en/owner/acceptance-hk-f077a04f",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "encoding": "gzip",
+      "transfer": "chunked",
+      "corsOrigin": null
+    }
+  ]
+}

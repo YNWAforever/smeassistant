@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { applyMigrations } from "../../scripts/neon/migrations";
 import { startNeonDatabaseFixture, type NeonDatabaseFixture } from "./neon-database";
 import { verificationRepository } from "../../lib/repositories/verification";
+import { workspaceReadRepository } from "../../lib/repositories/workspace-read";
 import { applicationRepository } from "../../lib/repositories/applications";
 import { measurementRepository } from "../../lib/repositories/measurements";
 import { recordApplication } from "../../lib/workspace/applications";
@@ -427,6 +428,81 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("website verification eligi
   });
 
   // --- Fan-out: one location, several actions -----------------------------
+
+  it("loads the last scoped verification receipt before applying the workspace activity limit", async () => {
+    const ws = await workspace(), otherWs = await workspace();
+    const loc = await location(ws), otherLoc = await location(ws);
+    const jobId = await job(ws, loc), snap = await snapshot(ws, jobId, loc);
+    const id = await action(ws, loc, snap);
+    const checkedAt = new Date().toISOString();
+    await verificationRepository(runtime).markChecked([{
+      id, workspace_id: ws, verification: {
+        outcome: "source_unavailable", checkedAt, sourceUrl: "https://synthetic.example.test/faq",
+        finalUrl: null, checks: ["faq_schema"], priorResults: [{ key: "faq_schema", pass: false }],
+        freshResults: [{ key: "faq_schema", pass: null }],
+      },
+    }], checkedAt);
+    await runtime.query(`INSERT INTO audit_events(workspace_id,actor_type,event,entity_type,entity_id,payload,created_at)
+      SELECT $1,'system','action.updated','action',gen_random_uuid(),'{}'::jsonb,now()+interval '1 second'
+      FROM generate_series(1,205)`, [ws]);
+    const read = workspaceReadRepository(runtime);
+    expect((await read.activity(ws, 200)).some((row) => row.event === "action.verification_checked")).toBe(false);
+    const scope = { actionId: id, locationId: loc };
+    const receipt = await read.activity(ws, 1, scope);
+    expect(receipt).toHaveLength(1);
+    expect(receipt[0]).toMatchObject({
+      event: "action.verification_checked", entity_id: id, workspace_id: ws, location_id: loc,
+      payload: { verification: { outcome: "source_unavailable", checkedAt } },
+    });
+    expect(await read.activity(otherWs, 1, scope)).toEqual([]);
+    expect(await read.activity(ws, 1, { actionId: id, locationId: otherLoc })).toEqual([]);
+  });
+
+  it("retains scoped verification outcomes once, refusing stale retries without changing completion or usage", async () => {
+    const ws = await workspace(), otherWs = await workspace();
+    const loc = await location(ws), jobId = await job(ws, loc);
+    const snap = await snapshot(ws, jobId, loc);
+    const outcomes = ["verified", "not_yet", "source_unavailable"] as const;
+    const ids: string[] = [];
+    for (let index = 0; index < outcomes.length; index++) {
+      const id = await action(ws, loc, snap, { actionState: "completed" });
+      await assertion(ws, id, "owner_asserted");
+      ids.push(id);
+    }
+    const baseline = async () => ({
+      actions: (await runtime.query("SELECT id,action_state,completed_at,measurement_state FROM actions WHERE id=ANY($1::uuid[]) ORDER BY id", [ids])).rows,
+      applications: (await runtime.query("SELECT * FROM action_applications WHERE workspace_id=$1 ORDER BY id", [ws])).rows,
+      usage: (await runtime.query("SELECT * FROM workspace_usage WHERE workspace_id=$1", [ws])).rows,
+    });
+    const before = await baseline();
+    const checkedAt = new Date().toISOString();
+    const attempts = ids.map((id, index) => ({
+      id, workspace_id: ws, verification: {
+        outcome: outcomes[index], checkedAt, sourceUrl: "https://synthetic.example.test/faq",
+        finalUrl: "https://synthetic.example.test/faq", checks: ["faq_schema" as const],
+        priorResults: [{ key: "faq_schema" as const, pass: false }],
+        freshResults: [{ key: "faq_schema" as const, pass: index === 0 ? true : index === 1 ? false : null }],
+      },
+    }));
+    const repo = verificationRepository(runtime);
+    await repo.markChecked(attempts, checkedAt);
+    await repo.markChecked(attempts, checkedAt);
+    const events = (await runtime.query(
+      "SELECT workspace_id,location_id,entity_id,payload FROM audit_events WHERE workspace_id=$1 AND event='action.verification_checked' ORDER BY entity_id",
+      [ws],
+    )).rows;
+    expect(events).toHaveLength(3);
+    for (const row of events) {
+      const expected = attempts.find((attempt) => attempt.id === row.entity_id)!;
+      expect(row).toMatchObject({ workspace_id: ws, location_id: loc, payload: { locale: null, verification: expected.verification } });
+    }
+    const staleAt = new Date(Date.parse(checkedAt) - 60_000).toISOString();
+    await repo.markChecked([{ ...attempts[0], verification: { ...attempts[0].verification, checkedAt: staleAt, outcome: "not_yet" } }], staleAt);
+    await repo.markChecked([{ ...attempts[0], workspace_id: otherWs }], new Date(Date.parse(checkedAt) + 60_000).toISOString());
+    expect((await runtime.query("SELECT id FROM audit_events WHERE workspace_id=$1 AND event='action.verification_checked'", [ws])).rows).toHaveLength(3);
+    expect(new Date((await runtime.query("SELECT verification_checked_at FROM actions WHERE id=$1", [ids[0]])).rows[0].verification_checked_at).toISOString()).toBe(checkedAt);
+    expect(await baseline()).toEqual(before);
+  });
 
   it("produces one location row from dueLocations and two action rows from actionsForLocations", async () => {
     const ws = await workspace();

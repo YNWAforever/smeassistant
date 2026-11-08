@@ -37,7 +37,7 @@ export interface ActionOverview {
   location: { id: string | null; slug: string; name: LocalizedText };
   title: LocalizedText;
   summary: LocalizedText;
-  evidence: { factType: FactType; source: string; value: string; detail: LocalizedText; observedAt: string; freshness: LocalizedText };
+  evidence: { factType: FactType; source: string; value: string; detail: LocalizedText; observedAt: string; freshness: LocalizedText; followUpOfActionId?: string };
   priority: Priority;
   priorityFactors: Array<{ key: string; label: LocalizedText; points: number }>;
   effortMinutes: number;
@@ -270,6 +270,9 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
       freshness: Number.isFinite(Date.parse(evidence.observedAt ?? ""))
         ? freshnessText(evidence.observedAt as string, ctx.now ?? new Date())
         : text(evidence.freshness, localized("", "")),
+      ...(typeof evidence.followUpOfActionId === "string" &&
+        /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(evidence.followUpOfActionId)
+        ? { followUpOfActionId: evidence.followUpOfActionId } : {}),
     },
     priority: row.priority,
     priorityFactors: factors.map((factor) => ({ key: factor.key, label: factorLabel(factor.key), points: factor.points })),

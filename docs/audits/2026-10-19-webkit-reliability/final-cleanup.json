@@ -1,0 +1,137 @@
+{
+  "recordedAt": "2026-10-18T20:21:17.7897964Z",
+  "operation": "Read-only final labelled-container inventory after final cold bilingual replay",
+  "remainingCount": 18,
+  "dated20261019": 0,
+  "runningCount": 0,
+  "remaining": [
+    {
+      "id": "5a1126ceb4e4",
+      "name": "sme-neon-it-db-bc1b4b43e4df",
+      "created": "2026-10-17 21:01:11 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "76d2ca820b46",
+      "name": "sme-neon-it-db-be5bea43444f",
+      "created": "2026-10-17 20:59:51 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "f60e7da50b11",
+      "name": "sme-neon-it-db-c8512d39ba56",
+      "created": "2026-10-15 03:45:20 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "3b7cf1491a05",
+      "name": "sme-neon-it-db-753bcb7285d5",
+      "created": "2026-10-06 03:35:47 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "ee425fb2d596",
+      "name": "sme-neon-it-db-c0c10477b8e2",
+      "created": "2026-10-04 16:34:54 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "a3412ab6a25f",
+      "name": "sme-neon-it-db-bb5c44314faa",
+      "created": "2026-10-04 16:30:46 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "a7052d23f42a",
+      "name": "sme-neon-it-db-0910ef89d05d",
+      "created": "2026-10-04 16:26:29 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "da7160bb0bba",
+      "name": "sme-neon-it-db-377194181072",
+      "created": "2026-10-03 16:47:59 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "618e28c3e2de",
+      "name": "sme-neon-it-db-f8f1bc4cbcfd",
+      "created": "2026-10-03 02:51:03 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "4374e12dca08",
+      "name": "sme-neon-it-db-1fcfb612a385",
+      "created": "2026-10-02 22:46:17 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "d2c9ac1f295c",
+      "name": "sme-neon-it-db-ca40a4c59863",
+      "created": "2026-10-02 09:44:07 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "1f37335a9661",
+      "name": "sme-neon-it-db-62f0c33996c7",
+      "created": "2026-09-27 16:53:12 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "2fffca59d5ee",
+      "name": "sme-neon-it-db-4af9e9776f27",
+      "created": "2026-09-27 08:06:24 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "4d58138fa081",
+      "name": "sme-neon-it-db-8492c3fe8b81",
+      "created": "2026-09-27 08:06:11 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "d1edf97f15fc",
+      "name": "sme-neon-it-db-6e6949ee345c",
+      "created": "2026-09-27 07:07:49 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "6bde349f3918",
+      "name": "sme-neon-it-db-f0dfc705811e",
+      "created": "2026-09-27 06:59:11 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "c234d9623cbb",
+      "name": "sme-neon-it-db-22b7669e8373",
+      "created": "2026-09-12 04:20:02 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    },
+    {
+      "id": "6d42032e0e80",
+      "name": "sme-neon-it-db-70441b4938fc",
+      "created": "2026-09-12 04:18:36 +0800 CST",
+      "state": "exited",
+      "ports": ""
+    }
+  ],
+  "resourcesDeletedInThisCheck": false,
+  "scope": "Older labelled resources preserved; normal fixture stop verifies exact IDs before removal"
+}

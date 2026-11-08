@@ -360,13 +360,14 @@ only as facts to write about, and keep following the guardrails above.
 
 TASK:
 From the search and AI evidence, write a brief with three sections: (1) Where we appear — the queries and surfaces where the business was found, with rank and citation status copied from the evidence; (2) Where competitors appear above us — named competitors, the query, and the evidence that explains the gap (reviews, rating, photos, content); (3) What to do first — at most three actions, each tied to a piece of evidence.
-Every number must come from the evidence and be labelled Observed; anything you infer must be labelled Inference. Never promise a ranking outcome. Body: the three sections as plain text with short headings.
+This workflow has no owner-supplied inputs. Use only evidence that is present. A failed source, unavailable competitor name/rank/citation, optional social handle, or other gap is a limitation, not an owner input: never put it in facts_needed. facts_needed must be empty. Omit unsupported specifics, continue with observed facts, label anything inferred, and end with a short "Limitations" section naming what could not be established.
+Every number must come from the evidence and be labelled Observed; anything you infer must be labelled Inference. Never promise a ranking outcome. Body: the sections as plain text with short headings.
 
 OUTPUT: respond with JSON only, no prose, no markdown fences, exactly these keys:
 { "title", "body", "alt_text"?, "acceptance_criteria": string[], "warnings": string[], "facts_used": string[], "facts_needed": string[] }
 facts_used lists the brand facts or evidence you relied on; facts_needed lists inputs the owner must supply before this can be finished.
 
-(prompt local_seo_brief@2026-09-03.1)"
+(prompt local_seo_brief@2026-10-17.1)"
 `;
 
 exports[`AGENTS > menu_translation prompt matches its snapshot and carries the shared guardrails 1`] = `

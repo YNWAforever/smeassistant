@@ -9,7 +9,6 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("@/components/product-ui", () => ({
   PublicPageFrame: ({ children }: { children: ReactNode }) => children,
   FactType: ({ type }: { type: string }) => <span data-testid="fact-type">{type}</span>,
-  ProviderBadge: ({ state }: { state: string }) => <span data-testid="provider-badge">{state}</span>,
   SectionCard: ({ children }: { children: ReactNode }) => <section>{children}</section>,
 }));
 
@@ -17,6 +16,9 @@ import { copy } from "@/lib/copy";
 import { MAX_POLL_DURATION_MS, pollRecordKey } from "@/lib/funnel/scan-progress";
 import { getMessages } from "@/lib/i18n";
 import { ScanningPage } from "@/components/scanning-page";
+
+/** The state each source row shows (components/visual/scan-progress.tsx). */
+const rowStates = () => Array.from(document.querySelectorAll(".k-scan-row")).map((row) => row.getAttribute("data-state"));
 
 const c = copy.en.funnel.scanning;
 const JOB = "job-fixture";
@@ -71,10 +73,10 @@ describe("ScanningPage bounded polling", () => {
     render(<ScanningPage locale={locale} jobId={JOB} />);
     await advance(1000);
     expect(screen.getAllByText(label)).toHaveLength(2);
-    expect(screen.getAllByTestId("provider-badge").some(node => node.textContent === "measured")).toBe(false);
+    expect(rowStates()).not.toContain("measured");
     statusReplies = [{ ...RUNNING, body: { status: "done", shareSlug: "fixture-slug", moduleStates: { google_business: "measured", instagram: "not_provided", search_ai: "unsupported" } } }];
     await advance(3000);
-    expect(screen.getAllByTestId("provider-badge").filter(node => node.textContent === "measured")).toHaveLength(1);
+    expect(rowStates().filter((state) => state === "measured")).toHaveLength(1);
     expect(screen.getByText(copy[locale].funnel.scanning.phase.not_provided)).toBeTruthy();
   });
 
@@ -98,7 +100,8 @@ describe("ScanningPage bounded polling", () => {
     expect(screen.getAllByText(c.phase.stalled).length).toBeGreaterThan(0);
     expect(screen.queryByText(c.phase.running)).toBeNull();
     // "pending", never "failed": the real state is unknown.
-    expect(screen.getAllByTestId("provider-badge").some((node) => node.textContent === "failed")).toBe(false);
+    expect(rowStates()).not.toContain("failed");
+    expect(rowStates().length).toBe(3);
   });
 
   it("resumes polling on Check again without touching the process endpoint", async () => {

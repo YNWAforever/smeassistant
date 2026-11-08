@@ -1,4 +1,4 @@
-import type { VerificationRepository } from "@/lib/repositories/verification";
+import type { VerificationAttempt, VerificationRepository } from "@/lib/repositories/verification";
 import { assertExecutionBudget, currentExecutionBudget, settleWithinReserve } from "@/lib/jobs/execution-budget";
 import { TEMPLATES, findTemplate } from "@/lib/workspace/templates";
 import {
@@ -109,7 +109,7 @@ export async function runWebsiteVerification(
   // list. Stamping an action nobody looked at would hide it behind the 24-hour
   // throttle for a day, withholding a confirmation the owner has earned because
   // some unrelated action failed.
-  const evaluated: Array<{ id: string; workspace_id: string }> = [];
+  const evaluated: VerificationAttempt[] = [];
   let actionsVerified = 0;
   let actionsFailed = 0;
   let deferred = false;
@@ -123,6 +123,7 @@ export async function runWebsiteVerification(
       // action's failed write must not stop the rest of the batch from being
       // looked at, and must not abort a loop whose remaining members would
       // then be stamped without having been evaluated.
+      let attempt: VerificationAttempt | undefined;
       try {
         const template = findTemplate(action.template_key);
         const site = byLocation.get(action.location_id);
@@ -136,10 +137,26 @@ export async function runWebsiteVerification(
         // not stamping would make the location due again on the next tick and
         // we would refetch a customer's website every five minutes because our
         // own database is unhealthy.
-        evaluated.push({ id: action.id, workspace_id: action.workspace_id });
-        if (decision !== "verified") continue;
         const declared = template?.verifyChecks ?? [];
         const priorPass = (key: string) => prior?.results.find((result) => result.key === key)?.pass ?? null;
+        const decisive = declared.filter((key) => priorPass(key) === false);
+        attempt = {
+          id: action.id,
+          workspace_id: action.workspace_id,
+          verification: {
+            outcome: decision,
+            checkedAt: nowIso,
+            sourceUrl: site?.url ?? null,
+            finalUrl: site?.finalUrl ?? null,
+            checks: decisive,
+            priorResults: declared.map((key) => ({ key, pass: priorPass(key) })),
+            freshResults: declared.map((key) => ({
+              key, pass: site?.checks.results.find((result) => result.key === key)?.pass ?? null,
+            })),
+          },
+        };
+        evaluated.push(attempt);
+        if (decision !== "verified") continue;
         // `checks` is what the decision actually turned on -- the declared
         // checks that were FAILING in the prior snapshot -- not every declared
         // key. A check that was already passing justified nothing, and listing
@@ -147,7 +164,6 @@ export async function runWebsiteVerification(
         // beside the prior ones because the verdict is a comparison of the
         // two: without the fresh half, the row asserts a conclusion whose
         // evidence cannot be re-derived from it.
-        const decisive = declared.filter((key) => priorPass(key) === false);
         await deps.record({
           workspaceId: action.workspace_id,
           actionId: action.id,
@@ -167,6 +183,9 @@ export async function runWebsiteVerification(
         });
         actionsVerified += 1;
       } catch (cause) {
+        // A failed confirmation write must not leave a successful receipt
+        // claiming a transition that never persisted.
+        if (attempt?.verification) attempt.verification.outcome = "source_unavailable";
         try { assertExecutionBudget(); } catch { deferred = true; break; }
         actionsFailed += 1;
         console.error("[verify/website-sweep] action not recorded", {

@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react"
 import { Slot } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
+import { copy } from "@/lib/copy"
 import { retryableLoad } from "@/lib/retryable-load"
 
 import type { ContextualAssistant as AssistantPanel } from "./assistant-sheet"
@@ -27,7 +28,6 @@ export function ContextualAssistant(props: AssistantProps) {
 
   if (Panel) return <Panel {...props} initialOpen />
 
-  const isChinese = props.locale !== "en"
   const prefetch = () => void loadPanel().catch(() => undefined)
   const open = () => {
     if (props.disabled || loading) return
@@ -49,7 +49,7 @@ export function ContextualAssistant(props: AssistantProps) {
   }
 
   if (props.trigger) return <Slot.Root {...handlers}>{props.trigger}</Slot.Root>
-  const label = props.triggerLabel ?? (isChinese ? "問隨身增長助理" : "Ask Visibility Operator")
+  const label = props.triggerLabel ?? copy[props.locale].shell.assistant.name
   // aria-label: the workspace top bar hides the text on phones and shows the icon only.
   return (
     <Button className="assistant-launcher" variant="outline" disabled={props.disabled} aria-label={label} {...handlers}>

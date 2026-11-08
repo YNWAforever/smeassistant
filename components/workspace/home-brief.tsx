@@ -1,17 +1,19 @@
+import { canRescan as rescanEligible, rescanOwnerCopy } from "@/lib/workspace/rescan-eligibility"
+import { CopyFollowUpCard } from "@/components/workspace/copy-follow-up-card"
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { ArrowRight, CalendarClock, Check, CheckCircle2, CircleAlert, CircleCheck, Clock3, FileClock, Globe2, ShieldCheck, Sparkles, TrendingDown, TrendingUp } from "lucide-react"
+import { ArrowRight, CalendarClock, Check, CheckCircle2, CircleAlert, CircleCheck, Clock3, FileClock, Globe2, ShieldCheck, Sparkles, TrendingDown } from "lucide-react"
 
 import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
-import { CapabilityBadge, FactType, PageIntro, ScoreDial, SectionCard } from "@/components/product-ui"
+import { CapabilityBadge, FactType, PageIntro, ScoreDial, SectionCard, TrendIcon } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { EvidenceGallery } from "@/components/workspace/evidence-gallery"
-import { FixPackCard } from "@/components/workspace/fix-pack-card"
-import { PackCard, type PackCardProps } from "@/components/workspace/pack-card"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { RescanButton } from "@/components/workspace/rescan-button"
-import { copy, type PrototypeLocale } from "@/lib/copy"
+import { TemplateIcon } from "@/components/workspace/template-icon"
+import { copy, homeReviewCopy, type PrototypeLocale } from "@/lib/copy"
+import { ownerCheckNextStep } from "@/lib/workspace/owner-review-check"
 import { resolveText } from "@/lib/domain"
 import { basisLabel, comparisonReasonText, effortLabel, findingLabel, formatDateTime, formatDay, metricLabel, ordinal, priorityClass, priorityLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
 import { measuredPrimarySources } from "@/lib/workspace/module-states"
@@ -19,8 +21,8 @@ import type { HomeBrief } from "@/lib/workspace/queries-pages"
 import type { ActionOverview } from "@/lib/workspace/overview"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import type { EvidenceGalleryItem } from "@/lib/report/view-model"
-import { zhFor } from "@/lib/zh-tw"
 import { sourceLabel } from "@/lib/workspace/source-label"
+import { fill } from "@/lib/copy-ui"
 
 /** Phase 6 adds `evidence` to the brief (Stream A); read defensively so the page renders either way. */
 type HomeBriefWithEvidence = HomeBrief & { evidence?: EvidenceGalleryItem[] | null }
@@ -35,55 +37,75 @@ export interface HomeBriefViewProps {
   locations: Array<{ slug: string; name: string }>
   brief: HomeBriefWithEvidence
   demo?: boolean
-  /** When present, the Fix Pack drafts card (agent_runs) renders after the secondary grid. */
-  fixPack?: { workspaceId: string; role: WorkspaceRole }
-  /**
-   * P4.2, present only with WORK_PACKS_ENABLED on (lib/workspace/packs.ts loadHomeWorkPacks).
-   * Home then renders the starter pack card and, under "Earlier staff drafts", only
-   * the pending Fix Pack drafts. Absent, Home renders exactly the `fixPack` card above.
-   */
-  workPacks?: { enabled: true; card: Omit<PackCardProps, "locale">; earlierDrafts: { workspaceId: string; role: WorkspaceRole } }
   /** Server-resolved; see RescanButton for why it cannot be computed client-side. */
   consentPolicyVersion: string
   /** The signed-in member's real role; drives the Rescan button (hidden for viewers). Omitted = no rescan control. */
   role?: WorkspaceRole
-  /** NeedsAttentionCard, rendered directly after the PageIntro so its <h2> never precedes this page's <h1>. */
+  rescanInScope?: boolean
+  /** NeedsAttentionCard, before the coach card so its <h2> never precedes this page's <h1>. */
   problems?: ReactNode
+  /** The getting-started checklist, rendered after today's priority so it never pushes it below the fold. */
+  gettingStarted?: ReactNode
+  /** "Your month": effort ring, streak, sources, badges (TodayProgress), after the coach card. */
+  progressPanel?: ReactNode
+  /** The shop's photos (ShopPhotoStrip), after the follow-on rows. */
+  photoStrip?: ReactNode
 }
 
 function actionHref(locale: PrototypeLocale, slug: string, action: ActionOverview, location: string): string {
   const base = `/${locale}/owner/${slug}`
-  const href = action.templateKey === "google-reconnect" ? `${base}/settings/integrations` : `${base}/actions/${action.id}`
-  return withLocation(href, location)
+  const href = action.templateKey === "google-reconnect" ? `${base}/business/integrations` : `${base}/actions/${action.id}`
+  return withLocation(action.templateKey !== "google-reconnect" && action.latestVersion
+    ? `${href}?version=${encodeURIComponent(action.latestVersion.id)}` : href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, fixPack, workPacks, role, consentPolicyVersion, problems }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems, gettingStarted, rescanInScope = true, progressPanel, photoStrip }: HomeBriefViewProps) {
   const t = copy[locale].home
   const focus = copy[locale].ownerFocus
-  const isChinese = locale !== "en"
+  const pc = copy[locale].workspaceHome.home
   const base = `/${locale}/owner/${workspaceSlug}`
   const location = brief.locationSlug
   const { snapshot, changed, priority, proof, month } = brief
+  const copyFollowUp = brief.copyFollowUp?.workspaceId === workspaceId ? brief.copyFollowUp : null
+  const followUp = brief.reviewFollowUp?.workspaceId === workspaceId ? brief.reviewFollowUp : null
+  const reviewText = homeReviewCopy[locale]
+  const versionLabel = (n: number) => reviewText.version.replace("{n}", String(n))
+  const followUpHref = (versionId: string) => withLocation(`${base}/actions/${encodeURIComponent(followUp!.actionId)}?version=${encodeURIComponent(versionId)}`, location)
+  const followUpStatus = followUp?.currentCheck ? ({
+    checked: reviewText.checked, not_found: reviewText.notFound, later: reviewText.later, retracted: reviewText.retracted,
+  })[followUp.currentCheck.decision] : reviewText.pending
   const sources = snapshot ? measuredPrimarySources(snapshot.moduleStates) : null
-  const tierLabel = tier === "paid" ? (isChinese ? zhFor(locale, "增長工作台") : "Growth Workspace") : (isChinese ? "免費方案" : "Free plan")
+  const tierLabel = tier === "paid" ? pc.growthWorkspace : pc.freePlan
   const decisions = brief.agentStrip.awaiting
-  const steps = isChinese
-    ? ["偵察完成", "優先次序完成", `${brief.drafts} 份草稿已備妥`, "待你審批"]
-    : ["Scout complete", "Priority ready", `${brief.drafts} drafts prepared`, "Awaiting approval"]
+  const steps = [pc.steps.scout, pc.steps.priority, fill(pc.steps.drafts, { drafts: brief.drafts }), pc.steps.awaiting]
   const stepDone = [brief.agentStrip.scout, brief.agentStrip.priority, brief.drafts > 0, false]
   // Mirrors RescanButton: only a paid owner or manager has the control the empty state would point at.
-  const canRescan = tier === "paid" && (role === "owner" || role === "manager")
-  const changedBadge = changed.comparable ? (isChinese ? "可比較" : "Comparable") : (isChinese ? "未能比較" : "Not comparable")
-  const changedReason = changed.comparable ? null : comparisonReasonText(changed.reason, isChinese)
+  const canRescan = snapshot !== null && rescanEligible({ tier, role, locationId: brief.location?.id ?? null, inScope: rescanInScope })
+  const changedBadge = changed.comparable ? pc.comparable : pc.notComparable
+  const changedReason = changed.comparable ? null : comparisonReasonText(changed.reason, locale)
   // F-19: never promise ready work that does not exist. No linked business, or
   // one location with no snapshot, means nothing has been scanned yet. The
   // all-locations view never has a snapshot (no aggregate score), so it only
   // falls back to the quiet copy when nothing is open.
   const hasLocations = locations.length > 0
+  // "Other" tasks: the open total minus the one already shown above it.
+  const openTotal = brief.openActionCount ?? brief.openActions.length
+  // The priority task is subtracted only when its card is on screen; the copy follow-up card replaces it.
+  const otherTasks = Math.max(0, openTotal - (priority && !copyFollowUp ? 1 : 0))
   // An open action is real work whatever the snapshot state, so it always wins.
   const unscanned = !priority && (!hasLocations || (location !== "all" && !snapshot))
-  const pageTitle = priority ? t.title : unscanned ? t.noScanTitle : t.quietTitle
-  const pageSubtitle = priority ? t.subtitle : unscanned ? t.noScanSubtitle : t.quietSubtitle
+  const pageTitle = priority || copyFollowUp ? t.title : unscanned ? t.noScanTitle : t.quietTitle
+  const pageSubtitle = priority || copyFollowUp ? t.subtitle : unscanned ? t.noScanSubtitle : t.quietSubtitle
+  const resultCopy = copy[locale].workspaceHome.insights
+  const resolved = changed.comparable ? brief.ledger.resolved.length : 0
+  const regressed = changed.comparable ? brief.ledger.regressed.length : 0
+  const resultSentence = location === "all" ? resultCopy.allLead
+    : !snapshot ? (canRescan ? resultCopy.missingFirst : rescanOwnerCopy[locale].next)
+    : resolved > 0 && regressed === 0 ? fill(resultCopy.betterResolved, { n: resolved })
+    : regressed > 0 && resolved === 0 ? fill(resultCopy.worseRegressed, { n: regressed })
+    : resolved > 0 && regressed > 0 ? fill(resultCopy.mixed, { resolved, regressed })
+    : changed.comparable && changed.delta !== null ? changed.delta > 0 ? resultCopy.better : changed.delta < 0 ? resultCopy.worse : resultCopy.same
+    : changed.reason ? fill(resultCopy.missingBecause, { reason: comparisonReasonText(changed.reason, locale) }) : (canRescan ? resultCopy.missingFirst : rescanOwnerCopy[locale].next)
   const priorityCta = role === "viewer" ? focus.view
     : priority?.templateKey === "google-reconnect" ? focus.connect
     : priority?.missingInputs.length ? t.addFacts
@@ -94,58 +116,88 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
   return (
     <div className="owner-home-page owner-daily-focus">
       <PageIntro
-        eyebrow={snapshot ? `${isChinese ? "快照" : "Snapshot"} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : hasLocations && location === "all" ? (isChinese ? "所有地點 · 不顯示合併快照" : "All locations · no combined snapshot") : (isChinese ? "尚未有快照" : "No snapshot yet")}
+        eyebrow={priority || copyFollowUp ? undefined : snapshot ? `${pc.snapshot} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : hasLocations && location === "all" ? pc.allLocationsNoCombined : pc.noSnapshotYet}
         title={pageTitle}
-        description={pageSubtitle}
+        description={priority || copyFollowUp ? undefined : pageSubtitle}
         actions={<LocationSelect locale={locale} value={location} locations={locations} />}
       />
 
-      {problems}
-
       {!hasLocations && <div className="context-banner" role="status"><CircleAlert /><div><strong>{t.noLocationTitle}</strong><span>{t.noLocationBody}</span><Link href={`/${locale}/scan`}>{t.noLocationCta}</Link></div></div>}
 
-      <section className="owner-brief-grid" aria-label={isChinese ? "今日營運摘要" : "Today's operating brief"}>
-        <article className="brief-priority-card">
-          <div className="card-label-row"><span><Sparkles /> {t.priority}</span>{priority ? <Badge className={priorityClass(priority.priority)}>{priorityLabel(priority.priority, locale)}</Badge> : <Badge variant="outline">{isChinese ? "沒有待辦" : "Nothing open"}</Badge>}</div>
+      {problems}
+
+      <section className="owner-brief-grid" aria-label={pc.todaySOperatingBrief}>
+        {!copyFollowUp && <article className="brief-priority-card">
           {priority ? (
             <>
-              <h2>{resolveText(priority.title, locale)}</h2>
-              <p>{resolveText(priority.summary, locale)}</p>
-              <div className="brief-action-meta"><span><Clock3 /> {effortLabel(priority.effortMinutes, locale)} {isChinese ? zhFor(locale, "店主時間") : "owner time"}</span><span><FileClock /> {resolveText(priority.displayPhase, locale)}</span></div>
+              <div className="brief-priority-head"><TemplateIcon templateKey={priority.templateKey} size="lg" /><h2>{resolveText(priority.title, locale)}</h2></div>
+              <p className="coach-sentence">{resolveText(priority.summary, locale)}</p>
+              {brief.priorityPreview && <blockquote className="brief-draft-preview" data-testid="home-draft-preview">{brief.priorityPreview}</blockquote>}
               <div className="brief-priority-actions"><Button asChild size="lg"><Link href={actionHref(locale, workspaceSlug, priority, location)}>{priorityCta}<ArrowRight /></Link></Button></div>
             </>
           ) : (
             <>
-              <h2>{isChinese ? "暫時沒有需要你決定的行動" : "No action needs your decision right now"}</h2>
-              <p>{snapshot ? (canRescan ? `${t.emptyWeek} ${t.rescanNow}` : t.emptyWeek) : (isChinese ? zhFor(locale, "完成一次掃描後，行動會從已量度的發現推導出來。") : "Actions are derived from measured findings once a scan completes.")}</p>
+              <h2>{pc.noActionNeedsYour}</h2>
+              <p className="coach-sentence">{snapshot ? t.emptyWeek : pc.actionsAreDerivedFrom}</p>
             </>
           )}
-        </article>
+        </article>}
+        {copyFollowUp && <CopyFollowUpCard followUp={copyFollowUp} locale={locale} viewer={role === "viewer"} />}
       </section>
 
-      <div className="owner-home-shortcuts">
-        <Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link></Button>
-        <Button asChild variant="outline"><Link href={withLocation(`${base}/create`, location)}>{focus.create}<ArrowRight /></Link></Button>
-      </div>
+      {!priority && !copyFollowUp && openTotal === 0 && gettingStarted}
 
-      {priority && <details className="owner-disclosure owner-priority-evidence">
-        <summary>{focus.why}</summary>
-        <div className="why-now-box"><FactType type={priority.evidence.factType} /><div><strong>{t.whyNow}</strong><span>{resolveText(priority.evidence.detail, locale)}</span><small>{isChinese ? "觀察於" : "Observed"} {formatDateTime(priority.evidence.observedAt, locale, timezone)} · {sourceLabel(priority.evidence.source, locale)}</small></div></div>
-        <ContextualAssistant locale={locale} surface="home" triggerLabel={isChinese ? "問為何先做這項" : "Ask why this comes first"} autoAsk="explain_priority" mode="live" context={{ workspaceId, locationId: brief.location?.id, snapshotId: snapshot?.id }} basePath={base} locationParam={location} />
-      </details>}
+      {progressPanel}
 
-      <details className="owner-disclosure owner-results-disclosure">
-        <summary>{focus.results}</summary>
-        {hasLocations && location === "all" && <div className="context-banner" role="status"><CircleAlert /><div><strong>{isChinese ? zhFor(locale, "已切換至所有地點") : "Context changed to all locations"}</strong><span>{isChinese ? zhFor(locale, "摘要按地點範圍顯示；未能取得資料的地點不會當成零分平均。") : "Summary data is location-aware; unavailable locations are never averaged as zero."}</span></div></div>}
-        {role && <div className="owner-results-tools"><RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} consentPolicyVersion={consentPolicyVersion} /></div>}
+      <section className="owner-results-disclosure" aria-label={focus.results}>
+        <p>{resultSentence}</p>
+        {canRescan && role && <div className="owner-results-tools"><p>{rescanOwnerCopy[locale].prompt}</p><RescanButton locale={locale} workspaceId={workspaceId} workspaceSlug={workspaceSlug} locationId={brief.location?.id ?? null} tier={tier} role={role} consentPolicyVersion={consentPolicyVersion} /></div>}
+        <Link href={withLocation(`${base}/insights`, location)}>{focus.results}<ArrowRight /></Link>
+      </section>
+
+      {otherTasks > 0 && <section className="owner-tasks-disclosure" aria-label={focus.otherTasks}>
+        <p>{focus.otherTasks} <Badge variant="outline">{otherTasks}</Badge></p>
+        <Link href={withLocation(`${base}/actions`, location)}>{focus.allTasks}<ArrowRight /></Link>
+      </section>}
+
+      {photoStrip}
+
+      {/* Scores and supporting records stay available without competing with the coach. */}
+      <details className="trust-disclosure owner-priority-evidence">
+        <summary><ShieldCheck /> {t.trust}</summary>
+        {followUp && <article className="owner-review-record" data-testid="home-review-followup" aria-label={reviewText.title}>
+          <div className="card-label-row"><span><FileClock /> {reviewText.title}</span><Badge variant="outline">{reviewText.completed}</Badge></div>
+          <h2>{resolveText(followUp.title, locale)}</h2>
+          <p className="brief-action-meta">{versionLabel(followUp.versionNo)} · {reviewText.applied}</p>
+          <p data-testid="home-owner-check-status">{followUpStatus}</p>
+          <p>{reviewText.next} {followUp.currentCheck
+            ? resolveText(ownerCheckNextStep(followUp.currentCheck.decision), locale) : reviewText.compare}</p>
+          <p className="limitation-note">{reviewText.independent}</p>
+          <div className="brief-priority-actions"><Button asChild variant={priority ? "outline" : "default"} size={priority ? "default" : "lg"}><Link data-next-check
+            href={followUpHref(followUp.versionId)} prefetch={false}>{followUp.canRecord && role !== "viewer" && followUp.currentCheck?.decision !== "checked" ? reviewText.check : reviewText.view}<ArrowRight /></Link></Button></div>
+          {followUp.newerDraft && <div className="mt-4 border-t pt-3">
+            <p>{reviewText.newerDraft.replace("{n}", String(followUp.newerDraft.versionNo)).replace("{applied}", String(followUp.versionNo))}</p>
+            <Link data-newer-draft href={followUpHref(followUp.newerDraft.id)} prefetch={false}>
+              {reviewText.reviewDraft.replace("{n}", String(followUp.newerDraft.versionNo))}<ArrowRight className="inline size-4" />
+            </Link>
+          </div>}
+        </article>}
+      {priority && <>
+        <div className="brief-action-meta"><Badge className={priorityClass(priority.priority)}>{priorityLabel(priority.priority, locale)}</Badge><span><Clock3 /> {effortLabel(priority.effortMinutes, locale)} {pc.ownerTime}</span><span><FileClock /> {resolveText(priority.displayPhase, locale)}</span>{priority.latestVersion && <span>{versionLabel(priority.latestVersion.versionNo)}</span>}</div>
+        <div className="why-now-box"><FactType type={priority.evidence.factType} /><div><strong>{t.whyNow}</strong><span>{resolveText(priority.evidence.detail, locale)}</span><small>{pc.observed} {formatDateTime(priority.evidence.observedAt, locale, timezone)} · {sourceLabel(priority.evidence.source, locale)}</small></div></div>
+        <ContextualAssistant locale={locale} surface="home" triggerLabel={pc.askWhyThisComes} autoAsk="explain_priority" mode="live" context={{ workspaceId, locationId: brief.location?.id, snapshotId: snapshot?.id }} basePath={base} locationParam={location} />
+      </>}
+
+        {hasLocations && location === "all" && <div className="context-banner" role="status"><CircleAlert /><div><strong>{pc.contextChangedToAll}</strong><span>{pc.summaryDataIsLocation}</span></div></div>}
+
         <div className="owner-results-grid">
 
         <article className="brief-score-card">
-          <div className="card-label-row"><span>{changed.delta !== null && changed.delta < 0 ? <TrendingDown /> : <TrendingUp />} {t.changed}</span><Badge variant="outline">{changedBadge}</Badge></div>
+          <div className="card-label-row"><span><TrendIcon delta={changed.comparable ? changed.delta : null} /> {t.changed}</span><Badge variant="outline">{changedBadge}</Badge></div>
           {!snapshot ? (
-            <div className="aggregate-empty"><CircleAlert /><h2>{location === "all" ? (isChinese ? "不製造合併平均分" : "No fabricated aggregate score") : (isChinese ? "尚未有快照" : "No snapshot yet")}</h2><p>{location === "all" ? (isChinese ? zhFor(locale, "各地點的證據覆蓋與比較資格不同；請逐個地點查看評分。") : "Coverage and eligibility differ by location; inspect each location separately.") : (isChinese ? zhFor(locale, "完成第一次掃描後，評分與覆蓋率會在這裡出現。") : "Score and coverage appear here after the first scan completes.")}</p></div>
+            <div className="aggregate-empty"><CircleAlert /><h2>{location === "all" ? pc.noFabricatedAggregateScore : pc.noSnapshotYet}</h2><p>{location === "all" ? pc.coverageAndEligibilityDiffer : pc.scoreAndCoverageAppear}</p></div>
           ) : snapshot.overallScore === null ? (
-            <div className="aggregate-empty"><CircleAlert /><h2>{isChinese ? zhFor(locale, "評分暫不顯示 · 已量度證據太少") : "Score withheld · too little measured evidence"}</h2><p>{isChinese ? zhFor(locale, `覆蓋率 ${scorePercent(snapshot.coverage)}%。缺少的來源會降低覆蓋率，不會當成零分。`) : `Coverage ${scorePercent(snapshot.coverage)}%. Missing sources lower coverage; they are never scored as zero.`}</p></div>
+            <div className="aggregate-empty"><CircleAlert /><h2>{pc.scoreWithheldTooLittle}</h2><p>{fill(pc.coverageMissingSourcesLower, { coverage: String(scorePercent(snapshot.coverage)) })}</p></div>
           ) : (
             <>
               {/* delta is spread, never coerced: a null delta means there is no
@@ -153,107 +205,80 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
                   page assert "unchanged since comparable scan" -- in the
                   sighted UI and the aria-label -- next to a "Not comparable"
                   badge. Same pattern the report page already uses. */}
-              <ScoreDial score={Math.round(snapshot.overallScore)} coverage={scorePercent(snapshot.coverage) ?? 0} {...(changed.comparable && changed.delta !== null ? { delta: Math.round(changed.delta) } : {})} />
-              <div className="coverage-source-line"><span><Check /> {isChinese ? zhFor(locale, `${sources?.measured ?? 0} 個來源已量度`) : `${sources?.measured ?? 0} measured`}</span><span><CircleAlert /> {isChinese ? `${(sources?.total ?? 4) - (sources?.measured ?? 0)} 個暫時未能取得` : `${(sources?.total ?? 4) - (sources?.measured ?? 0)} unavailable`}</span></div>
+              <ScoreDial score={Math.round(snapshot.overallScore)} coverage={scorePercent(snapshot.coverage)} {...(changed.comparable && changed.delta !== null ? { delta: Math.round(changed.delta) } : {})} />
+              {/* Only when the source counts are known; never invent "0 measured". */}
+              {sources && <div className="coverage-source-line"><span><Check /> {fill(pc.measured, { measured: sources.measured })}</span><span><CircleAlert /> {fill(pc.unavailable, { measured: sources.total - sources.measured })}</span></div>}
               {changedReason && <p className="limitation-note">{changedReason}</p>}
             </>
           )}
-          <Link href={withLocation(`${base}/insights`, location)}>{isChinese ? "審閱可比較證據" : "Review comparable evidence"} <ArrowRight /></Link>
+          <Link href={withLocation(`${base}/insights`, location)}>{pc.reviewComparableEvidence} <ArrowRight /></Link>
         </article>
 
         <article className="brief-proof-card">
-          <div className="card-label-row"><span><CircleCheck /> {t.proof}</span><Badge variant="outline">{proof ? (proof.factType === "Attributed" ? (isChinese ? "行動後觀察" : "Observed after action") : (isChinese ? "可比較變化" : "Comparable change")) : (isChinese ? zhFor(locale, "尚無量度") : "Nothing measured yet")}</Badge></div>
+          <div className="card-label-row"><span><CircleCheck /> {t.proof}</span><Badge variant="outline">{proof ? (proof.factType === "Attributed" ? pc.observedAfterAction : pc.comparableChange) : pc.nothingMeasuredYet}</Badge></div>
           {proof ? (
             <>
-              <div className="proof-value">{proof.delta !== null && proof.delta < 0 ? <TrendingDown /> : <TrendingUp />}<strong>{signed(proof.delta, 1)}<span> {isChinese ? "變化" : "change"}</span></strong></div>
+              <div className="proof-value"><TrendIcon delta={proof.delta} /><strong>{signed(proof.delta, 1)}<span> {pc.change}</span></strong></div>
               <h2>{metricLabel(proof.metricKey, locale)}</h2>
-              <p>{isChinese ? zhFor(locale, `${proof.before ?? "—"} → ${proof.after ?? "—"}，於 ${formatDay(proof.observedAt, locale, timezone)} 量度`) : `${proof.before ?? "—"} → ${proof.after ?? "—"}, measured ${formatDay(proof.observedAt, locale, timezone)}`}{proof.windowDays ? (isChinese ? ` · ${proof.windowDays} 日內` : ` · ${proof.windowDays}-day window`) : ""}</p>
-              <div className="proof-caveat"><FactType type={proof.factType} /><span>{proof.factType === "Attributed" ? `${basisLabel(proof.attributionBasis, locale)} · ${isChinese ? "只顯示時間上的可能關聯；不宣稱帶來收入或預訂因果。" : "Temporal association only; no revenue or booking causation is claimed."}` : (isChinese ? "兩次可比較快照之間的已觀察差異。" : "Observed difference between two comparable snapshots.")}</span></div>
+              <p>{fill(pc.proofMeasured, { before: proof.before ?? "—", after: proof.after ?? "—", observedAt: formatDay(proof.observedAt, locale, timezone) })}{proof.windowDays ? (fill(pc.dayWindow, { windowDays: proof.windowDays })) : ""}</p>
+              <div className="proof-caveat"><FactType type={proof.factType} /><span>{proof.factType === "Attributed" ? `${basisLabel(proof.attributionBasis, locale)} · ${pc.temporalAssociationOnlyNo}` : pc.observedDifferenceBetweenTwo}</span></div>
             </>
           ) : (
             <>
-              <h2>{isChinese ? "完成一項行動並等待可比較掃描後，證明會在這裡出現" : "Proof appears after an action is completed and a comparable scan lands"}</h2>
-              <p>{isChinese ? zhFor(locale, "工作台只會用兩次可比較快照的差異作證明，不會推斷未量度的變化。") : "The workspace only cites the difference between two comparable snapshots; it never infers unmeasured change."}</p>
+              <h2>{pc.proofAppearsAfterAn}</h2>
+              <p>{pc.theWorkspaceOnlyCites}</p>
             </>
           )}
-          <Link href={withLocation(`${base}/insights`, location)}>{isChinese ? "查看行動前後" : "Inspect before and after"} <ArrowRight /></Link>
+          <Link href={withLocation(`${base}/insights`, location)}>{pc.inspectBeforeAndAfter} <ArrowRight /></Link>
         </article>
         </div>
 
       <section className="month-brief" aria-labelledby="month-title">
-        <div className="month-brief-heading"><div><p className="eyebrow">{t.month}</p><h2 id="month-title">{isChinese ? "小行動，累積看得見的進展。" : "Small actions, visible momentum."}</h2></div>{/* A cadence you act on, not a booked run: nothing dispatches a due
+        <div className="month-brief-heading"><div><p className="eyebrow">{t.month}</p><h2 id="month-title">{pc.smallActionsVisibleMomentum}</h2></div>{/* A cadence you act on, not a booked run: nothing dispatches a due
     `scan_schedules` row, so "Next scan · <date>" promised a scan that
     would never happen -- and since `next_run_at` is never advanced, that
     date silently became one in the past. The recurring day stays true. */}
-<div className="next-scan"><CalendarClock /><span>{isChinese ? "重新掃描節奏" : "Rescan cadence"}<strong>{brief.rescanCadenceDay ? (isChinese ? `每月 ${brief.rescanCadenceDay} 號` : `Monthly · ${ordinal(brief.rescanCadenceDay)}`) : (isChinese ? "未設節奏" : "None yet")}</strong></span></div></div>
+<div className="next-scan"><CalendarClock /><span>{pc.rescanCadence}<strong>{brief.rescanCadenceDay ? fill(pc.monthlyOn, { day: brief.rescanCadenceDay, ordinal: ordinal(brief.rescanCadenceDay) }) : pc.noneYet}</strong></span></div></div>
         <div className="month-metrics">
-          <article><span className="metric-icon resolved"><CheckCircle2 /></span><div><strong>{month.resolved}</strong><span>{isChinese ? "個問題已解決" : "issues resolved"}</span></div><small>{isChinese ? "來自可比較掃描" : "Across comparable scans"}</small></article>
-          <article><span className="metric-icon regressed"><TrendingDown /></span><div><strong>{month.regressed}</strong><span>{isChinese ? "項新退步" : month.regressed === 1 ? "new regression" : "new regressions"}</span></div><small>{brief.ledger.regressed[0] ? findingLabel(brief.ledger.regressed[0], locale) : (isChinese ? "沒有退步" : "None recorded")}</small></article>
-          <article><span className="metric-icon approval"><FileClock /></span><div><strong>{month.awaitingApproval}</strong><span>{isChinese ? zhFor(locale, "項等待審批") : "awaiting approval"}</span></div><small>{isChinese ? "草稿版本" : "Draft versions"}</small></article>
-          <article><span className="metric-icon completed"><CircleCheck /></span><div><strong>{month.completed}</strong><span>{isChinese ? "項行動已完成" : "actions completed"}</span></div><small>{isChinese ? zhFor(locale, `${month.measured} 項已量度`) : `${month.measured} measured`}</small></article>
+          <article><span className="metric-icon resolved"><CheckCircle2 /></span><div><strong>{month.resolved ?? "—"}</strong><span>{pc.issuesResolved}</span></div><small>{month.resolved === null ? t.noComparable : pc.acrossComparableScans}</small></article>
+          <article><span className="metric-icon regressed"><TrendingDown /></span><div><strong>{month.regressed ?? "—"}</strong><span>{month.regressed === 1 ? pc.newRegression : pc.newRegressions}</span></div><small>{month.regressed === null ? t.noComparable : brief.ledger.regressed[0] ? findingLabel(brief.ledger.regressed[0], locale) : pc.noneRecorded}</small></article>
+          <article><span className="metric-icon approval"><FileClock /></span><div><strong>{month.awaitingApproval}</strong><span>{pc.awaitingApproval}</span></div><small>{pc.draftVersions}</small></article>
+          <article><span className="metric-icon completed"><CircleCheck /></span><div><strong>{month.completed}</strong><span>{pc.actionsCompleted}</span></div><small>{fill(pc.measuredCount, { measured: month.measured })}</small></article>
         </div>
       </section>
-      </details>
-
-      <details className="owner-disclosure owner-tasks-disclosure">
-        <summary>{focus.otherTasks}{brief.openActionCount !== undefined && <Badge variant="outline">{brief.openActionCount}</Badge>}</summary>
-      <SectionCard className="pending-approval-card">
-        <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "決定清單" : "Decision queue"}</p><h2>{isChinese ? "等待你的決定" : "Open actions"}</h2></div><Button asChild variant="ghost"><Link href={withLocation(`${base}/actions`, location)}>{isChinese ? "查看全部" : "View all"} <ArrowRight /></Link></Button></div>
-        <div className="compact-action-list">
-          {brief.openActionCount !== undefined && <p>{isChinese ? `共有 ${brief.openActionCount} 項待辦；以下顯示優先項目。` : `${brief.openActionCount} open actions; priority items shown below.`}</p>}
-          {brief.openActions.length === 0 && <p>{isChinese ? "沒有待辦行動。" : "No open actions."}</p>}
-          {brief.openActions.slice(0, 3).map((action) => <Link key={action.id} href={actionHref(locale, workspaceSlug, action, location)}><span className={`priority-marker ${priorityClass(action.priority)}`} /><div><strong>{resolveText(action.title, locale)}</strong><small>{resolveText(action.location.name, locale)} · {resolveText(action.displayPhase, locale)}</small></div><span className="compact-effort">{effortLabel(action.effortMinutes, locale)}</span><ArrowRight /></Link>)}
-        </div>
-      </SectionCard>
-
-      {workPacks ? (
-        <>
-          <PackCard locale={locale} {...workPacks.card} />
-          <FixPackCard mode="earlier" locale={locale} workspaceId={workPacks.earlierDrafts.workspaceId} viewerRole={workPacks.earlierDrafts.role} actionsHref={`${base}/actions?view=drafts`} />
-        </>
-      ) : (
-        fixPack && <FixPackCard locale={locale} workspaceId={fixPack.workspaceId} viewerRole={fixPack.role} createHref={withLocation(`${base}/create`, location)} actionsHref={`${base}/actions?view=drafts`} />
-      )}
-      </details>
-
-      <p className="owner-approval-note">{focus.approvalNote}</p>
-
-      {/* FA-04: the methodology stays one tap away, closed by default so the
-          next action owns the first screen (native <details>: no JS, keyboard-operable). */}
-      <details className="trust-disclosure">
-        <summary><ShieldCheck /> {t.trust}</summary>
-        <section className="workspace-agent-strip" aria-label={isChinese ? "AI 能見度團隊狀態" : "AI Visibility Team status"}>
-          <div className="workspace-agent-summary"><span><Sparkles /></span><div><Badge variant="outline">{tierLabel}{demo ? (isChinese ? " · 示範" : " · Demo") : ""}</Badge><h2>{unscanned ? (isChinese ? "AI 能見度團隊正等待第一次掃描" : "AI Visibility Team is waiting for the first scan") : isChinese ? `AI 能見度團隊已完成分析 · ${decisions} 項待你決定` : `AI Visibility Team finished the analysis · ${decisions} ${decisions === 1 ? "decision" : "decisions"} for you`}</h2><p>{isChinese ? "各專員只在背後協作；你只需審閱一項首要行動。" : "Specialists coordinate backstage; you review one priority action."}</p></div></div>
+        <p className="owner-approval-note">{focus.approvalNote}</p>
+        <section className="workspace-agent-strip" aria-label={pc.aiVisibilityTeamStatus}>
+          <div className="workspace-agent-summary"><span><Sparkles /></span><div><Badge variant="outline">{tierLabel}{demo ? pc.demo : ""}</Badge><h2>{unscanned ? pc.aiVisibilityTeamIs : fill(decisions === 1 ? pc.teamFinishedOne : pc.teamFinishedMany, { decisions })}</h2><p>{pc.specialistsCoordinateBackstageYou}</p></div></div>
           <ol>
             {steps.map((step, index) => <li key={step} className={stepDone[index] ? "is-complete" : "is-current"}><span>{stepDone[index] ? <Check /> : index + 1}</span><strong>{step}</strong></li>)}
           </ol>
-          <small><ShieldCheck /> {isChinese ? "不會自動發佈 · 指定版本獲核准並完成匯出後才計 1 次交付" : "Never auto-published · one delivery counts only after exact-version approval and export"}</small>
+          <small><ShieldCheck /> {pc.neverAutoPublishedOne}</small>
         </section>
 
           <SectionCard className="integration-health-card">
-            <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "資料來源可靠度" : "Source reliability"}</p><h2>{isChinese ? "連接狀態" : "Integration health"}</h2></div><Button asChild variant="ghost"><Link href={`${base}/settings/integrations`}>{isChinese ? "管理" : "Manage"}</Link></Button></div>
+            <div className="section-card-heading"><div><p className="eyebrow">{pc.sourceReliability}</p><h2>{pc.integrationHealth}</h2></div><Button asChild variant="ghost"><Link href={`${base}/business/integrations`}>{pc.manage}</Link></Button></div>
             <div className="integration-compact-list">
               {[
-                { name: isChinese ? zhFor(locale, "Google 商戶檔案") : "Google Business Profile", ok: brief.integrations.google.status === "active", warn: brief.integrations.google.status !== "active", note: brief.integrations.google.status === "active" ? (isChinese ? "已連接" : "Connected") : (isChinese ? "需要連接" : "Requires connection") },
-                { name: isChinese ? "Instagram 公開證據" : "Instagram public evidence", ok: brief.integrations.instagram.state === "measured", warn: false, note: copy[locale].common[brief.integrations.instagram.state === "unknown" ? "unavailable" : brief.integrations.instagram.state] },
-                { name: isChinese ? "公開網站" : "Public website", ok: brief.integrations.website.state === "measured", warn: false, note: copy[locale].common[brief.integrations.website.state === "unknown" ? "unavailable" : brief.integrations.website.state] },
+                { name: pc.googleBusinessProfile, ok: brief.integrations.google.status === "active", warn: brief.integrations.google.status !== "active", note: brief.integrations.google.status === "active" ? pc.connected : (copy[locale].workspace.phases.requires_connection) },
+                { name: pc.instagramPublicEvidence, ok: brief.integrations.instagram.state === "measured", warn: false, note: copy[locale].common[brief.integrations.instagram.state === "unknown" ? "unavailable" : brief.integrations.instagram.state] },
+                { name: pc.publicWebsite, ok: brief.integrations.website.state === "measured", warn: false, note: copy[locale].common[brief.integrations.website.state === "unknown" ? "unavailable" : brief.integrations.website.state] },
               ].map((row) => <div key={row.name}><span className={row.ok ? "health-ok" : row.warn ? "health-warn" : "health-neutral"}>{row.ok ? <Check /> : row.warn ? <CircleAlert /> : <Globe2 />}</span><div><strong>{row.name}</strong><small>{row.note}</small></div></div>)}
             </div>
           </SectionCard>
 
         <SectionCard className="change-ledger-card">
-          <div className="section-card-heading"><div><p className="eyebrow">{isChinese ? "最近變化紀錄" : "Recent change ledger"}</p><h2>{isChinese ? "先看證據，再看圖表" : "Evidence before charts"}</h2></div><Badge variant="outline">{snapshot ? `${formatDay(snapshot.observedAt, locale, timezone)}${changed.comparable ? (isChinese ? " 可比較掃描" : " comparable scan") : ""}` : (isChinese ? "尚未有掃描" : "No scan yet")}</Badge></div>
+          <div className="section-card-heading"><div><p className="eyebrow">{pc.recentChangeLedger}</p><h2>{pc.evidenceBeforeCharts}</h2></div><Badge variant="outline">{snapshot ? `${formatDay(snapshot.observedAt, locale, timezone)}${changed.comparable ? pc.comparableScan : ""}` : pc.noScanYet}</Badge></div>
           <div className="change-ledger">
-            {brief.ledger.regressed.map((key) => <article key={`r-${key}`}><FactType type="Observed" /><div><h3>{findingLabel(key, locale)}</h3><p>{isChinese ? "在最新可比較掃描中出現退步。" : "Regressed in the latest comparable scan."}</p><small>{isChinese ? "退步" : "Regressed"}</small></div><Button asChild variant="outline" size="sm"><Link href={withLocation(`${base}/actions`, location)}>{isChinese ? "立即處理" : "Act now"}</Link></Button></article>)}
-            {brief.ledger.resolved.map((key) => <article key={`s-${key}`}><FactType type="Observed" /><div><h3>{findingLabel(key, locale)}</h3><p>{isChinese ? "在最新可比較掃描中已解決。" : "Resolved in the latest comparable scan."}</p><small>{isChinese ? "已解決" : "Resolved"}</small></div><Button asChild variant="outline" size="sm"><Link href={withLocation(`${base}/insights`, location)}>{isChinese ? "查看證明" : "View proof"}</Link></Button></article>)}
-            {brief.ledger.decayed.map((key) => <article key={`d-${key}`}><FactType type="Observed" /><div><h3>{findingLabel(key, locale)}</h3><p>{isChinese ? "時間推移導致的變化，不視為退步。" : "Time-driven change; not treated as a regression."}</p><small>{isChinese ? "時間推移" : "Decayed"}</small></div></article>)}
-            {!changed.comparable && <article><FactType type="Unknown" /><div><h3>{isChinese ? "比較暫時未能取得" : "Comparison unavailable"}</h3><p>{changedReason ?? (isChinese ? "需要兩次符合資格的掃描才會推論變化。" : "Two eligible scans are needed before any change is inferred.")}</p><small>{isChinese ? "覆蓋缺口 · 不計分" : "Coverage gap · Not scored"}</small></div><Button asChild variant="outline" size="sm"><Link href={`${base}/settings/integrations`}>{isChinese ? "檢查來源" : "Check source"}</Link></Button></article>}
+            {brief.ledger.regressed.map((key) => <article key={`r-${key}`}><FactType type="Observed" /><div><h3>{findingLabel(key, locale)}</h3><p>{pc.regressedInTheLatest}</p><small>{pc.regressed}</small></div><Button asChild variant="outline" size="sm"><Link href={withLocation(`${base}/actions`, location)}>{pc.actNow}</Link></Button></article>)}
+            {brief.ledger.resolved.map((key) => <article key={`s-${key}`}><FactType type="Observed" /><div><h3>{findingLabel(key, locale)}</h3><p>{pc.resolvedInTheLatest}</p><small>{pc.resolved}</small></div><Button asChild variant="outline" size="sm"><Link href={withLocation(`${base}/insights`, location)}>{pc.viewProof}</Link></Button></article>)}
+            {brief.ledger.decayed.map((key) => <article key={`d-${key}`}><FactType type="Observed" /><div><h3>{findingLabel(key, locale)}</h3><p>{pc.timeDrivenChangeNot}</p><small>{pc.decayed}</small></div></article>)}
+            {!changed.comparable && <article><FactType type="Unknown" /><div><h3>{pc.comparisonUnavailable}</h3><p>{changedReason ?? pc.twoEligibleScansAre}</p><small>{pc.coverageGapNotScored}</small></div><Button asChild variant="outline" size="sm"><Link href={`${base}/business/integrations`}>{pc.checkSource}</Link></Button></article>}
           </div>
         </SectionCard>
 
         <EvidenceGallery locale={locale} items={brief.evidence} />
 
-        <div className="operational-footnote"><ShieldCheck /><span>{isChinese ? zhFor(locale, "所有數字均來自已儲存的掃描快照；未量度的來源會降低覆蓋率，不會當成零分。") : "Every number comes from a stored scan snapshot; unmeasured sources lower coverage and are never scored as zero."}</span>{demo && <CapabilityBadge value="Demo" />}</div>
+        <div className="operational-footnote"><ShieldCheck /><span>{pc.everyNumberComesFrom}</span>{demo && <CapabilityBadge value="Demo" />}</div>
       </details>
     </div>
   )

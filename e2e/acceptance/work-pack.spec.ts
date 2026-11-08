@@ -11,9 +11,9 @@ async function clickUntil(target: Locator, opened: Locator) {
   }).toPass({ timeout: 60000 });
 }
 
-// zh-HK strings, from lib/copy-workspace.ts (packs) and components/workspace/action-detail-client.tsx.
-const DISCLOSURE = "最多會建立 3 份草稿。核准並匯出草稿前不會計算用量；每份匯出的草稿計為 1 次交付。";
-const DRAFT_READY = "草稿已備妥";
+// zh-HK strings, from lib/copy-workspace.ts (packs) and lib/copy-action.ts.
+const DISCLOSURE = "最多會建立 3 份草稿。草稿要確認後再複製或匯出才計算；每份計 1 次。";
+const DRAFT_READY = "草稿已寫好";
 const NEEDS_FACTS = "需要你補充資料";
 const EXPORTED = "已匯出";
 
@@ -39,18 +39,10 @@ test("the starter pack becomes drafts, one is approved and exported, and startin
   await signIn(page, environment, merchant);
   expect(used()).toBe("0");
 
-  // 1. Home: the pack is tucked into the collapsed supporting-task disclosure, and no pack exists yet.
-  await page.goto(`/zh-HK/owner/${merchant.slug}`);
-  const tasksDisclosure = page.locator("details.owner-tasks-disclosure");
-  const card = tasksDisclosure.locator(".pack-card");
-  const openTasksDisclosure = async () => {
-    if ((await tasksDisclosure.getAttribute("open")) === null) {
-      await tasksDisclosure.locator("summary").click();
-    }
-    await expect(tasksDisclosure).toHaveAttribute("open", "");
-  };
-  await expect(card.getByText(DISCLOSURE)).toBeHidden();
-  await openTasksDisclosure();
+  // 1. Actions › New › Starter pack (UX Phase 4 moved the pack off Today); no pack exists yet.
+  const packPage = `/zh-HK/owner/${merchant.slug}/actions/new?mode=pack`;
+  await page.goto(packPage);
+  const card = page.locator(".pack-card");
   await expect(card.getByText(DISCLOSURE)).toBeVisible();
   const startButton = card.getByRole("button", { name: "開始套裝", exact: true });
   await expect(startButton).toBeEnabled();
@@ -73,7 +65,7 @@ test("the starter pack becomes drafts, one is approved and exported, and startin
   // Drafts exist, nothing is approved or counted, and the pack stores no approval or delivery state of its own.
   expect(sql(db, `select count(*) from output_versions v join work_pack_items i on i.action_id=v.action_id where i.pack_id='${packId}' and v.approval_state='draft';`)).toBe("2");
   expect(used()).toBe("0");
-  await expect(card.getByRole("button", { name: /核准|匯出/ })).toHaveCount(0);
+  await expect(card.getByRole("button", { name: /確認|匯出/ })).toHaveCount(0);
 
   // 3. "Review next" opens the review-response action page, where the draft is approved and exported.
   const reviewNext = card.getByRole("link", { name: "審閱下一份" });
@@ -81,18 +73,19 @@ test("the starter pack becomes drafts, one is approved and exported, and startin
   const reviewResponseActionId = sql(db, `select action_id from work_pack_items where pack_id='${packId}' and template_key='review-response';`);
   await reviewNext.click();
   await expect(page).toHaveURL(new RegExp(`/actions/${reviewResponseActionId}`));
-  await expect(page.getByRole("button", { name: "核准第 1 版" }).first()).toBeEnabled();
-  await clickUntil(page.getByRole("button", { name: "核准第 1 版" }).first(), page.getByRole("dialog"));
-  await page.getByRole("dialog").getByRole("button", { name: "核准第 1 版" }).click();
-  await expect(page.getByRole("button", { name: /匯出已核准版本/ }).first()).toBeEnabled();
+  await expect(page.locator(".approval-panel").getByRole("button", { name: "確認呢一版", exact: true })).toBeEnabled();
+  await clickUntil(page.locator(".approval-panel").getByRole("button", { name: "確認呢一版", exact: true }), page.getByRole("dialog"));
+  await page.getByRole("dialog").getByRole("button", { name: "確認呢一版", exact: true }).click();
+  const why = page.locator("details.owner-workflow-disclosure");
+  await why.locator(":scope > summary").click();
+  await expect(why.getByRole("button", { name: "下載文字檔", exact: true })).toBeEnabled();
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: /匯出已核准版本/ }).first().click();
+  await why.getByRole("button", { name: "下載文字檔", exact: true }).click();
   expect((await download).suggestedFilename()).toMatch(/-v1\.md$/);
   await expect.poll(used).toBe("1");
 
-  // Home now shows that item as exported (the other items are unchanged).
-  await page.goto(`/zh-HK/owner/${merchant.slug}`);
-  await openTasksDisclosure();
+  // The starter pack now shows that item as exported (the other items are unchanged).
+  await page.goto(packPage);
   await expect(card.locator(`li[data-template="review-response"]`).getByText(EXPORTED)).toBeVisible();
   await expect(card.locator(`li[data-template="website-basics"]`).getByText(DRAFT_READY)).toBeVisible();
 

@@ -23,8 +23,10 @@ test("an owner with a waiting draft continues from the assistant to the exact ve
   // 1. On the action, generate a draft with the fixture model so one `draft` version exists.
   await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}`);
   await expect(page.locator(".action-detail-page")).toBeVisible();
-  await page.getByRole("button", { name: /Generate a draft|Regenerate/ }).click();
-  await page.getByRole("tab", { name: "Version & audit history" }).click();
+  const generate = page.getByRole("button", { name: /Generate a draft|Regenerate/ });
+  await expect(generate).toHaveCount(1);
+  await generate.click();
+  await page.getByRole("tab", { name: "History" }).click();
   await expect(page.locator(".version-list button")).toHaveCount(1, { timeout: 90000 });
   const versionId = sql(db, `select id from output_versions where action_id='${merchant.actionId}' and version_no=1 and approval_state='draft';`);
   expect(versionId).toMatch(/^[a-f0-9-]{36}$/);
@@ -79,9 +81,19 @@ test("an owner with a waiting draft continues from the assistant to the exact ve
   // 5. The action page opens with that version selected.
   await expect(page).toHaveURL(new RegExp(`/actions/${merchant.actionId}\\?version=${versionId}(&|$)`));
   await expect(page.locator(".action-detail-page")).toBeVisible();
-  await page.getByRole("tab", { name: "Version & audit history" }).click();
+  await page.getByRole("tab", { name: "History" }).click();
   // A waiting version is always its action's newest (create_output_version supersedes earlier draft/changes_requested rows), so this does not isolate ?version=; components/workspace/action-detail-version-param.test.tsx does.
   await expect(page.locator(".version-list button[aria-pressed='true']")).toContainText("Version 1");
+
+  // Continuing opens saved text for confirmation; re-editing keeps one clear
+  // Regenerate control without creating another version or calling the model.
+  await page.getByRole("tab", { name: "Write & confirm" }).click();
+  await expect(page.locator("#draft-content")).toHaveAttribute("readonly", "");
+  await page.getByRole("button", { name: "Change the draft", exact: true }).click();
+  await expect(page.locator("#draft-content")).not.toHaveAttribute("readonly");
+  const regenerate = page.getByRole("button", { name: /^Regenerate/ });
+  await expect(regenerate).toHaveCount(1);
+  await expect(regenerate).toBeEnabled();
 
   // The assistant and the link changed nothing and called no authority route.
   expect(requested.filter((entry) => AUTHORITY_ROUTE.test(entry))).toEqual([]);

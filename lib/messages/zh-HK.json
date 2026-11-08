@@ -16,13 +16,13 @@
     "resultUnavailable": "暫時未能開啟結果。你輸入嘅資料仍然保留，請再試一次。"
   },
   "applied": {
-    "markButton": "標記為已套用",
+    "markButton": "我已完成",
     "markHint": "我們只記錄你告訴我們的內容；下次掃描才會檢查。",
-    "assertedOn": "你在 {date} 標記為已套用 · 未經獨立核實",
+    "assertedOn": "你在 {date} 標記為已完成 · 未經獨立核實",
     "retract": "撤回此標記",
     "retractHint": "撤回只是收回這項聲明；相關紀錄仍會保留在活動紀錄內。",
-    "markedToast": "已記錄：你表示此行動已套用。下次掃描會觀察結果。",
-    "retractedToast": "已撤回「已套用」標記。"
+    "markedToast": "已記錄：你表示已完成。下次掃描會檢查結果。",
+    "retractedToast": "已撤回「已完成」標記。"
   },
   "verified": {
     "confirmedOn": "已在 {date} 於你的網站核實 · 我們檢查的是頁面本身，並非何人作出改動"
@@ -52,9 +52,9 @@
   },
   "problems": {
     "homeTitle": "需要處理",
-    "homeMore": "在活動紀錄查看所有問題",
-    "activityTitle": "問題與復原",
-    "activityEmpty": "目前沒有未處理的問題。",
+    "homeMore": "睇晒所有問題",
+    "activityTitle": "要處理嘅問題",
+    "activityEmpty": "暫時冇問題要處理。",
     "reference": "參考編號 {reference}",
     "kind": {
       "scan_failed": "一次掃描未能完成",
@@ -63,36 +63,36 @@
       "google_connection": "Google 連接需要處理"
     },
     "next": {
-      "rescan": "為這個地點重新掃描。",
-      "contact_support": "請聯絡 Fimmick，並提供以下參考編號。",
-      "open_action": "開啟行動，再次嘗試生成草稿。",
-      "reauthorise": "重新授權 Google 以恢復連接。",
-      "ask_owner": "請工作台擁有人重新連接 Google。",
-      "dead_lettered": "系統會在 24 小時內自動結束這次掃描，之後你可以重新掃描。",
-      "none": "擁有人或負責此地點的經理可以處理。"
+      "rescan": "再掃一次呢間舖。",
+      "contact_support": "請聯絡 Fimmick，話佢哋知參考編號。",
+      "open_action": "打開待辦，再寫一次草稿。",
+      "reauthorise": "再連一次 Google 就得。",
+      "ask_owner": "請店主再連一次 Google。",
+      "dead_lettered": "系統會喺 24 小時內自動停咗佢，之後你可以再掃。",
+      "none": "店主或者負責呢間舖嘅經理可以處理。"
     },
     "button": {
-      "open_action": "開啟行動",
-      "reauthorise": "重新授權",
+      "open_action": "再開張稿",
+      "reauthorise": "再連 Google",
       "contact_support": "聯絡 Fimmick"
     },
     "reason": {
-      "ATTEMPTS_EXHAUSTED": "掃描嘗試三次後仍停止回應。",
-      "COLLECTION_FAILED": "收集公開證據失敗。",
-      "SCORING_FAILED": "評分失敗。",
-      "PERSIST_FAILED": "儲存結果失敗。",
-      "PROCESSOR_FAILED": "無法處理這次掃描。",
-      "CLAIM_FAILED": "無法開始這次掃描。",
-      "consent_missing": "這次掃描沒有已記錄的同意。",
-      "consent_policy_stale": "同意是按舊版政策作出的。",
-      "action_run_timeout": "生成草稿超時。",
-      "action_run_reaped": "生成草稿停止回應。",
-      "invalid_output": "無法讀取草稿。",
-      "action_run_failed": "生成草稿失敗。",
-      "expired": "Google 授權已過期。",
-      "error": "Google 回報連接錯誤。",
-      "workspace_post_process_failed": "掃描後更新工作台失敗。",
-      "generic": "出現問題。"
+      "ATTEMPTS_EXHAUSTED": "掃咗三次都卡住。",
+      "COLLECTION_FAILED": "未能讀取舖頭喺網上嘅資料。",
+      "SCORING_FAILED": "未能整理結果。",
+      "PERSIST_FAILED": "未能儲存結果。",
+      "PROCESSOR_FAILED": "掃描未能進行。",
+      "CLAIM_FAILED": "掃描未能開始。",
+      "consent_missing": "冇記錄到你同意掃描。",
+      "consent_policy_stale": "你嘅同意係按舊版條款。",
+      "action_run_timeout": "寫稿時間太長。",
+      "action_run_reaped": "寫稿卡住咗。",
+      "invalid_output": "寫出嚟嘅稿讀唔到。",
+      "action_run_failed": "寫唔到稿。",
+      "expired": "Google 連接已過期。",
+      "error": "Google 話連接有問題。",
+      "workspace_post_process_failed": "掃描後未能更新待辦。",
+      "generic": "出咗啲問題。"
     },
     "scanStuck": {
       "title": "這次掃描停止回應",
@@ -101,9 +101,10 @@
     }
   },
   "commercial": {
+    "contact": "聯絡 Fimmick",
     "notOpen": "訂閱暫未開放 — 請聯絡 Fimmick",
-    "allowanceLine": "免費工作台：每月 {count} 次核准後交付",
-    "unlimitedLine": "每月不限核准後交付次數"
+    "allowanceLine": "免費工作台：每月可用 {count} 次",
+    "unlimitedLine": "每月次數不限"
   },
   "pause": {
     "scans": "掃描正暫停維護。你的掃描已儲存，請稍後再試。",
@@ -111,10 +112,11 @@
     "ai": "AI 草稿生成正暫停維護。沒有計算任何用量，請稍後再試。"
   },
   "mail": {
-    "allowTitle": "允許此工作台發送以下電郵",
-    "myEmailsTitle": "我的電郵",
+    "eyebrow": "電郵",
+    "allowTitle": "全間舖可以收嘅電郵（店主設定）",
+    "myEmailsTitle": "我自己收嘅電郵",
     "rescanComplete": "重新掃描完成",
-    "regressionAlert": "發現新問題（退步提示）",
+    "regressionAlert": "有嘢變差咗",
     "monthlyDigest": "每月摘要 · 規劃中",
     "closedNote": "電郵功能尚未開啟。你的選擇已儲存，開啟後生效。",
     "openNote": "發生以下情況時，我們會電郵至 {address}。",
@@ -444,7 +446,7 @@
     "actionLabel": "即刻做",
     "fixPackDraftLabel": "已幫你寫好底稿",
     "ctaBodyPersonalized": "你嘅首要改善位：{issues}。我哋會喺 24 小時內同你跟進，教你點樣即刻著手。",
-    "whatsappMessagePersonalized": "你好 Fimmick，我睇咗我間舖嘅 SME Scanner 報告 — {business}，主要嘅改善位係：{issues}。可唔可以傾吓？",
+    "whatsappMessagePersonalized": "你好 Fimmick，我睇咗我間舖嘅 Kinnso OS 報告 — {business}，主要嘅改善位係：{issues}。可唔可以傾吓？",
     "ctaTitle": "想 Fimmick 團隊幫你優化？",
     "ctaBody": "我哋 24 小時內聯絡，幫你逐一解決以上問題。",
     "ctaBtn": "WhatsApp 聯絡 Fimmick →",
@@ -499,7 +501,7 @@
     "shareNative": "分享",
     "downloadPdf": "下載 PDF",
     "shareText": "睇下我哋【{business}】嘅 AI 能見度報告（{score}/100）👀",
-    "metaTitle": "{business} 的 AI 能見度評分：{score}/100｜SME Scanner",
+    "metaTitle": "{business} 的 AI 能見度評分：{score}/100｜Kinnso OS",
     "metaDescription": "AI、Google、Instagram 搵唔搵到「{business}」？睇吓佢哋嘅能見度評分同改善方向。"
   },
   "legal": {

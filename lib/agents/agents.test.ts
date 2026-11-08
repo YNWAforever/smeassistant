@@ -184,6 +184,13 @@ describe("AGENTS", () => {
     expect(AGENTS.ig_bio.buildPrompt({ ...fixedCtx, locale: "zh-TW", market: "tw" })).toContain("Taiwan Mandarin");
     expect(AGENTS.ig_bio.buildPrompt({ ...fixedCtx, locale: "en" })).toContain("plain English");
   });
+
+  it("treats unavailable local SEO evidence as limitations, never owner inputs", () => {
+    const prompt = AGENTS.local_seo_brief.buildPrompt(fixedCtx);
+    expect(prompt).toContain("This workflow has no owner-supplied inputs");
+    expect(prompt).toContain("facts_needed must be empty");
+    expect(prompt).toContain("Limitations");
+  });
 });
 
 describe("acceptance", () => {

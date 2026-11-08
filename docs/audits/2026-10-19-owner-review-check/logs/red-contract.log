@@ -1,0 +1,19 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ lib/workspace/owner-review-check.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/workspace/owner-review-check.test.ts [ lib/workspace/owner-review-check.test.ts ]
+Error: Cannot find module './owner-review-check' imported from C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018/lib/workspace/owner-review-check.test.ts
+ ❯ lib/workspace/owner-review-check.test.ts:2:1
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  16:05:40
+   Duration  529ms (transform 40ms, setup 310ms, import 0ms, tests 0ms, environment 0ms)

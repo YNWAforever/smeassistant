@@ -85,7 +85,7 @@ describe("signed-in account exit", () => {
       }
       render(<SelectWorkspacePage locale={locale} cards={[card]} email="member@acceptance.test" signOutAction={signOutAction} />)
       expect(signOutAction).not.toHaveBeenCalled()
-      const button = screen.getByRole("button", { name: /Sign out and use another email|登出.*登入/ })
+      const button = screen.getByRole("button", { name: /Sign out and use another account|登出並(轉|改)用另一個帳戶/ })
       expect(button).toHaveAttribute("type", "submit")
       fireEvent.click(button)
       await waitFor(() => expect(signOutAction).toHaveBeenCalledTimes(1))
@@ -93,7 +93,54 @@ describe("signed-in account exit", () => {
 
     it(`keeps exactly one sign-out action for a memberless account (${locale})`, () => {
       render(<SelectWorkspacePage locale={locale} cards={[]} email="member@acceptance.test" signOutAction={async () => {}} />)
-      expect(screen.getAllByRole("button", { name: /Sign out and use another email|登出.*登入/ })).toHaveLength(1)
+      expect(screen.getAllByRole("button", { name: /Sign out and use another account|登出並(轉|改)用另一個帳戶/ })).toHaveLength(1)
     })
   }
+})
+
+describe("workspace cards (Phase 5)", () => {
+  const base = { tier: "lite", timezone: "Asia/Hong_Kong", isDemo: false, instagramHandle: null, industry: null, district: null } as const
+  const card: WorkspaceCard = {
+    workspace: { id: "ws", slug: "kam", name: "Kam Man House", market: "hk", ...base },
+    role: "owner",
+    locations: [
+      { id: "l1", slug: "tin-hau", name: "Tin Hau", isPrimary: true, latestScore: 62.4, latestCoverage: 0.78, urgentActions: 0, waitingActions: 2, lastScanAt: "2026-10-01T00:00:00Z" },
+      { id: "l2", slug: "yik-yam", name: "Yik Yam", isPrimary: false, latestScore: null, latestCoverage: 0.25, urgentActions: 0, waitingActions: 0, lastScanAt: "2026-10-01T00:00:00Z" },
+      { id: "l3", slug: "new", name: "New branch", isPrimary: false, latestScore: null, latestCoverage: null, urgentActions: 0, waitingActions: 0, lastScanAt: null },
+    ],
+  } as WorkspaceCard
+
+  function cardMarkup(locale: (typeof LOCALES)[number] = "en") {
+    const root = document.createElement("div")
+    root.innerHTML = renderToStaticMarkup(<SelectWorkspacePage locale={locale} cards={[card]} email="o@example.test" signOutAction={async () => {}} />)
+    return root
+  }
+
+  it("opens the primary location from the card head and each location from its row", () => {
+    const root = cardMarkup()
+    expect(root.querySelector(".ws-card-head")?.getAttribute("href")).toBe("/en/owner/kam?location=tin-hau")
+    expect([...root.querySelectorAll(".ws-card-locations a")].map((a) => a.getAttribute("href"))).toEqual([
+      "/en/owner/kam?location=tin-hau", "/en/owner/kam?location=yik-yam", "/en/owner/kam?location=new",
+    ])
+  })
+
+  it.each([
+    ["en", "Something is waiting for you", "No scan yet", "Nothing waiting"],
+    ["zh-HK", "有一件等你", "未掃過", "暫時冇嘢等你"],
+    ["zh-TW", "有件事等你", "還沒掃過", "暫時沒事等你"],
+  ] as const)("uses a simple honest waiting state without score or coverage (%s)", (locale, waiting, noScan, quiet) => {
+    const root = cardMarkup(locale);
+    const rows = [...root.querySelectorAll(".ws-card-locations li")].map(li => li.textContent ?? "");
+    expect(root.querySelector(".ws-card")?.textContent).toContain(locale === "en" ? "Hong Kong" : "香港");
+    expect(rows[0]).toContain(waiting);
+    expect(rows[1]).toContain(quiet);
+    expect(rows[2]).toContain(noScan);
+    expect(root.querySelector(".ws-card")?.textContent).not.toMatch(/Score|score|coverage|評分|覆蓋率|分數|涵蓋率|62|78%/);
+    expect(root.querySelector(".ws-loc-bar")).toBeNull();
+  });
+
+  it.each(["zh-HK", "zh-TW"] as const)("speaks %s on the cards", (locale) => {
+    const text = cardMarkup(locale).textContent ?? ""
+    expect(text).not.toMatch(/Score|coverage|urgent|locations/)
+  })
 })

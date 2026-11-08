@@ -1,0 +1,165 @@
+{
+  "recordedAt": "2026-10-18T17:25:00.4299202Z",
+  "base": "94770e3dc36bfbe775f044e2755b62cd2ccfa5d2",
+  "branch": "codex/review-action-reliability-20261018",
+  "scope": "26 changed application/test source files; evidence files excluded; failed fixture experiments reverted",
+  "files": [
+    {
+      "path": "app/[locale]/owner/[workspaceSlug]/actions/[actionId]/page.tsx",
+      "bytes": 5421,
+      "sha256": "E8EF3386A4B588BC2C801C6F3A9D2A8BB075C86DF6D3C8694D11982D0CB182B4",
+      "gitBlob": "044fc7915fb031f5d018bae146e46b4cff53626f"
+    },
+    {
+      "path": "components/product-ui.test.tsx",
+      "bytes": 4553,
+      "sha256": "1A296E441A26751CDDB2858A398DFAC59A7B199B3EC9161000CE79EDA790754E",
+      "gitBlob": "34e1459562fd42182b96cd647b40c6cfa84d7a76"
+    },
+    {
+      "path": "components/product-ui.tsx",
+      "bytes": 14178,
+      "sha256": "CFA258003DED88738D5D3BD57BA6FDB058A517D8CDC6E5FF9058A40C9A43B2D2",
+      "gitBlob": "a03a74dcd54bc7097f2c51c492dbc26023e88d4a"
+    },
+    {
+      "path": "components/workspace/action-detail-client.test.tsx",
+      "bytes": 79238,
+      "sha256": "47017F3065FDF3CAE15C36293AFC1C8E3D54BA9DB60EF927B669187107EB2A22",
+      "gitBlob": "5cdcc1d5814a68384c20ab37cbe64f26941d8144"
+    },
+    {
+      "path": "components/workspace/action-detail-client.tsx",
+      "bytes": 86482,
+      "sha256": "7394B511A8CFC75C25625CC712ADA5EA93DD54FDAF049A43EC4D6D8D62BC0839",
+      "gitBlob": "530bbe01697d8f988bcebde986ce7f9c4c638fa8"
+    },
+    {
+      "path": "components/workspace/actions-list-view.tsx",
+      "bytes": 12936,
+      "sha256": "4EADD3957ACA37619F9D2EAD6A7B2C1FBBBE01B265C9ACF2653B93FC72C7E3E7",
+      "gitBlob": "5784083a4546a59a41120e00eb24d82d3d1ee61e"
+    },
+    {
+      "path": "e2e/acceptance/audit-delivery-history.spec.ts",
+      "bytes": 15560,
+      "sha256": "57AE794A75A517EB56130F6C7477FFC4B9F6BA0DC924006C494556D30EF1D068",
+      "gitBlob": "bb13387e56fd5976d4eb8b8426fb2f6dcda5dbd5"
+    },
+    {
+      "path": "lib/copy-workspace.ts",
+      "bytes": 68175,
+      "sha256": "E5466A67411ADF5873E9414DDC7DD9F6480D5E0207A3A0508BB766AFE2C99883",
+      "gitBlob": "be7ad115bdcd60c35254d7a65680c4254e8df938"
+    },
+    {
+      "path": "lib/repositories/action-derivation.test.ts",
+      "bytes": 11158,
+      "sha256": "38867DBD2F8BBA519F697E49C78C0B6E71A1C0641C88EFAF407F01CB96206AF3",
+      "gitBlob": "d98617046fa3341e2b3b6c3c853b2ce62522a8df"
+    },
+    {
+      "path": "lib/repositories/action-derivation.ts",
+      "bytes": 14700,
+      "sha256": "CEDD8FAF64953CF440E303C4D07AA243BB085954712BAE6513A748230001B2D3",
+      "gitBlob": "fc9b8956758418a1d9aeed5f25aacf6011f8026b"
+    },
+    {
+      "path": "lib/repositories/verification.ts",
+      "bytes": 7309,
+      "sha256": "C593C6DC2D1D8AAD00F26083500915C9CBE8B2433BEA2F0957FBEBE89B3179DD",
+      "gitBlob": "5d2d6c525ef055db21d873662754920cba831306"
+    },
+    {
+      "path": "lib/repositories/workspace-read.ts",
+      "bytes": 16956,
+      "sha256": "4597CCE5613BB422BAF4FD4A85B09399B2E057005652162912C0FBB055BB306D",
+      "gitBlob": "d94ff56d45f801c9523fe59ae6a3dc4fbf6e8a3b"
+    },
+    {
+      "path": "lib/verify/decide.test.ts",
+      "bytes": 4663,
+      "sha256": "6ED5A93C5A824D43E1E56586D9FF021C6FE9DF0591C12DD5E4345B60E0D14BA6",
+      "gitBlob": "26588d9aff78fcc2d9e6abaf4242c0bea2375be6"
+    },
+    {
+      "path": "lib/verify/decide.ts",
+      "bytes": 3829,
+      "sha256": "70A6169EFE47709CBD1DE1D5CB069DC6253DCBAB4E13476532222EDBDAF8FD6E",
+      "gitBlob": "440fb2a76850025795c751a8b1ef68fa6119463e"
+    },
+    {
+      "path": "lib/verify/receipt.ts",
+      "bytes": 527,
+      "sha256": "35E62EFE2F064531069A4B6B50FFE849A6C06616F1F05102C7390F62F2560FD0",
+      "gitBlob": "91e761794b572398d20d7dee911d3646b643446d"
+    },
+    {
+      "path": "lib/verify/website-sweep.test.ts",
+      "bytes": 15760,
+      "sha256": "A3E27534F07CAB09FE2D16877DBF56B7B9491797CFBB0D50FF7CBCB72BAD3704",
+      "gitBlob": "e20ae5d749367b0beb0dcc6a389bc009bd4d5701"
+    },
+    {
+      "path": "lib/verify/website-sweep.ts",
+      "bytes": 9912,
+      "sha256": "49D41D247F0C4281508C863AF3CF2D2A6F5FC9012EDB6DB8034150F211234B1B",
+      "gitBlob": "b67d759570a92f9174017f545734157be25114c6"
+    },
+    {
+      "path": "lib/workspace/action-recurrence.ts",
+      "bytes": 3317,
+      "sha256": "E1FD53ABF4665CBBBA970D51F3ABB2FEBB034A85577496DB47888B7D69FB7FE5",
+      "gitBlob": "2165349c598f40b0f70b850e96255a04f40a4056"
+    },
+    {
+      "path": "lib/workspace/action-verification.ts",
+      "bytes": 2870,
+      "sha256": "AC7AFA26DB423EB3A1676CD91353AADB0D34B2DB349F0077972A19AE7CD780FA",
+      "gitBlob": "e529c3c127de8c6e33ba8ea33f678ea6e102c4be"
+    },
+    {
+      "path": "lib/workspace/actions.ts",
+      "bytes": 10173,
+      "sha256": "0A0B8D4CDF4922F801F13D8BD98A75C5B258997A59CC0CF4B4D22BC30A01E357",
+      "gitBlob": "06b264d8144490487dc4bbecb39ad6316e6cfe84"
+    },
+    {
+      "path": "lib/workspace/audit-labels.ts",
+      "bytes": 7550,
+      "sha256": "54BB940E991827A4EE7C72734029495BD3FB263051EA1052425E945AC6810602",
+      "gitBlob": "c19ce02e57e148a4ac8d6fc4c80ac927f804e2bc"
+    },
+    {
+      "path": "lib/workspace/overview.ts",
+      "bytes": 14803,
+      "sha256": "FBE69F6FF36434561E9E42668611EA846E70DEACA1F19BF3EC32B813F6BA0186",
+      "gitBlob": "25823c1de484c94102990f35ac8c3b16d99dd7fc"
+    },
+    {
+      "path": "lib/workspace/queries-pages.ts",
+      "bytes": 49186,
+      "sha256": "07938A5930F955AEEA037722A3774EFC76DDF55CAD4843AD5794EDE5A97C40BE",
+      "gitBlob": "833e43ae285c8ec00e06e330061799a6d30ae098"
+    },
+    {
+      "path": "test/integration/neon-action-derivation.integration.test.ts",
+      "bytes": 30307,
+      "sha256": "221ADED842B9485937C500DC6156B71FC5780FD0B5E5BA98AD9588CF7AE06CAC",
+      "gitBlob": "0e4330d23a3d097715ee3dd9ce62b8114e4008ad"
+    },
+    {
+      "path": "test/integration/neon-artifacts.integration.test.ts",
+      "bytes": 42895,
+      "sha256": "2FB15C395D5876ADF321E7B703DFB17349EB3E996FA10C85BE82A4630546B8F0",
+      "gitBlob": "121ab94a968925282f30019d191149beec33d5a7"
+    },
+    {
+      "path": "test/integration/neon-website-verification.integration.test.ts",
+      "bytes": 34688,
+      "sha256": "2C121012478189A62C919E1BBC789762AA7617CC3A8BADDD7D7FF959DF65A89D",
+      "gitBlob": "1332cf9180f0671aa19ad6c6bdb90189fa048d10"
+    }
+  ],
+  "gitNormalizationNote": "sha256 hashes the tested worktree bytes; gitBlob binds the same source after repository line-ending normalization to the staged/final commit"
+}

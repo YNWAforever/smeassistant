@@ -8,9 +8,9 @@ Design contract: `docs/superpowers/specs/2026-11-08-conversation-studio-design.m
 
 The owner product's primary surface is now a persistent, continuous conversation. The old assistant *sheet* (fixed questions, one answer, forgotten) and the Create goal grid remain only as secondary entry points; the Studio is the first navigation item and the top-bar assistant entry point.
 
-### 1.1 Persistence (migration 0019)
+### 1.1 Persistence (migration 0021)
 
-`neon/migrations/0019_studio_conversations.sql` adds two additive tables (no existing object is modified):
+`neon/migrations/0021_studio_conversations.sql` adds two additive tables (no existing object is modified):
 
 - `studio_conversations` (9 columns): `workspace_id` cascade, optional `location_id` set-null, `created_by` cascade, title ≤ 80 chars (derived from the first user turn), `status active|archived`, timestamps.
 - `studio_messages` (15 columns): cascade to its conversation and workspace, `seq` per conversation (`unique(conversation_id, seq)`), role `user|assistant`, author set-null, `content`, `parts jsonb` (validated array), intent/model/prompt version, token counts and `cost_usd`.
@@ -18,9 +18,9 @@ The owner product's primary surface is now a persistent, continuous conversation
 - `lib/repositories/studio.ts`: typed repository with `studioRepository(client?, transaction?)`, DB-shaped rows plus `toStudioConversation`/`toStudioMessage` mappers, typed not-found/archived/location errors, transactional `appendMessage` (`SELECT … FOR UPDATE`, `max(seq)+1`, title only while empty).
 - `scripts/neon/catalog.ts` teaches the catalog verifier the two added tables (exact columns, constraints, indexes, RLS, policy count `legacy.tables.length + 6`) without touching the existing `brand_revisions`/function assertions.
 - Generated artifacts regenerated: `lib/db/schema/studio.ts` + `lib/db/schema/index.ts`, `lib/db/database.types.ts`, `docs/operations/check-missing-columns.sql`.
-- Rollout: `docs/implementation/owner-platform-v1/rollout/apply-0019.sql` — one DO block as migrator under the runner advisory lock, requires journal 1–18 with on-disk checksums, executes the 0019 text byte-for-byte, verifies tables/RLS/policies/grants/FK delete rules, records journal row 19. Pinned by `tests/rollout-apply-0019.test.ts`.
+- Rollout: `docs/implementation/owner-platform-v1/rollout/apply-0021.sql` — one DO block as migrator under the runner advisory lock, requires journal 1–20 with on-disk checksums, executes the 0021 text byte-for-byte, verifies tables/RLS/policies/grants/FK delete rules, records journal row 21. Pinned by `tests/rollout-apply-0021.test.ts`.
 
-**Numbering deviation:** the design originally said 0018, but `0018_content_version_retry_boundaries.sql` already occupied journal row 18 on `origin/main`; the Studio migration is therefore 0019. `.env.example`, `docs/integration/DEPLOY.md` and the design doc were updated; the pre-existing 0018 has no prepared rollout file, which `apply-0019.sql` documents as an operator pre-existing gap.
+**Numbering deviation:** the design originally said 0018, but `0018_content_version_retry_boundaries.sql` already occupied journal row 18 on `origin/main`; the Studio migration is therefore 0019. `.env.example`, `docs/integration/DEPLOY.md` and the design doc were updated; the pre-existing 0018 has no prepared rollout file, which `apply-0021.sql` documents as an operator pre-existing gap.
 
 ### 1.2 Server (turns, grounding, streaming, routes)
 
@@ -50,39 +50,50 @@ The owner product's primary surface is now a persistent, continuous conversation
 - `test/integration/neon-schema.integration.test.ts` and the brand-revisions/brand-profile-capture/publish-reply replay lists: journal 19 and the exact new catalog counts.
 - New tests: repository unit 27, LLM chat/stream, prompt/context/orchestrator/turn-lock, three route suites, Studio client 13, Studio component 9 + navigation 4, Studio integration 9, rollout pin 5, Studio acceptance spec 2.
 
-## 2. Verification (executed locally on 2026-11-08)
+## 2. Verification (executed locally on 2026-11-09, merged Path A tree)
 
-Environment: Node 26.13.0 (repo targets Node 24; see §4), Docker 29.8.1, Windows sandbox.
+Environment: Node 26.13.0 (repo targets Node 24; see §3), Docker 29.8.1, Windows.
 
 | Gate | Command | Result |
 |---|---|---|
-| Migration apply + replay + catalog | `tsx scripts/neon/verify-migrations.ts` | **PASS** — applied `0001`–`0019`, replay `[]`, `tables 44`, `columns 522`, `constraints 228`, `indexes 119`, `triggers 10`, `functions 27`, `seededRows 0` |
+| Migration apply + replay + catalog | `tsx scripts/neon/verify-migrations.ts` | **PASS** — applied `0001`–`0021`, replay `[]`, `tables 48`, `columns 560`, `constraints 261`, `indexes 132`, `triggers 16`, `functions 33`, `seededRows 0` |
 | Typecheck | `tsc --noEmit` | **PASS** (exit 0) |
-| Lint | `eslint .` | **PASS** — 0 errors, 40 pre-existing warnings |
-| Unit/component tests | `vitest run --pool=threads` | **PASS** — 5889/5889 tests, exit 0 |
-| Integration tests | `vitest run --config vitest.integration.config.ts` (Docker fixtures) | **PASS** — 638/638 tests, including `neon-schema` (journal 19 + exact catalog), `neon-catalog` and Studio persistence 9/9 |
-| Production build | `next build` | **PASS** — includes `ƒ /[locale]/owner/[workspaceSlug]/studio`, `ƒ …/today` and the three `/api/studio/*` routes |
-| Studio acceptance e2e | `CONVERSATION_STUDIO_ENABLED=true playwright test --config playwright.acceptance.config.ts e2e/acceptance/conversation-studio.spec.ts` | **PASS** — 2/2 in Chromium: the workspace root redirects to the Studio, nav leads with it, “Open Studio” is in the top bar, the Today brief is reachable at `/today`, a starter streams an answer, the first-turn title is stored and shown in the rail, reload resumes history, no raw JSON, no approve/export/publish control or route; a second member sees an empty rail (privacy). |
-| Gateway smoke | `tsx scripts/studio-smoke.ts` | **PASS** — SKIPPED without a key (exit 0); verified non-skipped against the acceptance fixture gateway: classifier JSON parsed, `streamed: true`, deltas concatenate to the answer |
-| Secret boundary | `node scripts/assert-secret-boundary.mjs` | **PASS** — 92 public artifacts |
-| Rollout pin | `vitest run tests/rollout-apply-0019.test.ts` | **PASS** — 5/5 (byte-identical embedding, journal 1–18 checksums, row 19, migrator/advisory lock, post-checks) |
+| Lint | `eslint .` | **PASS** — 0 errors, 10 pre-existing warnings |
+| Unit/component tests | `vitest run` (jsdom localStorage restored for Node 26) | **PASS** — 6802/6802 tests across 548 files, exit 0 |
+| Integration tests | `vitest run --config vitest.integration.config.ts` (Docker fixtures) | **PASS** — 662/662 tests across 61 files on the clean re-run, including `neon-schema` (journal 21 + exact merged catalog), `neon-catalog` and Studio persistence 9/9 |
+| Production build | `next build` | **PASS** — includes `ƒ …/conversation/studio` and the three `/api/studio/*` routes |
+| JS budget | `node scripts/check-route-js.mjs` | **PASS** — `/…/conversation/studio` 247/300 KB gzip; every route under its limit |
+| Studio acceptance e2e | `CONVERSATION_STUDIO_ENABLED=true playwright test --config playwright.acceptance.config.ts e2e/acceptance/conversation-studio.spec.ts` | **PASS** — 2/2 in Chromium: Today stays the default URL, workbench entry → `/conversation/studio`, streamed answer, first-turn title, reload resumes rail/history, no raw JSON, no approve/export/publish control or route; a second member sees an empty rail |
+| Secret boundary | `node scripts/assert-secret-boundary.mjs` | **PASS** — 110 public artifacts |
+| Gateway smoke | `tsx scripts/studio-smoke.ts` | **PASS** — SKIPPED without a key (exit 0); verified non-skipped against the acceptance fixture gateway |
+| Secret boundary | `node scripts/assert-secret-boundary.mjs` | **PASS** — 110 public artifacts |
+| Rollout pin | `vitest run tests/rollout-apply-0021.test.ts` | **PASS** — byte-identical embedding, journal 1–20 checksums, row 21, migrator/advisory lock, post-checks |
 
 The Studio acceptance suite was also exercised against a real Docker PostgreSQL fixture and a real Next dev server; the fixture now returns a genuine `text/event-stream` for the answer call, so the browser run exercises the token-delta path (with the non-streaming fallback still unit-tested). `db:verify` proves the migration, repository SQL and catalog expectations against PostgreSQL; the integration suite proves the repository API and pinned journal lists; the e2e proves the browser surface and persistence.
 
-### 1.5 Follow-up delivery (2026-11-08, same branch)
+### 1.5 Path A integration (2026-11-09)
 
-- **Studio is now the default owner landing.** With the flag on, `/{locale}/owner/{workspaceSlug}` redirects to `/studio` (carrying `?location=`), and the read-only brief moves to `/{locale}/owner/{workspaceSlug}/today`. The Home tab and brand link point at the new locations; with the flag off the root still renders the brief exactly as before. Covered by navigation-entry tests, the shell data test and the browser acceptance spec.
-- **First-turn conversation titles are model-generated.** The classifier JSON now accepts an optional `title` on the first turn only; the parser sanitises it (quotes, control characters, fence markers, trailing punctuation, 2–80 chars) and the orchestrator applies it after the user turn is stored, falling back to the deterministic first-message title. No extra provider call.
+`main` moved 191 commits while this branch was in review and shipped its own approved conversation workbench (`/conversation`, `CONVERSATION_HOME_ENABLED`, migrations 0019/0020, five-destination Kinnso OS IA). The approved integration path is **A: the Studio becomes the persistent, model-backed mode of that workbench**.
+
+- **Entry/IA:** Today remains the default workspace URL and the five destinations are unchanged. The conversation workbench header shows an “Open Studio” link when both flags are on; the Studio lives at `/conversation/studio`. Earlier Studio-first nav/root-redirect work was withdrawn.
+- **Flags:** `CONVERSATION_HOME_ENABLED` (existing) + `CONVERSATION_STUDIO_ENABLED`; both required for the Studio, each independently fail-closed.
+- **Migration:** renumbered to **0021**, layered on the conversation workstream's 0019/0020; catalog verifier assertions and the rollout statement were merged onto that baseline (`journal 1–20`, row 21).
+- **Kept from the branch:** the server-persisted threads, grounded briefing/orchestrator, SSE routes, evidence/artifact/context UI, first-turn titles, gateway smoke check and cut-over runbook.
+- **Removed in the merge:** the Studio nav item, top-bar “Open Studio” entry, `ShellWorkspace.studioEnabled`, root redirect, `/today` route and the old `home-view` extraction. The conversation shell now stays active on `/conversation/*` so the nested route keeps the workbench chrome.
+
+### 1.6 First-turn titles, smoke check and runbook (same return)
+
+- **First-turn conversation titles are model-generated.** The classifier JSON accepts an optional `title` on the first turn only; the parser sanitises it (quotes, control characters, fence markers, trailing punctuation, 2–80 chars) and the orchestrator applies it after the user turn is stored, falling back to the deterministic first-message title. No extra provider call.
 - **Gateway smoke check.** `corepack pnpm smoke:studio` performs the two production call shapes (strict-JSON classifier + streamed plain-text answer), reports every check and exits non-zero on failure; without a configured key it prints `SKIPPED` and exits 0.
-- **Hosted cut-over runbook.** `CONVERSATION-STUDIO-CUTOVER.md` orders target confirmation, journal check, `apply-0019.sql`, flag-off deploy, flag-on, the 14-point hosted acceptance, evidence queries and rollback.
+- **Hosted cut-over runbook.** `CONVERSATION-STUDIO-CUTOVER.md` orders target confirmation, journal check, `apply-0021.sql`, flag-off deploy, conversation-workbench enablement, Studio flag-on, the 15-point hosted acceptance, evidence queries and rollback.
 
-### Bug caught by visual verification
+### Bug caught by visual verification (pre-integration branch)
 
-The first screenshot/e2e round exposed two things that the text assertions alone missed: `buildShellWorkspace` accepted `studioEnabled` but did not copy it into the returned `ShellWorkspace`, so the Studio page rendered while its nav/top-bar entry silently stayed hidden; and the fixture returned the classifier JSON as the answer prose. Both are fixed (the shell now forwards the flag, with `lib/workspace/shell.test.ts` pinning it), the fixture streams real prose, and the acceptance test now asserts the nav entry and that the answer contains no JSON envelope.
+The pre-integration e2e/screenshot round exposed two issues that text assertions missed: `buildShellWorkspace` accepted `studioEnabled` but did not copy it into `ShellWorkspace` (the page rendered while nav stayed hidden), and the fixture returned classifier JSON as answer prose. The fixture fix (real SSE + prose) and the no-raw-JSON assertion are kept; the shell flag forwarding became obsolete under Path A, which mounts the entry in the conversation workbench instead of the shell nav.
 
 ### Full acceptance-suite note
 
-A full 23-spec acceptance run was attempted for regression coverage: 64 tests passed before Docker Desktop and the disk filled (`ENOSPC`, then `Docker Desktop is unable to start`), after which the remaining specs failed at fixture setup. That is an environment failure, not a product failure; the targeted Studio run above was re-executed green on the same code once Docker was restarted and disk was reclaimed. The default acceptance suite does not enable the Studio flag (`test/e2e/safety.ts` forwards it only on request), so its behaviour is unchanged.
+A full 23-spec acceptance run was attempted on the pre-integration branch: 64 tests passed before Docker/disk exhaustion. The merged tree's targeted Studio acceptance is the authoritative browser evidence for this change; the default acceptance suite does not enable the conversation/Studio flags (`test/e2e/safety.ts` forwards them only on request), so its behaviour is unchanged.
 
 ## 3. Local-only test-harness workarounds (not committed)
 
@@ -90,25 +101,27 @@ The checkout's documented commands assume `corepack` and Node 24. In this enviro
 
 - **No corepack:** `corepack pnpm …` is unavailable. Gates were run with the local binaries (`node_modules/.bin/tsc`, `eslint`, `vitest`, `next`, `tsx`); `scripts/assert-secret-boundary.mjs` was run with a temporary PATH shim that translates its internal `corepack pnpm exec next build`, leaving the gate itself unchanged.
 - **Vitest process isolation:** the Windows sandbox used for early reconnaissance forbade child processes, so tests ran with `--pool=threads` and a Vite `exec` shim. With wider access (Docker/Next build) the normal configuration works.
-- **Node 26 jsdom:** `components/scanning-page.test.tsx` needs `--localstorage-file` on Node 26 (unrelated to this feature; the test and component are untouched). With that flag the whole suite is green.
+- **Node 26 jsdom:** Node 26 installs an inert global `localStorage` accessor, so Vitest's jsdom environment cannot install its own Storage and tests that clear/spy on it fail. The verification run deletes that global in a preload before Vitest starts (restoring Node 24 behaviour). This is an environment workaround only; no test or application code was changed for it.
 - Docker image `postgres:16` was pulled locally for the owned fixtures; no hosted database was touched.
 
 These are environment workarounds, not product behaviour; none is committed.
 
 ## 4. How to enable
 
-1. **Database:** run `corepack pnpm db:verify` on a disposable fixture, then apply `docs/implementation/owner-platform-v1/rollout/apply-0019.sql` with the migration owner (journal must be 1–18; the statement records row 19). Run `docs/operations/check-missing-columns.sql` → 0 rows.
-2. **Code:** deploy with `CONVERSATION_STUDIO_ENABLED` unset first (all new surfaces 404, nav unchanged). Then set `CONVERSATION_STUDIO_ENABLED=true` and redeploy. The Studio uses the existing LLM gateway variables; no new secret.
-3. **Verify:** Studio is the first owner nav item; a turn persists across reload; evidence chips cite the latest scan; "Save as a version" lands on the existing action page; approve/export/publish still happen only there.
-4. **E2E (optional):** set `CONVERSATION_STUDIO_ENABLED=true` in the runner and the acceptance environment will start the Studio spec; it is skipped by default so the existing acceptance suite is unchanged.
-5. **Rollback:** unset the flag and redeploy. Conversations remain in the two tables; no other feature reads them.
+1. **Database:** run `corepack pnpm db:verify` on a disposable fixture, then apply `docs/implementation/owner-platform-v1/rollout/apply-0021.sql` with the migration owner (journal must be exactly 1–20; the statement records row 21). Run `docs/operations/check-missing-columns.sql` → 0 rows.
+2. **Code:** deploy with `CONVERSATION_STUDIO_ENABLED` unset. Enable `CONVERSATION_HOME_ENABLED` if the target environment does not have the workbench yet, then set `CONVERSATION_STUDIO_ENABLED=true` and redeploy. The Studio uses the existing LLM gateway variables; no new secret.
+3. **Verify:** Today is still the default workspace URL; the conversation workbench shows “Open Studio”; a turn persists across reload; evidence chips cite the latest scan; "Save as a version" lands on the existing action page; approve/export/publish still happen only there.
+4. **E2E (optional):** set `CONVERSATION_STUDIO_ENABLED=true` in the runner; the acceptance environment enables both conversation flags and runs the Studio spec. It is skipped by default so the existing acceptance suite is unchanged.
+5. **Rollback:** unset `CONVERSATION_STUDIO_ENABLED` and redeploy. Conversations remain in the two tables; no other feature reads them.
 
 The ordered hosted runbook (target confirmation, journal check, apply, flag-off deploy, flag-on, 14-point acceptance, evidence queries, rollback) is [CONVERSATION-STUDIO-CUTOVER.md](CONVERSATION-STUDIO-CUTOVER.md).
 
 ## 5. Open risks / not done
 
 1. **Hosted deployment is NOT RUN** and the migration is **not applied** to any hosted branch. Per the repository contract that is an owner action.
-2. **Real-gateway streaming** is implemented against OpenAI-compatible SSE but was exercised only against the fixture server and stubbed frames; the fixture returns non-stream JSON for every call, so the fallback path is what the e2e exercised. A live smoke test with the configured gateway is the remaining provider check.
-3. **Migration 0018 has no rollout statement** (pre-existing gap): `apply-0019.sql` refuses unless journal 1–18 is already present.
+2. **Real-gateway streaming** is implemented against OpenAI-compatible SSE; the browser e2e exercises the streamed path against the fixture gateway, and stubbed frames cover failures. A live `smoke:studio` with the configured gateway is the remaining provider check.
+3. **Path A is an incremental integration:** the workbench's local-note threads and the Studio's server threads coexist for this release. Converging notes/documents/search onto the server thread model is the next step (the design's v1.1 convergence), not a flag change.
+4. Conversations are **private per member**; shared team threads, attachments, voice and inline approval remain out of scope.
+5. The flag-off owner experience is unchanged: Today, the workbench, the assistant sheet and every existing route behave as on `main`.
 4. Conversations are **private per member**; shared team threads, attachments, voice, generated titles, and inline approval are explicitly out of scope (v1.1 list in the design doc §14).
 5. The flag-off owner experience is byte-identical apart from the assistant-surface union extension; the public/demo assistant sheet is untouched.

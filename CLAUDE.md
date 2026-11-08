@@ -4,6 +4,16 @@
 
 > User-approved amendment (2026-10-15): review replies acknowledge and thank the reviewer; any next step uses current confirmed facts, with contact-only feedback as the safe default. Never require an unconfirmed improvement promise or physical return invitation. Rating-only reviews do not establish a visit, purchase or service failure. This supersedes the mandatory "one concrete improvement, invite back" wording in section 3.7. Existing fact validation, version approval and delivery boundaries remain required.
 
+> User-approved amendment (2026-10-19): the UX redesign (`docs/ux/`) may restyle the site and change its information architecture. This supersedes §0.1 "Preserve the visual design" and §5 "Never restyle" for that work, while keeping §5's content rules. Decisions:
+> - **Product name:** Kinnso OS.
+> - **Brand colour:** Kinnso orange. On orange use dark ink text; white text on orange is not used.
+> - **Dark mode:** owner workspace only, following the OS setting, with a light/dark/system switch.
+> - **Fonts:** system fonts only, no CJK web font.
+> - **Ownership:** OAuth-verified claim is the intended production path. Setting `WORKSPACE_CLAIM_VIA_OAUTH_ENABLED` is a separate hosted action.
+> - **Process:** guardrail fixes ship first as their own PR.
+>
+> Every guardrail in §0 is unchanged. Graphics and motion must stay honest: no implied measured result, revenue or causation.
+
 > **What this file is.** The operating manual + executable integration playbook for Claude Code in this repo.
 > Part A (sections 0–3) is always-on context and contracts. Part B (section 4) is the phased playbook.
 > Sections 5–7 are content rules, verification and pitfalls. Appendix D is the decisions log. Read Part A fully before touching code.
@@ -51,6 +61,17 @@ This section supersedes historical database/Auth setup and deployment instructio
   Appendix D as **assumptions Willy can override**. When in doubt, the guardrails in §0 win.
 
 ---
+
+## Current interface (Kinnso OS, redesign completed 2026-10-20)
+
+The interface was redesigned in Phases 1–7 (`docs/ux/`, index in `docs/ux/README.md`). Where §1.1, §3.1 and §5 describe the ChatGPT-Sites prototype (its file names, components, routes and copy), that is history; the code below is current. The guardrails in §0 are unchanged.
+
+- **Product name:** Kinnso OS, by Fimmick. The paid plan is the Growth plan (增長方案 / 成長方案). The assistant is "Ask Kinnso" (問 Kinnso).
+- **Workspace:** five destinations — Today, Actions, Insights, Business, Settings. Old owner URLs answer 308 to their new home (`lib/workspace/route-redirects.ts`, called from `proxy.ts`).
+- **Styles:** tokens in `app/styles/tokens.css`; cascade layers `theme, tokens, base, components, utilities, pages, i18n, a11y` (`app/globals.css`); element defaults in `app/styles/base.css` (layer `base`). There is no legacy layer any more (removed in Phase 11). New styles go in `pages` (or `components`). Inside `pages`, sub-layers run `shared` (`app/styles/shared.css`, classes both the public site and the workspace use), with the shadcn button and select overrides, then `public` (`app/styles/public/`, one file per public page, `editorial.css` last), then `screens` (`app/styles/screens/`, workspace screens); check style moves with `test/visual/`. Dark mode is workspace-only.
+- **Components:** `components/kinnso/` (kit), `components/visual/` (visuals and motion), `components/states/` (error, loading, empty, `RoleNotice`), `components/ui/` (shadcn primitives).
+- **Copy:** every user-facing string lives in `lib/copy.ts` or a `lib/copy-*.ts` dictionary, in en, zh-HK and zh-TW, with parity tests. No inline `isChinese ? … : …`. Old product and plan names are blocked by `tests/product-name.test.ts`.
+- **Budgets:** first-load JS per route is checked after the build (`corepack pnpm test:js-budget`: workspace 300 KB, other routes 240 KB, gzipped).
 
 # PART A — ALWAYS-ON CONTEXT
 
@@ -1195,7 +1216,7 @@ evidence tab values from snapshot metrics; history from audit events; sticky app
 **Create / Assets / Calendar / Activity / Settings** — bind per §3.1; keep layouts; replace the sample rows.
 
 **Copy hygiene** — every new string exists in all three locales in `lib/copy.ts`; zh-HK uses 香港書面中文 (the prototype's register),
-zh-TW uses 台灣用語 (店家/核准/據點), en is concise British-neutral. Never mix locales in one string.
+zh-TW uses 台灣用語 (店家/據點; approval is 確認 in both Chinese locales, see Appendix D 2026-10-26), en is concise British-neutral. Never mix locales in one string.
 
 ---
 
@@ -1353,6 +1374,17 @@ corepack pnpm seed:demo --owned-test      # creates, seeds, verifies and destroy
 | 2026-09-03 | Fix Pack drafts surfaced read-only (approve/reject) rather than merged into versions | assumed, v1 |
 | 2026-09-03 | Tooling: Node 22, pnpm via corepack, no Supabase CLI, Docker for verify/integration | assumed |
 | 2026-10-14 | Public site redesigned as a modern, friendly SaaS look in the Kinnso palette (kinnso.ai: orange primary, amber secondary, peach tints, zinc ink, sans type). Supersedes the §0.1/§5 "preserve the visual design / never restyle" rule; extended to the owner workspace the same day (white sidebar, warm shell). Design system lives in `app/editorial.css` (`ed-*` + variable remaps); legacy stylesheets were hue-shifted, status colours (measured/observed/success) kept | decided (Willy) |
+| 2026-10-19 | UX redesign authorised (restyle + IA). Kinnso OS name; Kinnso orange brand; workspace-only dark mode (OS + toggle); system fonts; OAuth claim as production path; guardrail fixes first (PR #94). Plan and audit in `docs/ux/` | decided (Willy) |
+| 2026-10-20 | Workspace IA (Phase 4): the assistant is "Ask Kinnso"; bulk approve only for review replies and social posts, each draft read before approval; Fix Pack drafts are a view of Actions; Create, Offers and Starter pack are one "New" flow (flags unchanged) | decided (Willy) |
+| 2026-10-20 | States (Phase 5): the getting-started checklist hides itself when done (nothing stored); error pages show Next's digest as a reference; after Google verification onboarding goes straight to Business basics | decided (Willy) |
+| 2026-10-20 | Quality (Phase 6): hard 404 for unknown actions; JS budgets workspace 300 KB / other 240 KB; Lighthouse runs outside the repo (adding it changed production dependency resolution) | decided (Willy) |
+| 2026-10-20 | Hygiene (Phase 7): the paid plan is the "Growth plan" (增長方案 / 成長方案); `.superpowers/` evidence archived in `docs/archive/superpowers`; access-request strings move into a shared dictionary; legacy CSS use measured (none pruned: unseen rules style real states); Chinese headings use normal CJK line breaking | decided (Willy) |
+| 2026-10-21 | Legacy CSS (Phase 8): workspace screens moved to `app/styles/screens/` pixel-identically in light; dark fixes only where a legacy colour ignored the theme; public pages later; the state-capture tool stays manual (`test/visual/`) | decided (Willy) |
+| 2026-10-21 | Screen-file tidy (Phase 9): merge duplicates and drop dead or unneeded rules pixel-identically; literal colours become tokens only under delta E 2, the rest are listed for Willy's decision; text on orange uses `--on-brand` | decided (Willy) |
+| 2026-10-21 | Shared classes and public pages (Phase 10): shared classes in a `pages.shared` sub-layer before `screens` (not `components`), public page rules in `pages.public`, light pixel-identical; unused legacy classes listed, not deleted | decided (Willy) |
+| 2026-10-21 | Legacy layer removed (Phase 11): unused legacy classes deleted; element defaults to `base`; the shadcn button/select overrides stay above utilities in `pages.shared`; pixel-identical | decided (Willy) |
+| 2026-10-26 | Owner glossary: approval is 確認 and waiting for approval is 待確認 in zh-HK and zh-TW (no 核准/批准/審批); the usage meter is 已用次數 (en "Used this month") with a note that only the first copy or export of a confirmed text counts; Google's listing is "Google 商家檔案" everywhere | decided (Willy) |
+| 2026-10-26 | Friendlier owner screens: Today shows an effort ring, weekly streak, source coverage and badges (counts of what the owner did, never results; the score stays folded); task-type icons; Shop profile level; Better? shows coverage per scan, not the score; the shop's own confirmed photos, else the three credited Pexels images as labelled decoration | decided (Willy) |
 | open | Retention periods on the Trust page; owned photos for `public/brand/` | Willy |
 | open | Whether the 13 local-only commits and stale worktrees in `Documents\smescanner` get archived (tag) and removed | Willy |
 | open | Re-pin cadence: when upstream changes `scoringVersion` or the lease, both apps must move together | Willy + upstream maintainer |

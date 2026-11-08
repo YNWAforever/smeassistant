@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { TrustPage } from "@/components/public-pages";
+import { TrustPage } from "@/components/public/trust";
 import { normaliseLocale } from "@/lib/copy";
 
 import { publicPageMetadata } from "../_meta";

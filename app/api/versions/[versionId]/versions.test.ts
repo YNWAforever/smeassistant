@@ -90,14 +90,14 @@ const ROUTES: Record<
 beforeAll(async () => {
   for (const load of Object.values(ROUTES)) await load();
 });
-async function post(route: Route, body: unknown = {}) {
+async function post(route: Route, body: unknown = {}, versionId = VERSION_ID) {
   const mod = await ROUTES[route]();
   return mod.POST(
-    new Request(`https://app.test/api/versions/${VERSION_ID}/${route}`, {
+    new Request(`https://app.test/api/versions/${versionId}/${route}`, {
       method: "POST",
       body: JSON.stringify(body),
     }),
-    PARAMS,
+    { params: Promise.resolve({ versionId }) },
   ) as Promise<Response>;
 }
 const exportBody = { mode: "export", idempotency_key: "abcdefghijklmnop_-01" };
@@ -294,6 +294,139 @@ describe("POST /api/versions/[versionId]/export", () => {
     expect(
       (await post("export", { mode: "copy", idempotency_key: "short" })).status,
     ).toBe(400);
+    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  });
+
+  it("reuses the delivery key after a committed export whose usage read failed", async () => {
+    const usage = vi.spyOn(mocks.db!, "usage");
+    usage.mockRejectedValueOnce(new Error("fixture_usage_unavailable"));
+    mocks.db!.rpc.mockResolvedValueOnce({
+      data: { kind: "exported", delivery_id: "d-1", version_id: VERSION_ID, counted: true },
+      error: null,
+    }).mockResolvedValueOnce({
+      data: { kind: "existing", delivery_id: "d-1", version_id: VERSION_ID, counted: false },
+      error: null,
+    });
+
+    const failed = await post("export", exportBody);
+    expect(failed.status).toBe(503);
+    expect(await failed.json()).toEqual({ error: "unavailable" });
+    const retry = await post("export", exportBody);
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toEqual({
+      deliveryId: "d-1",
+      counted: false,
+      usage: { period: "2026-09", approved_deliveries: 1, allowance: 3 },
+    });
+    expect(mocks.db!.rpc).toHaveBeenCalledTimes(2);
+    for (const call of mocks.db!.rpc.mock.calls) {
+      expect(call).toEqual(["export_output_version", {
+        p_version_id: VERSION_ID,
+        p_actor: "user-1",
+        p_mode: "export",
+        p_idempotency_key: exportBody.idempotency_key,
+      }]);
+    }
+  });
+});
+
+describe.each(Object.keys(ROUTES) as Route[])("%s failure boundaries", (route) => {
+  const body = route === "export" ? exportBody : {};
+
+  it("rejects malformed version ids before reading scope or authorizing", async () => {
+    const scope = vi.spyOn(mocks.db!, "versionScope");
+    const res = await post(route, body, "not-a-uuid");
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "versionId is invalid" });
+    expect(scope).not.toHaveBeenCalled();
+    expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 for a missing version before spending a mutation token", async () => {
+    vi.spyOn(mocks.db!, "versionScope").mockResolvedValueOnce(null);
+    const res = await post(route, body);
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  });
+
+  it("returns a sanitized retryable response when scope lookup fails", async () => {
+    vi.spyOn(mocks.db!, "versionScope").mockRejectedValueOnce(new Error("private database diagnostic"));
+    const res = await post(route, body);
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "unavailable" });
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(mocks.authorizeWorkspaceRequest).not.toHaveBeenCalled();
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [401, "unauthenticated"],
+    [403, "forbidden"],
+    [404, "not_found"],
+  ] as const)("preserves an authorization refusal (%i %s) without mutation", async (status, code) => {
+    mocks.authorizeWorkspaceRequest.mockResolvedValueOnce({ ok: false, status, code });
+    const res = await post(route, body);
+    expect(res.status).toBe(status);
+    expect(await res.json()).toEqual({ error: code });
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each(["identity_provider_unavailable", "membership_dependency_unavailable"])(
+    "fails closed on %s without spending quota or changing a version",
+    async (reason) => {
+      mocks.authorizeWorkspaceRequest.mockRejectedValueOnce(new Error(reason));
+      const res = await post(route, body);
+      expect(res.status).toBe(503);
+      expect(await res.json()).toEqual({ error: "unavailable" });
+      expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+      expect(mocks.db!.rpc).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses a version whose parent action has disappeared", async () => {
+    vi.spyOn(mocks.db!, "assistantActions").mockResolvedValueOnce([]);
+    const res = await post(route, body);
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  });
+
+  it("rechecks the parent action's workspace before spending quota or mutating", async () => {
+    vi.spyOn(mocks.db!, "actionScope").mockResolvedValueOnce({
+      actionId: "act-1",
+      workspaceId: "another-workspace",
+      locationId: LOCATION_ID,
+    });
+    const res = await post(route, body);
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "forbidden" });
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  });
+
+  it("returns unavailable when the action recheck fails", async () => {
+    vi.spyOn(mocks.db!, "assistantActions").mockRejectedValueOnce(new Error("private action diagnostic"));
+    const res = await post(route, body);
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "unavailable" });
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.db!.rpc).not.toHaveBeenCalled();
+  });
+
+  it("keeps unexpected workflow failures private and retryable", async () => {
+    mocks.db!.rpc.mockRejectedValueOnce(new Error("private workflow diagnostic"));
+    const res = await post(route, body);
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "unavailable" });
+    expect(mocks.db!.rpc).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -318,7 +451,10 @@ describe("authorization on every version mutation", () => {
         allowed: false,
         retryAfterSeconds: 30,
       });
-      expect((await post(route, body)).status).toBe(429);
+      const limited = await post(route, body);
+      expect(limited.status).toBe(429);
+      expect(limited.headers.get("retry-after")).toBe("30");
+      expect(mocks.db!.rpc).not.toHaveBeenCalled();
     },
   );
 });

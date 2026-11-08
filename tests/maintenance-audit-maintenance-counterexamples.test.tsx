@@ -8,7 +8,7 @@ const fixture = vi.hoisted(() => ({ listActions: vi.fn(), loadOwnerPage: vi.fn()
 vi.mock("@/lib/workspace/queries-pages", () => ({ listCreateRecommendationSummaries: fixture.listActions }));
 vi.mock("@/lib/workspace/page-context", () => ({ loadOwnerPage: fixture.loadOwnerPage, inScopeFor: () => true, ownerPageMetadata: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), usePathname: () => "/en/owner/audit/create", useSearchParams: () => new URLSearchParams() }));
-import CreateRoute from "@/app/[locale]/owner/[workspaceSlug]/create/page";
+import CreateRoute from "@/app/[locale]/owner/[workspaceSlug]/actions/new/page";
 import { CalendarView } from "@/components/workspace/calendar-view";
 
 const props = { params: Promise.resolve({ locale: "en", workspaceSlug: "audit" }) };
@@ -40,8 +40,14 @@ it("includes an evidence-backed FAQ goal beyond the first 25 multi-location acti
   const root = document.createElement("div");
   root.innerHTML = renderToStaticMarkup(await CreateRoute(props));
   console.info("AUDIT recommended goal cards", Array.from(root.querySelectorAll(".goal-card h2")).map(n => n.textContent));
-  // The recommended tab must include the existing FAQ action, regardless of list page boundaries.
-  expect(root.querySelectorAll(".goal-card").length).toBe(2);
+  // The three lead goals remain visible; evidence-backed ones retain their source,
+  // including the existing FAQ beyond ordinary queue pagination.
+  const cards = [...root.querySelectorAll(".goal-card")];
+  expect(cards.filter(card => !card.closest("details"))).toHaveLength(3);
+  expect(cards.filter(card => card.textContent?.includes("From your scan"))).toHaveLength(2);
+  const faq = cards.find(card => card.querySelector("h2")?.textContent === "Add clear FAQ answers for search and AI");
+  expect(faq?.textContent).toContain("From your scan");
+  expect(faq?.textContent).toContain("Promote our lunch menu");
 });
 
 it("keeps the secondary shop selected when opening its cadence Insights link", () => {

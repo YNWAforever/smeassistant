@@ -2,13 +2,16 @@ import "server-only";
 import type { Pool, QueryResultRow } from "pg";
 import type { MonthWindow } from "../workspace/month-window";
 import { getPool } from "../db/client";
-import type { WorkspaceRow, LocationRow, UsageRow, SnapshotRow } from "../workspace/queries";
+import type { WorkspaceRow, LocationRow, UsageRow, SnapshotRow, LocationCardRow } from "../workspace/queries";
 
 import type { ActionState } from "../domain";
 import type { ActionRow } from "../workspace/overview";
 import { parseVersionMeta } from "../workspace/version-meta";
 import type { ScanSnapshotRow, ScanDiffRow } from "../workspace/snapshots";
 import type { AeoSnapshotRow } from "../trends/aeo-trend-model";
+import { COPY_FOLLOW_UP_EVENT, type HomeCopyFollowUp } from "../workspace/copy-follow-up";
+import type { HomeReviewCandidate } from "../workspace/home-review-follow-up";
+import { OWNER_REVIEW_CHECK_EVENT } from "../workspace/owner-review-check";
 import type { RunRow, VersionRow, MeasurementRow, AuditEventRow, NotificationRow, IntegrationsModel, DeliveredWorkRow } from "../workspace/queries-pages";
 
 export const SNAPSHOT_COLUMNS = "id, job_id, workspace_id, location_id, market, observed_at::text, scoring_version, overall_score, coverage, module_states, metrics, website_checks, comparable_to, diff_id, created_at::text";
@@ -22,6 +25,23 @@ function pageLimit(value: number): number {
 
 const WORKSPACE_COLUMNS = "id, slug, business_name, market, tier, timezone, is_demo, instagram_handle, industry, district";
 const LOCATION_COLUMNS = "id, workspace_id, slug, name, address, district, is_primary, place_id";
+
+/** Audit events that count as "the owner did something this week". */
+const EFFORT_EVENTS = ["version.approved", "delivery.exported", "delivery.copied", "action.applied"];
+
+export interface EffortSignalsRow {
+  approved: number;
+  delivered: number;
+  completed: number;
+  /** Monday dates ('YYYY-MM-DD', workspace time) with at least one effort event. */
+  active_weeks: string[];
+  this_week: string;
+}
+
+export interface ActionVerificationScope {
+  actionId: string;
+  locationId: string | null;
+}
 
 /** Selected workspace rows, called only after membership authorization. */
 export function workspaceReadRepository(client?: Pick<Pool, "query">) {
@@ -43,6 +63,36 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     async locations(workspaceIds: string[]): Promise<LocationRow[]> {
       if (!workspaceIds.length) return [];
       return rows<LocationRow>(`SELECT ${LOCATION_COLUMNS} FROM locations WHERE workspace_id = ANY($1::uuid[]) ORDER BY is_primary DESC, name ASC`, [workspaceIds]);
+    },
+    /** Selector summaries in one statement, independent of membership/location count. */
+    async locationCards(workspaceIds: string[]): Promise<LocationCardRow[]> {
+      if (!workspaceIds.length) return [];
+      // Reduce each source BEFORE joining: snapshot history must not multiply
+      // action counts. Both keys bind evidence/actions to the location's tenant.
+      // Set-based reads avoid repeated history scans on the current schema.
+      return rows<LocationCardRow>(`WITH latest AS (
+          SELECT DISTINCT ON (workspace_id, location_id)
+            workspace_id, location_id, overall_score, coverage, observed_at
+          FROM scan_snapshots
+          WHERE workspace_id=ANY($1::uuid[]) AND location_id IS NOT NULL
+          ORDER BY workspace_id, location_id, observed_at DESC, created_at DESC, id DESC
+        ), waiting AS (
+          SELECT workspace_id, location_id, count(*)::int AS count, count(*) FILTER (WHERE priority='urgent')::int AS urgent_count
+          FROM actions
+          WHERE workspace_id=ANY($1::uuid[])
+            AND action_state NOT IN ('completed','dismissed','cancelled','expired')
+          GROUP BY workspace_id, location_id
+        )
+        SELECT l.id, l.workspace_id, l.slug, l.name, l.address, l.district, l.is_primary, l.place_id,
+          s.overall_score, s.coverage, s.observed_at::text,
+          coalesce(u.urgent_count,0)::int AS urgent_actions,
+          (coalesce(u.count,0)+coalesce(w.count,0))::int AS waiting_actions
+        FROM locations l
+        LEFT JOIN latest s ON s.workspace_id=l.workspace_id AND s.location_id=l.id
+        LEFT JOIN waiting u ON u.workspace_id=l.workspace_id AND u.location_id=l.id
+        LEFT JOIN waiting w ON w.workspace_id=l.workspace_id AND w.location_id IS NULL
+        WHERE l.workspace_id=ANY($1::uuid[])
+        ORDER BY l.is_primary DESC, l.name ASC`, [workspaceIds]);
     },
     async usage(workspaceId: string, period: string, allowance: number | null): Promise<UsageRow> {
       // Insert and re-read in separate statements: a concurrent conflict winner is
@@ -152,8 +202,73 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
     // workspace-wide action must stay counted in a location-scoped total --
     // exactly as actions() does above. Dropping that arm would make Home's
     // counters SMALLER than the same location's Actions tab.
+    // Getting-started checklist (Phase 5): has any version in this workspace
+    // been approved? approved_at stays set when a later edit supersedes it; a
+    // later decision can clear it, so an exported version also counts.
+    /**
+     * What the owner has done, for Today's progress and badges: confirmed
+     * versions, counted deliveries, completed tasks, and the local weeks
+     * (Monday start, last 12 weeks) with any confirm, copy, export or
+     * "marked as applied" event. Counts of effort, never of results.
+     */
+    async effortSignals(workspaceId: string, timezone: string): Promise<EffortSignalsRow> {
+      const [row] = await rows<EffortSignalsRow>(`SELECT
+        (SELECT count(*)::int FROM output_versions WHERE workspace_id=$1 AND approved_at IS NOT NULL) AS approved,
+        (SELECT count(*)::int FROM deliveries WHERE workspace_id=$1 AND counted=true) AS delivered,
+        (SELECT count(*)::int FROM actions WHERE workspace_id=$1 AND action_state='completed') AS completed,
+        COALESCE((SELECT array_agg(DISTINCT to_char(date_trunc('week', created_at AT TIME ZONE $2), 'YYYY-MM-DD'))
+          FROM audit_events WHERE workspace_id=$1 AND event = ANY($3::text[]) AND created_at > now() - interval '84 days'), '{}') AS active_weeks,
+        to_char(date_trunc('week', now() AT TIME ZONE $2), 'YYYY-MM-DD') AS this_week`,
+        [workspaceId, timezone, EFFORT_EVENTS]);
+      return row;
+    },
+    async anyApprovedVersion(workspaceId: string): Promise<boolean> {
+      const [row] = await rows<{ approved: boolean }>("SELECT EXISTS(SELECT 1 FROM output_versions WHERE workspace_id=$1 AND (approved_at IS NOT NULL OR first_exported_at IS NOT NULL)) AS approved", [workspaceId]);
+      return row?.approved === true;
+    },
     async draftVersions(workspaceId: string, locationId?: string | null): Promise<Array<{ id: string }>> {
       return rows<{ id: string }>("SELECT v.id FROM output_versions v JOIN actions a ON a.id=v.action_id AND a.workspace_id=v.workspace_id WHERE a.workspace_id=$1 AND v.approval_state='draft' AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)", [workspaceId, locationId ?? null]);
+    },
+    async homeCopyFollowUp(workspaceId: string, locationId: string | null, allowedLocationIds: string[] | null): Promise<Omit<HomeCopyFollowUp, "canRecord"> | null> {
+      const result = await rows<Omit<HomeCopyFollowUp, "canRecord">>(`SELECT e.id::text,a.workspace_id AS "workspaceId",a.id AS "actionId",a.location_id AS "locationId",
+        v.id AS "versionId",v.version_no AS "versionNo",a.title
+        FROM actions a JOIN output_versions v ON v.workspace_id=a.workspace_id AND v.action_id=a.id
+        JOIN LATERAL (SELECT id,payload,created_at FROM audit_events WHERE workspace_id=a.workspace_id
+          AND entity_type='action' AND entity_id=a.id AND event=$4 AND location_id IS NOT DISTINCT FROM a.location_id
+          AND payload->>'versionId'=v.id::text ORDER BY created_at DESC,id DESC LIMIT 1) e ON true
+        WHERE a.workspace_id=$1 AND v.approval_state='approved' AND (e.payload->>'decision'='pending' OR e.payload->>'decision'='later' AND e.created_at<=now()-interval '24 hours')
+        AND a.action_state NOT IN ('dismissed','cancelled','expired')
+        AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)
+        AND ($3::uuid[] IS NULL OR a.location_id IS NULL OR a.location_id=ANY($3::uuid[]))
+        AND EXISTS(SELECT 1 FROM deliveries d WHERE d.workspace_id=a.workspace_id AND d.version_id=v.id AND d.mode='copy' AND d.state='exported')
+        AND NOT EXISTS(SELECT 1 FROM action_applications p WHERE p.workspace_id=a.workspace_id AND p.action_id=a.id AND p.output_version_id=v.id)
+        ORDER BY e.created_at DESC,e.id DESC LIMIT 1`, [workspaceId, locationId, allowedLocationIds, COPY_FOLLOW_UP_EVENT]);
+      return result[0] ?? null;
+    },
+    async homeReviewCandidates(workspaceId: string, locationId: string | null, allowedLocationIds: string[] | null): Promise<HomeReviewCandidate[]> {
+      return rows<HomeReviewCandidate>(`SELECT a.workspace_id,a.id AS action_id,a.location_id,a.title,a.action_state,
+        v.id AS version_id,v.version_no,v.approval_state,v.delivery_state,p.asserted_at::text AS applied_at,
+        latest.id AS latest_version_id,latest.version_no AS latest_version_no,latest.approval_state AS latest_approval_state,
+        CASE WHEN checked.id IS NULL THEN NULL ELSE to_jsonb(checked) END AS owner_check
+        FROM actions a
+        JOIN action_applications p ON p.workspace_id=a.workspace_id AND p.action_id=a.id
+        JOIN output_versions v ON v.workspace_id=a.workspace_id AND v.action_id=a.id AND v.id=p.output_version_id
+        JOIN LATERAL (SELECT id,version_no,approval_state FROM output_versions
+          WHERE workspace_id=a.workspace_id AND action_id=a.id ORDER BY version_no DESC LIMIT 1) latest ON true
+        LEFT JOIN LATERAL (SELECT e.id::text AS id,e.workspace_id,e.location_id,e.actor_type,e.actor_id,
+          e.event,e.entity_type,e.entity_id,e.payload,
+          to_char(e.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at
+          FROM audit_events e WHERE e.workspace_id=a.workspace_id AND e.entity_type='action' AND e.entity_id=a.id
+          AND e.location_id IS NOT DISTINCT FROM a.location_id AND e.event=$4
+          AND e.payload#>>'{owner_check,versionId}'=v.id::text ORDER BY e.created_at DESC,e.id DESC LIMIT 1) checked ON true
+        WHERE a.workspace_id=$1 AND a.template_key='review-response' AND a.action_state='completed'
+        AND p.source='owner_asserted' AND p.retracted_at IS NULL
+        AND ($2::uuid IS NULL OR a.location_id=$2 OR a.location_id IS NULL)
+        AND ($3::uuid[] IS NULL OR a.location_id IS NULL OR a.location_id=ANY($3::uuid[]))
+        AND NOT EXISTS(SELECT 1 FROM action_applications verified WHERE verified.workspace_id=a.workspace_id
+          AND verified.action_id=a.id AND verified.output_version_id=v.id AND verified.source='verified' AND verified.retracted_at IS NULL)
+        ORDER BY p.asserted_at DESC,v.version_no DESC,a.id LIMIT 3`,
+      [workspaceId, locationId, allowedLocationIds, OWNER_REVIEW_CHECK_EVENT]);
     },
     async completedActions(workspaceId: string, window: MonthWindow, locationId?: string | null): Promise<Array<{ id: string; measurement_state: string; completed_at: string | null }>> {
       return rows<{ id: string; measurement_state: string; completed_at: string | null }>(`SELECT id, measurement_state, completed_at::text FROM actions WHERE workspace_id=$1 AND action_state='completed'
@@ -178,7 +293,14 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
         FROM aeo_surface_snapshots s JOIN audit_jobs j ON j.id=s.job_id
         WHERE j.workspace_id=$1 AND s.job_id=ANY($2::uuid[])`, [workspaceId, jobIds]);
     },
-    async activity(workspaceId: string, limit: number): Promise<AuditEventRow[]> {
+    async activity(workspaceId: string, limit: number, verificationFor?: ActionVerificationScope): Promise<AuditEventRow[]> {
+      if (verificationFor) {
+        return rows<AuditEventRow>(`SELECT id, workspace_id, location_id, actor_type, actor_id, event, entity_type, entity_id, payload, created_at::text
+          FROM audit_events WHERE workspace_id=$1 AND entity_type='action' AND entity_id=$3
+           AND event='action.verification_checked' AND location_id IS NOT DISTINCT FROM $4::uuid
+          ORDER BY created_at DESC,id DESC LIMIT $2`,
+        [workspaceId, pageLimit(limit), verificationFor.actionId, verificationFor.locationId]);
+      }
       return rows<AuditEventRow>(`SELECT id, workspace_id, location_id, actor_type, actor_id, event, entity_type, entity_id, payload, created_at::text
         FROM audit_events WHERE workspace_id=$1 ORDER BY created_at DESC LIMIT $2`, [workspaceId, pageLimit(limit)]);
     },

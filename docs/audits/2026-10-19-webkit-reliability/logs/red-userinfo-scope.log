@@ -1,0 +1,32 @@
+
+ RUN  v4.1.11 C:/Users/laich/Documents/smescanner/.worktrees/smeassistant-local-seo-completed-state-20261018
+
+ ❯ test/e2e/page-readiness.test.ts (14 tests | 1 failed) 9ms
+     × never pre-reads an Auth/API/foreign target: http://fixture-user@localhost:3100/en/owner/acceptance-hk-deadbeef/actions 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/e2e/page-readiness.test.ts > owned fixture document precompilation scope > never pre-reads an Auth/API/foreign target: http://fixture-user@localhost:3100/en/owner/acceptance-hk-deadbeef/actions
+AssertionError: expected 'http://fixture-user@localhost:3100/en…' to be null
+
+- Expected:
+null
+
++ Received:
+"http://fixture-user@localhost:3100/en/owner/acceptance-hk-deadbeef/actions"
+
+ ❯ test/e2e/page-readiness.test.ts:27:58
+     25|     "/en/owner/acceptance-hk-deadbeef/actions?token=fixture-one-use",
+     26|   ])("never pre-reads an Auth/API/foreign target: %s", target => {
+     27|     expect(workspaceReadTarget(origin, current, target)).toBeNull();
+       |                                                          ^
+     28|   });
+     29|   it("does not warm from a blank/foreign page or a non-fixture origin"…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+   Start at  02:42:42
+   Duration  1.07s (transform 54ms, setup 463ms, import 368ms, tests 9ms, environment 0ms)

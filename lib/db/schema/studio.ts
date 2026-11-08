@@ -1,4 +1,4 @@
-// Conversation Studio persistence (neon/migrations/0019_studio_conversations.sql).
+// Conversation Studio persistence (neon/migrations/0021_studio_conversations.sql).
 // The migration is authoritative for defaults, checks, grants and RLS; this
 // schema mirrors its columns, constraints, indexes and policy so db:types and
 // the missing-columns report stay byte-consistent with the SQL.

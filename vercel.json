@@ -2,10 +2,14 @@
   "regions": ["sin1"],
   "git": {
     "deploymentEnabled": {
+      "codex/owner-home-card-layout-20261020": false,
+      "codex/owner-home-next-step-20261019": false,
+      "codex/review-action-reliability-20261018": false,
       "codex/merchant-acceptance-completion": false,
       "codex/neon-migration": false,
       "codex/smeassistant-audit-remediation-20261007": false,
-      "fa04-home-today": false
+      "fa04-home-today": false,
+      "codex/conversation-wave1-post-coach": false
     }
   }
 }

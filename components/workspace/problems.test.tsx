@@ -31,22 +31,22 @@ describe("NeedsAttentionCard", () => {
     expect(renderToStaticMarkup(<NeedsAttentionCard {...common} problems={[]} />)).toBe("");
   });
 
-  it("shows at most two problems and links to Activity", () => {
+  it("shows one problem with recovery here and keeps Activity as an audit log", () => {
     const root = html(<NeedsAttentionCard {...common} problems={[problem("none"), problem("none", { id: "b" }), problem("none", { id: "c" })]} />);
-    expect(root.querySelectorAll("[data-problem]")).toHaveLength(2);
-    expect(root.querySelector('a[href="/en/owner/kam-man-house/activity"]')).not.toBeNull();
+    expect(root.querySelectorAll("[data-problem]")).toHaveLength(1);
+    expect(root.querySelector('a[href="/en/owner/kam-man-house/settings/activity"]')).toBeNull();
   });
 });
 
 describe("ProblemItem buttons (via ProblemsList)", () => {
   it("renders the rescan control for rescan", () => {
-    expect(html(<ProblemsList {...common} problems={[problem("rescan")]} />).textContent).toContain("Rescan");
+    expect(html(<ProblemsList {...common} problems={[problem("rescan")]} />).textContent).toContain("Scan again");
   });
 
   it("links to the action for open_action", () => {
     const root = html(<ProblemsList {...common} problems={[problem("open_action", { kind: "draft_failed", actionId: "act-1", reference: "RUN-3FA85F", reason: "invalid_output" })]} />);
-    expect(root.querySelector('a[href="/en/owner/kam-man-house/actions/act-1"]')?.textContent).toContain("Open action");
-    expect(root.textContent).toContain("The draft could not be read.");
+    expect(root.querySelector('a[href="/en/owner/kam-man-house/actions/act-1"]')?.textContent).toContain("Reopen draft");
+    expect(root.textContent).toContain("The draft came back unreadable.");
   });
 
   it("links to Google re-authorisation for reauthorise", () => {
@@ -58,13 +58,15 @@ describe("ProblemItem buttons (via ProblemsList)", () => {
     expect(html(<ProblemsList {...common} problems={[problem("contact_support", { contactHref: "https://wa.me/85200000000" })]} />).querySelector('a[href="https://wa.me/85200000000"]')).not.toBeNull();
     const bare = html(<ProblemsList {...common} problems={[problem("contact_support")]} />);
     expect(bare.querySelector("a")).toBeNull();
-    expect(bare.textContent).toContain("Contact Fimmick and quote the reference below.");
+    expect(bare.textContent).toContain("Contact Fimmick and give them the reference number.");
   });
 
-  it("shows no button for none, and always shows the reference", () => {
+  it("shows only a disabled Ask owner control for a viewer, with reference under Why", () => {
     const root = html(<ProblemsList {...common} role="viewer" problems={[problem("none")]} />);
-    expect(root.querySelector("a, button")).toBeNull();
-    expect(root.textContent).toContain("Reference SCAN-3FA85F");
+    expect(root.querySelector("a")).toBeNull();
+    expect(root.querySelector("button")?.hasAttribute("disabled")).toBe(true);
+    expect(root.querySelector("small")?.closest("details")?.hasAttribute("open")).toBe(false);
+    expect(root.querySelector("small")?.textContent).toContain("Reference SCAN-3FA85F");
   });
 
   it("never shows a raw unknown reason code", () => {
@@ -72,6 +74,6 @@ describe("ProblemItem buttons (via ProblemsList)", () => {
   });
 
   it("says there are no open problems only when it was given an empty list", () => {
-    expect(html(<ProblemsList {...common} problems={[]} />).textContent).toContain("No open problems.");
+    expect(html(<ProblemsList {...common} problems={[]} />).textContent).toContain("Nothing to fix right now.");
   });
 });

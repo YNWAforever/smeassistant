@@ -1,0 +1,132 @@
+/* The site-wide public restyle (.public-site …), moved verbatim from the last legacy
+   file (Phase 10). Imported after the page files, as it came after them in legacy. */
+@layer public {
+  .public-site :is(h1, h2) {
+    font-weight: 720;
+    letter-spacing: -.034em;
+  }
+  .public-site h1 {
+    letter-spacing: -.042em;
+  }
+  :where(.public-site) :is(h1, h2) {
+    line-height: 1.08;
+  }
+  :where(.public-site) h3 {
+    line-height: 1.22;
+  }
+  .public-site h3 {
+    font-weight: 640;
+    letter-spacing: -.016em;
+  }
+  :lang(zh) .public-site h1 {
+    line-height: 1.16;
+  }
+  .public-site { display: flex; min-height: 100svh; flex-direction: column; }
+  .public-site > main { flex: 1 0 auto; }
+  .public-site .public-header-inner {
+    border-color: var(--ed-line);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--paper) 86%, transparent);
+    box-shadow: 0 8px 30px -16px oklch(40% 0.08 55 / 0.25);
+  }
+  .public-site .public-header[data-scrolled] .public-header-inner {
+    border-color: var(--ed-line);
+    box-shadow: 0 12px 36px -16px oklch(40% 0.08 55 / 0.32);
+  }
+  .public-site .brand-mark {
+    border-radius: 999px;
+    background: var(--ed-orange);
+    color: var(--ed-ink);
+    box-shadow: none;
+  }
+  .public-site .brand-lockup strong {
+    font-family: var(--ed-sans);
+    font-size: 16px;
+    font-weight: 750;
+  }
+  .public-site .public-nav a {
+    color: var(--ed-ink-2);
+    font-family: var(--ed-sans);
+    font-size: 14px;
+    font-weight: 560;
+  }
+  .public-site .public-nav a:hover {
+    background: var(--ed-peach-100);
+    color: var(--ed-orange-800);
+  }
+  .public-site .header-actions > :is(.button, [data-slot="button"]) {
+    border-radius: 999px;
+    font-family: var(--ed-sans);
+    font-size: 14px;
+    font-weight: 620;
+  }
+  .public-site .public-header .header-actions .header-sign-in {
+    border-color: var(--ed-line);
+    background: var(--ed-surface);
+    color: var(--ed-ink);
+  }
+  .public-site .public-header .header-actions .header-sign-in:hover {
+    border-color: var(--ed-peach-200);
+    background: var(--ed-peach-50);
+  }
+  .public-site .public-footer {
+    background: var(--inverse);
+    color: rgb(255 255 255 / 0.72);
+    font-family: var(--ed-sans);
+  }
+  .public-site .public-footer .brand-lockup small {
+    color: var(--ed-orange);
+  }
+  .public-site .public-footer nav a:hover {
+    color: var(--ed-orange);
+  }
+  .public-site .public-footer .footer-statement {
+    background: linear-gradient(180deg, oklch(80% 0.15 60 / 0.95), oklch(76% 0.158 55 / 0.15) 92%);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  .public-site {
+    background: var(--ed-bg);
+    font-family: var(--ed-sans);
+  }
+  body:has(.public-site) {
+    background: var(--ed-bg);
+  }
+  .public-site :is(h1, h2, h3) {
+    font-family: var(--ed-sans);
+  }
+  .public-site .pricing-featured {
+    border-color: var(--ed-orange);
+    background: var(--ed-surface);
+    box-shadow: 0 0 0 1px var(--ed-orange), var(--ed-shadow-lg);
+  }
+  .public-site .flow-steps li {
+    color: rgb(255 255 255 / 0.62);
+  }
+  .public-site .flow-steps li > span {
+    border-color: rgb(255 255 255 / 0.25);
+  }
+  .public-site .flow-steps .is-active {
+    background: rgb(255 255 255 / 0.08);
+    color: #fff;
+  }
+  .public-site .flow-steps .is-active > span {
+    border-color: var(--ed-orange);
+    background: var(--ed-orange);
+    color: var(--ed-ink);
+  }
+  .public-site .flow-steps .is-complete {
+    color: oklch(88% 0.08 70);
+  }
+  .public-site :is(input:not([type="radio"], [type="checkbox"]), textarea, [data-slot="select-trigger"]) {
+    background-color: var(--ed-surface);
+  }
+  .public-site :is(.flow-steps, .public-demo-flow) .eyebrow {
+    color: var(--brand);
+  }
+  /* Unsubscribe page: after .public-site h1, as in legacy, so its own heading spacing wins. */
+  .unsubscribe-page { display: grid; width: min(560px, calc(100% - 28px)); min-height: 52vh; margin: 0 auto; padding: 72px 0; place-items: center; }
+  .unsubscribe-card.section-card { display: grid; width: 100%; padding: clamp(24px, 4vw, 40px); justify-items: start; gap: 14px; }
+  .unsubscribe-card h1 { margin: 0; font-size: clamp(26px, 3vw, 34px); letter-spacing: -.03em; }
+  .unsubscribe-card p { margin: 0; color: var(--ink-3); font-size: 15px; line-height: 1.6; }
+}

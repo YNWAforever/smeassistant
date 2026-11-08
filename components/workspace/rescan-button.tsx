@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { LoaderCircle, RefreshCw } from "lucide-react"
@@ -11,17 +10,19 @@ import { Button } from "@/components/ui/button"
 import type { PrototypeLocale } from "@/lib/copy"
 import { t as translate } from "@/lib/i18n"
 import { rescanLocation, type ClientResult } from "@/lib/workspace/client"
+import { canRescan } from "@/lib/workspace/rescan-eligibility"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 
 /**
  * The prototype's "Rescan" outline button, bound to the Phase 6 rescan route
- * (CLAUDE.md §3.2.3, CONTRACT-6). Hidden for viewers; disabled with the tier
- * copy and a billing link on lite workspaces; needs one concrete location
+ * (CLAUDE.md §3.2.3, CONTRACT-6). Hidden without rescan eligibility;
+ * needs one concrete location
  * (an "all locations" scope has nothing to rescan). On success the browser
  * moves to the scanning page for the new job. The routes enforce the same
  * rules server-side; this is display convenience, not the boundary.
  */
-export function RescanButton({ locale, workspaceId, workspaceSlug, locationId, tier, role, consentPolicyVersion }: {
+export function RescanButton({ locale, workspaceId, locationId, tier, role, consentPolicyVersion, label }: {
+  label?: string
   locale: PrototypeLocale
   workspaceId: string
   workspaceSlug: string
@@ -39,10 +40,9 @@ export function RescanButton({ locale, workspaceId, workspaceSlug, locationId, t
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
-  if (role === "viewer") return null
+  if (!canRescan({ tier, role, locationId })) return null
   const t = COPY[locale]
   const paid = tier === "paid"
-  const billingHref = `/${locale}/owner/${workspaceSlug}/settings/billing`
 
   async function rescan() {
     if (!locationId || !paid || busy) return
@@ -54,14 +54,6 @@ export function RescanButton({ locale, workspaceId, workspaceSlug, locationId, t
     router.push(`/${locale}/scanning/${encodeURIComponent(result.data.jobId)}`)
   }
 
-  if (!paid) {
-    return (
-      <span className="rescan-gate">
-        <Button type="button" variant="outline" disabled aria-describedby="rescan-tier-note"><RefreshCw /> {t.label}</Button>
-        <small id="rescan-tier-note">{t.tier} <Link href={billingHref}>{t.billing}</Link></small>
-      </span>
-    )
-  }
   // The rescan writes a policy-versioned public-evidence consent record. It
   // used to write one without ever asking -- so the row asserted an agreement
   // the owner had never been shown. This dialog is where that agreement is
@@ -70,7 +62,7 @@ export function RescanButton({ locale, workspaceId, workspaceSlug, locationId, t
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button type="button" variant="outline" disabled={busy || !locationId} title={locationId ? undefined : t.chooseLocation}>
-          {busy ? <LoaderCircle className="animate-spin" /> : <RefreshCw />} {t.label}
+          {busy ? <LoaderCircle className="animate-spin" /> : <RefreshCw />} {label ?? t.label}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -111,7 +103,7 @@ export function rescanFailureMessage(result: Extract<ClientResult<unknown>, { ok
 const COPY = {
   en: {
     label: "Rescan",
-    tier: "Rescans are part of the Growth Workspace plan.",
+    tier: "Rescans are part of the Growth plan.",
     billing: "See plans",
     chooseLocation: "Choose one location to rescan",
     queued: "Rescan queued; collecting fresh evidence.",
@@ -130,7 +122,7 @@ const COPY = {
   },
   "zh-HK": {
     label: "重新掃描",
-    tier: "重新掃描屬於增長工作台方案。",
+    tier: "重新掃描屬於增長方案。",
     billing: "查看方案",
     chooseLocation: "請先選擇一個地點",
     queued: "已排隊重新掃描；正在收集最新證據。",
@@ -143,13 +135,13 @@ const COPY = {
     atCapacity: "掃描服務暫時已滿額，請於數小時後再試。",
     cancel: "取消",
     consentTitle: "為這個地點重新收集公開證據？",
-    consentBody: "重新掃描會再次讀取與首次掃描相同的公開來源：你的 Google 商戶檔案、公開 Instagram 及網站。只收集公開證據，不會代你發佈任何內容。確認即表示你就下列政策版本給予同意。",
+    consentBody: "重新掃描會再次讀取與首次掃描相同的公開來源：你的 Google 商家檔案、公開 Instagram 及網站。只收集公開證據，不會代你發佈任何內容。確認即表示你就下列政策版本給予同意。",
     consentConfirm: "我同意，立即重新掃描",
     consentVersion: "政策版本",
   },
   "zh-TW": {
     label: "重新掃描",
-    tier: "重新掃描屬於成長工作台方案。",
+    tier: "重新掃描屬於成長方案。",
     billing: "查看方案",
     chooseLocation: "請先選擇一個據點",
     queued: "已排入重新掃描；正在收集最新證據。",

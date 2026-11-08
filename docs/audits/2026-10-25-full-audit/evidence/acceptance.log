@@ -1,0 +1,131 @@
+
+> sme-scanner-visibility-workspace@0.1.0 e2e:acceptance /workspace/smeassistant
+> playwright test --config playwright.acceptance.config.ts
+
+
+Running 107 tests using 1 worker
+
+
+(node:50483) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1/107] [chromium] › e2e/acceptance/action-list-remediation.spec.ts:4:1 › 375px keyboard selection, preview, apply and Escape use the actual scoped action list (T-13 T-17)
+[2/107] [chromium] › e2e/acceptance/action-list-remediation.spec.ts:40:1 › viewer has search and evidence but no bulk selection; manager retains location scope (T-13)
+[3/107] [chromium] › e2e/acceptance/action-list-remediation.spec.ts:48:1 › lost apply response is re-read before retry and never duplicates the stored update (T-13 T-15)
+[4/107] [chromium] › e2e/acceptance/audit-delivery-history.spec.ts:8:1 › shows every version, approval, and repeated delivery audit without double-counting usage
+[5/107] [chromium] › e2e/acceptance/audit-delivery-history.spec.ts:101:1 › bilingual completed-page reloads preserve exact version, approval, delivery, application, audit and monthly usage
+[6/107] [chromium] › e2e/acceptance/brand-settings-reliability.spec.ts:23:1 › owner saves voice through the existing API and a fresh signed-in browser reads the persisted profile
+[7/107] [chromium] › e2e/acceptance/brand-settings-reliability.spec.ts:54:1 › failed save retains all inputs and retry reaches the real API once
+[8/107] [chromium] › e2e/acceptance/brand-settings-reliability.spec.ts:84:1 › two open settings pages enforce CAS and retain the losing draft until the owner reviews the latest version
+[9/107] [chromium] › e2e/acceptance/brand-settings-reliability.spec.ts:116:3 › manager can read settings with an explanation and cannot PUT the profile
+[10/107] [chromium] › e2e/acceptance/brand-settings-reliability.spec.ts:116:3 › viewer can read settings with an explanation and cannot PUT the profile
+[11/107] [chromium] › e2e/acceptance/brand-settings-reliability.spec.ts:129:1 › switching to another account and workspace clears the old draft and denies cross-account GET and PUT
+[12/107] [chromium] › e2e/acceptance/brand-settings-reliability.spec.ts:148:3 › missing profile voice stays unset until the owner explicitly selects a valid voice
+[13/107] [chromium] › e2e/acceptance/brand-settings-reliability.spec.ts:148:3 › unknown voice stays unset until the owner explicitly selects a valid voice
+[14/107] [chromium] › e2e/acceptance/claim-and-market.spec.ts:12:1 › T-03 legal mixed-case underscore slug survives sign-in and onboarding without granting ownership
+[15/107] [chromium] › e2e/acceptance/claim-and-market.spec.ts:28:1 › T-15 attached owner resumes persisted brand setup and repeats completion without changing membership
+[16/107] [chromium] › e2e/acceptance/claim-and-market.spec.ts:49:4 › new owner completes essentials and sees the first evidence-backed result (en)
+[17/107] [chromium] › e2e/acceptance/claim-and-market.spec.ts:49:4 › new owner completes essentials and sees the first evidence-backed result (zh-HK)
+[18/107] [chromium] › e2e/acceptance/claim-and-market.spec.ts:49:4 › new owner completes essentials and sees the first evidence-backed result (zh-TW)
+[19/107] [chromium] › e2e/acceptance/claim-and-market.spec.ts:118:39 › verified Auth claim callback: existing assigned owner succeeds
+[20/107] [chromium] › e2e/acceptance/claim-and-market.spec.ts:118:39 › verified Auth claim callback: unassigned report requires ownership verification
+[21/107] [chromium] › e2e/acceptance/claim-and-market.spec.ts:140:1 › verified viewer cannot finalize an assigned owner's claim
+[22/107] [chromium] › e2e/acceptance/claim-and-market.spec.ts:148:1 › TW workspace switched to Hong Kong locale retains TWD and LINE contact behavior
+[23/107] [chromium] › e2e/acceptance/content-approval-journey.spec.ts:83:1 › assistant preview remains retryable when saving fails
+[24/107] [chromium] › e2e/acceptance/content-approval-journey.spec.ts:113:1 › S1 existing brand: recommendation, source/time/limits, first saved draft and explicit exact-version approval
+[25/107] [chromium] › e2e/acceptance/content-approval-journey.spec.ts:158:1 › S2 incomplete facts: required review is asked for, invented operations are withheld, safe omissions save
+[26/107] [chromium] › e2e/acceptance/content-approval-journey.spec.ts:190:1 › S3 selected branch: other branch facts and imported metadata never enter the confirmed drafting context
+[27/107] [chromium] › e2e/acceptance/content-approval-journey.spec.ts:210:1 › S4 Hong Kong mobile: shorten, tone and CTA revisions save, fresh login reads the exact version and reapproval is explicit
+[28/107] [chromium] › e2e/acceptance/content-approval-journey.spec.ts:262:1 › S5 old tab compares before saving; invalid provider output preserves drafts and an explicit retry succeeds
+[29/107] [chromium] › e2e/acceptance/content-approval-journey.spec.ts:301:1 › API boundaries: active generation is unique, cross-workspace and non-approver requests fail closed
+[30/107] [chromium] › e2e/acceptance/content-approval-journey.spec.ts:340:1 › a lost generation response is reconciled by reading the saved draft instead of another model call
+[31/107] [chromium] › e2e/acceptance/contextual-assistant.spec.ts:16:1 › an owner with a waiting draft continues from the assistant to the exact version
+[32/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:4:1 › owned Google-style handoff shows processing before the authorized destination
+[33/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:14:1 › local Google cancellation retains the destination while switching to email
+[34/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:29:1 › an accepted fixture account is not required for no-access recovery or a rejected cross-origin completion
+[35/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:54:48 › a memberless account sees one real path to a workspace on select-workspace (en, 375px)
+[36/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:54:48 › a memberless account sees one real path to a workspace on select-workspace (zh-HK, 375px)
+[37/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:82:3 › fixture completion fault mapping reaches recovery without acquiring workspace authority
+[38/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:82:3 › fixture completion fault binding reaches recovery without acquiring workspace authority
+[39/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:82:3 › fixture completion fault revoked reaches recovery without acquiring workspace authority
+[40/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:82:3 › fixture completion fault upstream reaches recovery without acquiring workspace authority
+[41/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:92:1 › changing from an unavailable account to the authorized account retains the destination
+[42/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:106:1 › a consumed local email link cannot change an accepted membership
+[43/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: en 375
+[44/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: en 1440
+[45/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: zh-HK 375
+[46/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: zh-HK 1440
+[47/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: zh-TW 375
+[48/107] [chromium] › e2e/acceptance/guided-sign-in.spec.ts:131:3 › owned sign-in start card is keyboard-operable without overflow: zh-TW 1440
+[49/107] [chromium] › e2e/acceptance/home-today.spec.ts:27:3 › owner home shows today's action above the fold at 375px (en)
+[50/107] [chromium] › e2e/acceptance/home-today.spec.ts:27:3 › owner home shows today's action above the fold at 375px (zh-HK)
+[51/107] [chromium] › e2e/acceptance/home-today.spec.ts:27:3 › owner home shows today's action above the fold at 375px (zh-TW)
+[52/107] [chromium] › e2e/acceptance/home-today.spec.ts:92:1 › desktop Business reaches supporting tools, and old links land on their new place
+[53/107] [chromium] › e2e/acceptance/merchant-loop.spec.ts:7:45 › hk: local fixture link redemption, exact draft approval/download, repeat usage and fresh edit
+[54/107] [chromium] › e2e/acceptance/merchant-loop.spec.ts:7:45 › tw: local fixture link redemption, exact draft approval/download, repeat usage and fresh edit
+[55/107] [chromium] › e2e/acceptance/merchant-loop.spec.ts:83:68 › missing LLM output cannot create or approve a version or charge usage
+[56/107] [chromium] › e2e/acceptance/merchant-loop.spec.ts:83:68 › invalid LLM output cannot create or approve a version or charge usage
+[57/107] [chromium] › e2e/acceptance/merchant-loop.spec.ts:83:68 › unavailable LLM output cannot create or approve a version or charge usage
+[58/107] [chromium] › e2e/acceptance/offer-promotion.spec.ts:22:1 › an offer becomes two drafts, one is approved and exported, and an edited offer refuses the stale draft
+[59/107] [chromium] › e2e/acceptance/permissions.spec.ts:4:52 › viewer: accepted evidence reads, omitted/spoofed context denial, revocation
+[60/107] [chromium] › e2e/acceptance/permissions.spec.ts:4:52 › manager: accepted evidence reads, omitted/spoofed context denial, revocation
+[61/107] [chromium] › e2e/acceptance/permissions.spec.ts:27:1 › unverified identity and invalid callback cannot acquire workspace authority
+[62/107] [chromium] › e2e/acceptance/permissions.spec.ts:36:1 › lite permits three distinct approved deliveries and blocks the fourth
+[63/107] [chromium] › e2e/acceptance/permissions.spec.ts:51:2 › expired local fixture link cannot accept an invitation
+[64/107] [chromium] › e2e/acceptance/permissions.spec.ts:59:1 › authenticated fixture session can observe an unknown owner route 404
+[65/107] [chromium] › e2e/acceptance/permissions.spec.ts:64:1 › local logout revokes retained fixture session credentials
+[66/107] [chromium] › e2e/acceptance/preview-draft.spec.ts:25:1 › an unlocked viewer gets one unsaved reply draft
+[67/107] [chromium] › e2e/acceptance/public-funnel.spec.ts:108:3 › hk public funnel › manual scan reaches a report and unlocks it
+[68/107] [chromium] › e2e/acceptance/public-funnel.spec.ts:108:3 › tw public funnel › manual scan reaches a report and unlocks it
+[69/107] [chromium] › e2e/acceptance/report-dashboard.spec.ts:6:1 › real report excludes private serialized data publicly and grants unlocked viewer full read access
+[70/107] [chromium] › e2e/acceptance/report-scan-comparison.spec.ts:21:1 › actual share route keeps earlier comparison evidence private and shows the access state after current-only unlock, then the member state once signed in
+[71/107] [chromium] › e2e/acceptance/report-scan-metrics.spec.ts:22:1 › owned stored metrics stay private and render separate samples across locales and viewports
+[72/107] [chromium] › e2e/acceptance/returning-sign-in.spec.ts:12:3 › en 1440px returning owner completes email-code sign-in
+[73/107] [chromium] › e2e/acceptance/returning-sign-in.spec.ts:12:3 › en 1440px returning viewer completes email-code sign-in
+[74/107] [chromium] › e2e/acceptance/returning-sign-in.spec.ts:12:3 › zh-HK 375px first owner completes email-code sign-in
+[75/107] [chromium] › e2e/acceptance/review-usage-reliability.spec.ts:24:3 › available owner review is not requested again (en)
+[76/107] [chromium] › e2e/acceptance/review-usage-reliability.spec.ts:24:3 › available owner review is not requested again (zh-HK)
+[77/107] [chromium] › e2e/acceptance/review-usage-reliability.spec.ts:54:1 › missing review still asks before any provider request
+[78/107] [chromium] › e2e/acceptance/review-usage-reliability.spec.ts:65:1 › late measured usage settles after timeout without another inference or a late version
+[79/107] [chromium] › e2e/acceptance/webkit-navigation-regression.spec.ts:81:1 › an authenticated fixture can navigate to an action and reload without fetch or hydration failures
+[80/107] [chromium] › e2e/acceptance/webkit-navigation-regression.spec.ts:85:1 › native HTTP behind a rejecting proxy preserves authenticated action navigation
+[81/107] [chromium] › e2e/acceptance/work-pack.spec.ts:22:1 › the starter pack becomes drafts, one is approved and exported, and starting again returns the same pack
+[82/107] [chromium] › e2e/acceptance/workspace-queue-flows.spec.ts:17:1 › owner reads and bulk-approves a review reply, and Today ticks the first approval
+[83/107] [chromium] › e2e/acceptance/workspace-queue-flows.spec.ts:45:1 › a viewer is offered no bulk approval and the approve route refuses them
+[84/107] [chromium] › e2e/acceptance/workspace-queue-flows.spec.ts:55:1 › the side panel opens beside the queue and closing it keeps the queue's filters
+[85/107] [chromium] › e2e/acceptance/workspace-queue-flows.spec.ts:73:1 › an action id that is not in the workspace answers a real 404
+
+(node:82518) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[86/107] [chromium] › e2e/acceptance/auth-reliability.spec.ts:34:1 › LOCAL OTP rejects wrong and expired codes, then accepts one fresh code and refuses consumed replay
+[87/107] [chromium] › e2e/acceptance/auth-reliability.spec.ts:61:1 › LOCAL resend honors the client cooldown, rotates the fixture code and leaves the old code unusable
+[88/107] [chromium] › e2e/acceptance/auth-reliability.spec.ts:79:1 › LOCAL request budget stops after five deliveries and the UI counts down without sending automatically
+[89/107] [chromium] › e2e/acceptance/auth-reliability.spec.ts:105:1 › LOCAL verify budget blocks the eleventh attempt and the UI preserves its countdown without acquiring ownership
+[90/107] [chromium] › e2e/acceptance/auth-reliability.spec.ts:130:1 › LOCAL expired-session reload requires relogin, sign-out removes access, and switching identity cannot replace the existing owner
+[91/107] [chromium] › e2e/acceptance/auth-reliability.spec.ts:163:3 › LOCAL legacy invalid-code recovery offers explicit email-code and Google alternatives (en)
+[92/107] [chromium] › e2e/acceptance/auth-reliability.spec.ts:163:3 › LOCAL legacy invalid-code recovery offers explicit email-code and Google alternatives (zh-HK)
+[93/107] [chromium] › e2e/acceptance/auth-reliability.spec.ts:163:3 › LOCAL legacy invalid-code recovery offers explicit email-code and Google alternatives (zh-TW)
+[94/107] [chromium] › e2e/acceptance/owner-sign-out.spec.ts:11:3 › existing owner signs out through the UI and signs back in with a code (en, 1440px)
+[95/107] [chromium] › e2e/acceptance/owner-sign-out.spec.ts:11:3 › existing owner signs out through the UI and signs back in with a code (zh-HK, 390px)
+[96/107] [chromium] › e2e/acceptance/owner-sign-out.spec.ts:11:3 › existing owner signs out through the UI and signs back in with a code (zh-TW, 390px)
+
+(node:86510) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[97/107] [chromium] › e2e/acceptance/owner-onboarding-resume.spec.ts:32:3 › existing brand stays read-only and survives another-tab update (en)
+[98/107] [chromium] › e2e/acceptance/owner-onboarding-resume.spec.ts:81:3 › new business uses keyboard navigation and saves a chosen voice only on completion (en)
+[99/107] [chromium] › e2e/acceptance/owner-onboarding-resume.spec.ts:32:3 › existing brand stays read-only and survives another-tab update (zh-HK)
+[100/107] [chromium] › e2e/acceptance/owner-onboarding-resume.spec.ts:81:3 › new business uses keyboard navigation and saves a chosen voice only on completion (zh-HK)
+[101/107] [chromium] › e2e/acceptance/owner-onboarding-resume.spec.ts:32:3 › existing brand stays read-only and survives another-tab update (zh-TW)
+[102/107] [chromium] › e2e/acceptance/owner-onboarding-resume.spec.ts:81:3 › new business uses keyboard navigation and saves a chosen voice only on completion (zh-TW)
+[103/107] [chromium] › e2e/acceptance/owner-onboarding-resume.spec.ts:132:1 › existing brand with no supported voice stays unset and preserves its other fields
+[104/107] [chromium] › e2e/acceptance/owner-onboarding-resume.spec.ts:152:1 › failed completion keeps fields and focus, and a double-click retry creates no duplicate records
+[105/107] [chromium] › e2e/acceptance/owner-onboarding-resume.spec.ts:174:1 › a viewer cannot use onboarding to read or change the owner's brand
+
+(node:90898) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[106/107] [chromium] › e2e/acceptance/webkit-http-repro.spec.ts:11:3 › same-origin streaming fetch and navigation with interception true
+[107/107] [chromium] › e2e/acceptance/webkit-http-repro.spec.ts:11:3 › same-origin streaming fetch and navigation with interception false
+  107 passed (12.5m)

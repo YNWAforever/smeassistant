@@ -78,7 +78,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ actionI
   if (!outcome.ok) {
     if (outcome.reason === "duplicate")
       return json({ applicationId: outcome.existingId, alreadyRecorded: true }, 200);
-    return json({ error: "action_closed" }, 409);
+    return json({ error: outcome.reason === "version_not_applicable" ? "version_not_applicable" : "action_closed" }, 409);
   }
 
   await recordNeonEvent({

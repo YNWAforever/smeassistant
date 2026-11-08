@@ -1,0 +1,18 @@
+{
+  "environment": "owned local DB/Auth/model fixtures; no real provider",
+  "observedAt": "2026-10-18T18:56:42.813Z",
+  "result": "PASS",
+  "firstSavedDraftMs": 8179,
+  "targetMs": 300000,
+  "withinTarget": true,
+  "timingKind": "automated fixture operations, not a human usability measurement",
+  "brandRevision": "81a3b270-da3a-4bba-9acf-1627ad05d017",
+  "firstSavedVersion": {
+    "runId": "7a1b1e2b-df73-44cf-abb7-db7624f4e50d",
+    "state": "succeeded",
+    "versionId": "8dc15b43-6730-4177-b2ca-ccae96d76597",
+    "versionNo": 1
+  },
+  "finalApprovedVersion": 2,
+  "editRequiredNewApproval": true
+}
