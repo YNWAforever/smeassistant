@@ -50,6 +50,10 @@ test.describe("Conversation Studio", () => {
     await page.goto(`/en/owner/${merchant.slug}`);
     await waitForHydration(page);
     await expect(page).not.toHaveURL(/\/conversation/);
+    // The persistent topbar entry makes the workbench discoverable from Today.
+    const conversationEntry = page.locator(".conversation-topbar-link");
+    await expect(conversationEntry).toBeVisible();
+    await expect(conversationEntry).toHaveAttribute("href", new RegExp(`/en/owner/${merchant.slug}/conversation\\?location=`));
 
     // The conversation workbench is the single entry point to the Studio.
     await page.goto(`/en/owner/${merchant.slug}/conversation`);

@@ -116,5 +116,9 @@ it("omits the optional conversation switch while disabled and adds reachable sco
   const enabled = document.createElement("div");
   enabled.innerHTML = renderToStaticMarkup(<WorkspaceShell locale="en" workspace={{ ...workspace, conversationEnabled: true }}><p>Today</p></WorkspaceShell>);
   expect([...enabled.querySelectorAll(".conversation-switch a")].map(a => a.getAttribute("href"))).toEqual(["/en/owner/example?location=branch", "/en/owner/example/conversation?location=branch"]);
+  const topbarLink = enabled.querySelector(".workspace-topbar a.conversation-topbar-link");
+  expect(topbarLink?.getAttribute("href")).toBe("/en/owner/example/conversation?location=branch");
+  expect(topbarLink?.textContent).toContain("Conversation");
+  expect(disabled).not.toContain("conversation-topbar-link");
   expect(enabled.querySelectorAll(".mobile-bottom-nav a")).toHaveLength(4);
 });

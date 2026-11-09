@@ -340,3 +340,6 @@
 .conversation-discuss-link:hover {
   color: var(--foreground);
 }
+
+.conversation-topbar-link { margin-inline-end: .25rem; }
+.conversation-topbar-link { display: inline-flex; align-items: center; gap: .4rem; }
