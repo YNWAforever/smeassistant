@@ -137,6 +137,13 @@ The workbench and the Studio still keep two thread stores in this release: brows
 - **UI:** owner sees a Share action in the Studio header; the dialog lists members, lets the owner add an accepted teammate as editor/viewer or remove one. A conversation shared read-only disables the composer and explains why. Five+ trilingual strings.
 - **Tests:** repository access/sharing unit tests (39 repo tests), members-route contract 8/8, share-dialog 2/2, Docker integration 12/12 (including editor continuation, viewer refusal, remove and cross-member isolation), schema/catalog verifier, typecheck/lint, build and JS budget (`/conversation` 255/300 KB, Studio 251/300 KB).
 
+### 1.13 P3 polish: read-only transcript export (2026-11-09)
+
+- `GET /api/studio/conversations/[id]/transcript` returns a Markdown attachment for the owner or a shared member: conversation title, per-turn prose, citation/evidence titles, draft artifacts with the approval boundary, warnings, and an honest empty state. It never includes tool envelopes or IDs.
+- Owner/member access uses the same repository join; viewers may export what they can read. The route is rate-limited (`studio_export` 20/h) and audits `conversation.exported` with `{surface, messages}` — never transcript text.
+- The Studio header gets an **Export transcript** button; the browser downloads `studio-<id>.md`. The existing “no approve/export/publish” surface test now scopes that rule to authority controls and asserts the transcript export is the only export.
+- Verified: transcript builder 3/3, route contract 5/5 (flag/scope/foreign/viewer/audit/limits), Studio component 9/9, Studio browser acceptance 5/5 including a real download whose Markdown contains the answer and boundary, typecheck/lint, build and budget.
+
 ### Bug caught by visual verification (pre-integration branch)
 
 The pre-integration e2e/screenshot round exposed two issues that text assertions missed: `buildShellWorkspace` accepted `studioEnabled` but did not copy it into `ShellWorkspace` (the page rendered while nav stayed hidden), and the fixture returned classifier JSON as answer prose. The fixture fix (real SSE + prose) and the no-raw-JSON assertion are kept; the shell flag forwarding became obsolete under Path A, which mounts the entry in the conversation workbench instead of the shell nav.

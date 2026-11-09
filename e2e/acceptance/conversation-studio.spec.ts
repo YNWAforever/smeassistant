@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { test, expect, signIn, waitForHydration } from "../../test/e2e/fixtures";
 import { sql, type AcceptanceEnvironment } from "../../test/e2e/environment";
 
@@ -98,13 +100,27 @@ test.describe("Conversation Studio", () => {
     await expect(page.locator(".studio-message-assistant").last()).toContainText("Start with the unanswered reviews");
     await expect(page.getByLabel("Message the Studio")).toBeVisible();
 
-    // 6. The Studio never offers approve/export/publish, and it called no such route.
-    for (const name of [/approve/i, /export/i, /publish/i]) {
+    // 6. The Studio never offers approve/publish/authority routes. The only
+    //    export is the read-only transcript download.
+    for (const name of [/approve/i, /publish/i]) {
       await expect(thread.getByRole("button", { name })).toHaveCount(0);
       await expect(thread.getByRole("link", { name })).toHaveCount(0);
     }
     expect(requested.filter((entry) => AUTHORITY_ROUTE.test(entry))).toEqual([]);
     expect(sql(environment.db, `select count(*) from output_versions where workspace_id='${merchant.workspaceId}';`)).toBe("0");
+
+    // 7. Read-only transcript export downloads the conversation as Markdown.
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export transcript" }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/^studio-.*\.md$/);
+    const downloadPath = await download.path();
+    expect(downloadPath).toBeTruthy();
+    const exported = readFileSync(downloadPath!, "utf8");
+    expect(exported).toContain(TITLE);
+    expect(exported).toContain("Start with the unanswered reviews");
+    expect(exported).toContain("Drafts stay drafts");
+    expect(exported).not.toContain('"kind"');
   });
 
   test("promotes a browser-local note thread into a persistent Studio conversation", async ({ page, merchant, environment }) => {

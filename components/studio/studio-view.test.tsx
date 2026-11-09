@@ -328,10 +328,12 @@ describe("StudioView ??inline work", () => {
     expect(review.getAttribute("href")).toContain(`/actions/${ACTION_ID}?version=${VERSION_ID}`)
     expect(screen.getByText(t.message.versionSaved)).toBeInTheDocument()
 
-    for (const pattern of [/approve/i, /export/i, /publish/i]) {
+    for (const pattern of [/approve/i, /publish/i]) {
       expect(screen.queryByRole("button", { name: pattern })).toBeNull()
       expect(screen.queryByRole("link", { name: pattern })).toBeNull()
     }
+    // The only export on the surface is the read-only transcript download.
+    expect(screen.getByRole("button", { name: t.transcript.export })).toBeInTheDocument()
   })
 
   it("gives a viewer the answer and the role boundary without a save control", () => {
