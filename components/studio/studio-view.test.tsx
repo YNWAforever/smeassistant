@@ -216,7 +216,15 @@ describe("StudioView ??empty state and first conversation", () => {
     }
   })
 
-  it("creates a conversation lazily on the first starter and streams the answer", async () => {
+  it("offers an IG planning starter that asks for missing facts instead of inventing them", () => {
+  render(<StudioView {...baseProps({ chips: t.empty.starters })} />)
+  const starter = t.empty.starters.find((chip) => chip.id === "starter_ig")
+  expect(starter).toBeDefined()
+  expect(screen.getByRole("button", { name: starter!.label })).toBeInTheDocument()
+  expect(starter!.message).toContain("do not invent")
+})
+
+it("creates a conversation lazily on the first starter and streams the answer", async () => {
     const assistant = assistantMessage(2, "Start with the unanswered reviews.", [evidencePart])
     installFetch((url, init) => {
       if (url === "/api/studio/conversations" && init.method === "POST") return jsonResponse({ conversation: { ...conversationA, title: "" } }, 201)
