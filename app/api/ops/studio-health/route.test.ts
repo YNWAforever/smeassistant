@@ -52,7 +52,7 @@ describe("POST /api/ops/studio-health", () => {
     expect(response.status).toBe(200);
     const body = await response.json() as Record<string, unknown>;
     expect(body).toMatchObject({ ok: true, model: "deepseek-v4.1-flash" });
-    expect(body.classifier).toEqual({ ok: true });
+    expect(body.classifier).toMatchObject({ ok: true, text: '{"intent":"answer"}' });
     expect(body.stream).toMatchObject({ ok: true, streamed: true });
     expect(JSON.stringify(body)).not.toContain("Studio gateway reachable");
     expect(mocks.llmChatDetailed).toHaveBeenCalledWith(expect.any(Array), expect.objectContaining({ jsonMode: true }));

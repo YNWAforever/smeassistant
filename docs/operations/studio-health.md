@@ -43,7 +43,7 @@ Without the correct bearer token the route answers **404** before any gateway ca
     "streamTextNonEmpty": true,
     "deltasMatchText": true
   },
-  "classifier": { "ok": true },
+  "classifier": { "ok": true, "text": "{\"intent\":\"answer\"}" },
   "stream": { "ok": true, "streamed": true, "characters": 27 }
 }
 ```

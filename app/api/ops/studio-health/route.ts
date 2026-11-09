@@ -63,7 +63,7 @@ export async function POST(request: Request): Promise<Response> {
     model: (process.env.LLM_MODEL ?? "").trim() || null,
     latencyMs: Date.now() - startedAt,
     checks: result.checks,
-    classifier: classifier.ok ? { ok: true } : { ok: false, code: classifier.code },
+    classifier: classifier.ok ? { ok: true, text: classifier.result.text.slice(0, 240) } : { ok: false, code: classifier.code },
     stream: stream.ok
       ? { ok: true, streamed: stream.streamed === true, characters: stream.result.text.trim().length }
       : { ok: false, code: stream.code, streamed: stream.streamed === true },
