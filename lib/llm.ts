@@ -61,6 +61,41 @@ export function llmConfigured(): boolean {
   return resolveLLMConfig().configured;
 }
 
+/** Host only, never the full URL/key, for a failure log. */
+function providerHost(baseUrl: string): string {
+  try { return new URL(baseUrl).hostname; } catch { return "invalid"; }
+}
+
+/**
+ * Allowlisted provider failure metadata for operations. The response body is
+ * read only outside tests, and only `error.code` / `error.type` values matching
+ * a strict safe pattern are logged — never `error.message`, which can echo the
+ * prompt. This is enough to tell apart e.g. invalid_model / missing_session /
+ * unsupported_parameter without weakening the redaction contract.
+ */
+async function providerErrorFields(resp: Response): Promise<{ providerCode?: string; providerType?: string }> {
+  if (process.env.NODE_ENV === "test") return {};
+  try {
+    const text = (await resp.text()).slice(0, 2000);
+    const data: unknown = JSON.parse(text);
+    const error = data && typeof data === "object" ? (data as { error?: unknown }).error : undefined;
+    const pick = (key: "code" | "type"): string | undefined => {
+      const value = error && typeof error === "object" ? (error as Record<string, unknown>)[key] : undefined;
+      return typeof value === "string" && /^[A-Za-z0-9_.:-]{1,80}$/.test(value) ? value : undefined;
+    };
+    const code = pick("code");
+    const type = pick("type");
+    return { ...(code ? { providerCode: code } : {}), ...(type ? { providerType: type } : {}) };
+  } catch {
+    return {};
+  }
+}
+
+async function logProviderError(resp: Response, model: string, baseUrl: string): Promise<void> {
+  const diagnostics = process.env.NODE_ENV === "test" ? {} : { model, provider: providerHost(baseUrl), ...(await providerErrorFields(resp)) };
+  console.error("[llm] API error", { status: resp.status, ...diagnostics });
+}
+
 export interface LLMOptions {
   maxTokens?: number;
   temperature?: number;
@@ -256,7 +291,7 @@ export async function llmCompleteDetailed(prompt: string, opts: LLMOptions = {})
 
     if (!resp.ok) {
       // The body is never read: it can echo the prompt.
-      console.error("[llm] API error", { status: resp.status });
+      await logProviderError(resp, model, baseUrl);
       const status = resp.status;
       const rawRetry = resp.headers?.get("retry-after");
       const retrySeconds = rawRetry && /^\d+$/.test(rawRetry) ? Number(rawRetry) : rawRetry ? Math.ceil((Date.parse(rawRetry) - Date.now()) / 1000) : NaN;
@@ -387,7 +422,7 @@ export async function llmChatDetailed(messages: LLMChatMessage[], opts: LLMOptio
     const resp = await Promise.race([request(controller.signal), interrupted]);
     if (!resp.ok) {
       // The body is never read: it can echo the prompt.
-      console.error("[llm] API error", { status: resp.status });
+      await logProviderError(resp, model, baseUrl);
       const status = resp.status;
       const rawRetry = resp.headers?.get("retry-after");
       const retrySeconds = rawRetry && /^\d+$/.test(rawRetry) ? Number(rawRetry) : rawRetry ? Math.ceil((Date.parse(rawRetry) - Date.now()) / 1000) : NaN;
@@ -528,7 +563,10 @@ export async function llmChatStreamDetailed(
       void error;
       return await fallback();
     }
-    if (!resp.ok) return await fallback();
+    if (!resp.ok) {
+      await logProviderError(resp, model, baseUrl);
+      return await fallback();
+    }
     const body = resp.body;
     if (!body) return await fallback();
 
