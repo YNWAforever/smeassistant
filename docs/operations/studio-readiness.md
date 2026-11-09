@@ -40,4 +40,4 @@ Does not prove:
 
 ## Current hosted gap (2026-11-09)
 
-Production's Vercel environment has the sensitive `DATABASE_URL` and Auth variables, but `DATABASE_URL_UNPOOLED`, `NEON_READINESS_HOST` and `NEON_READINESS_DATABASE` are not set. Until the owner adds them (plus the pending migration 0022), readiness cannot run against production. The hosted DB is at journal 21; `0022_studio_conversation_members.sql` is pending. That is an owner action; this repository change does not add variables or apply the migration.
+Production's Vercel environment has the sensitive `DATABASE_URL` and Auth variables, but `DATABASE_URL_UNPOOLED`, `NEON_READINESS_HOST` and `NEON_READINESS_DATABASE` are not set. Until the owner adds them (plus the pending migration 0022), readiness cannot run against production. The hosted DB is at journal 21; `0022_studio_conversation_members.sql` is pending, with a prepared rollout (`docs/implementation/owner-platform-v1/rollout/apply-0022.sql`) and an owned-fixture execution test. That is an owner action; this repository change does not add variables or apply the migration.
