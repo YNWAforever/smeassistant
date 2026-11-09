@@ -121,6 +121,7 @@ it("shows persistent Studio discussions and the continue bridge when the Studio 
   />);
   expect(await screen.findByText("Persistent discussions")).toBeInTheDocument();
   expect(screen.queryByLabelText("Your note")).not.toBeInTheDocument();
+  expect(screen.getByText("This screen saves local notes")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Browser-only notes" }));
   expect(await screen.findByLabelText("Your note")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: /Persistent idea/ })).toHaveAttribute(

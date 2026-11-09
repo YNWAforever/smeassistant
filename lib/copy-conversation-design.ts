@@ -15,10 +15,13 @@ type DesignCopy = {
   openPersistent: string; importAll: string; importingAll: string; importAllFailed: string; importAllDone: string;
   legacyNotes: string; legacyHint: string; newPersistent: string; discussAction: string;
   language: string; localNote: string; contextHint: string;
+  studioCalloutTitle: string; studioCalloutBody: string;
 };
 
 export const conversationDesignCopy: Record<PrototypeLocale, DesignCopy> = {
   en: {
+    studioCalloutTitle: "This screen saves local notes",
+    studioCalloutBody: "It does not generate AI replies. Open Studio for a model-backed conversation with your shop context.",
     eyebrow: "Your work, one conversation away", discussion: "Conversation", newDiscussion: "New discussion", together: "Work together",
     attach: "Add document", documents: "Documents & outputs", sources: "Sources", templates: "Choose a template, start something", templateNav: "Templates", filters: "Filter templates",
     categories: { all: "All", start: "Get started", content: "Content & reviews", search: "Search & results" },
@@ -38,6 +41,8 @@ export const conversationDesignCopy: Record<PrototypeLocale, DesignCopy> = {
     language: "English", localNote: `Discussions save as browser-local notes. No AI reply is generated here. Per account, workspace and location: up to ${CONVERSATION_LIMITS.threads} threads, ${CONVERSATION_LIMITS.notes} notes per thread, ${CONVERSATION_LIMITS.noteLength.toLocaleString("en-US")} characters per note.`, contextHint: "Use confirmed shop details and check your sources before approving work.",
   },
   "zh-HK": {
+    studioCalloutTitle: "呢一頁只會儲存本機筆記",
+    studioCalloutBody: "呢度唔會產生 AI 回覆。開 Studio 同助理對話，會用你舖頭嘅背景資料。",
     eyebrow: "舖頭工作，由一句開始", discussion: "對話", newDiscussion: "新討論", together: "一齊工作",
     attach: "加入文件", documents: "文件與產出", sources: "資料來源", templates: "揀個模板，開始做", templateNav: "模板", filters: "篩選模板",
     categories: { all: "全部", start: "開始工作", content: "內容與評論", search: "搜尋與成效" },
@@ -57,6 +62,8 @@ export const conversationDesignCopy: Record<PrototypeLocale, DesignCopy> = {
     language: "繁體中文・香港", localNote: `討論會存成本機筆記，呢度唔會產生 AI 回覆。每個帳戶、工作空間同分店範圍最多 ${CONVERSATION_LIMITS.threads} 個討論串；每串最多 ${CONVERSATION_LIMITS.notes} 則筆記，每則最多 ${CONVERSATION_LIMITS.noteLength.toLocaleString("en-US")} 字元。`, contextHint: "用已確認嘅舖頭資料，確認工作前先核對來源。",
   },
   "zh-TW": {
+    studioCalloutTitle: "這一頁只會儲存本機筆記",
+    studioCalloutBody: "這裡不會產生 AI 回覆。開 Studio 和助理對話，會用你店裡的背景資料。",
     eyebrow: "店裡工作，從一句開始", discussion: "對話", newDiscussion: "新討論", together: "一起工作",
     attach: "加入文件", documents: "文件與產出", sources: "資料來源", templates: "選個範本，開始做", templateNav: "範本", filters: "篩選範本",
     categories: { all: "全部", start: "開始工作", content: "內容與評論", search: "搜尋與成效" },
