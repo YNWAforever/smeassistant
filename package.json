@@ -23,6 +23,7 @@
     "test:secret-boundary": "node scripts/assert-secret-boundary.mjs",
     "smoke:studio": "tsx scripts/studio-smoke.ts",
     "ops:studio-usage": "tsx scripts/ops/studio-usage.ts",
+    "preview:db": "tsx scripts/neon/preview-branch.ts",
     "test:js-budget": "node scripts/check-route-js.mjs",
     "db:verify": "tsx scripts/neon/verify-migrations.ts",
     "db:types": "tsx scripts/gen-types.ts",
