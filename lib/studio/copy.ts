@@ -214,6 +214,7 @@ const en: StudioCopy = {
       { id: "starter_changed", label: "What changed?", message: "What changed since the last comparable scan?" },
       { id: "starter_missing", label: "What details do you need?", message: "What details do you need from me before you can draft?" },
       { id: "starter_draft", label: "Draft a review reply", message: "Draft a reply to the unanswered Google reviews." },
+      { id: "starter_ig", label: "Plan this week's IG post", message: "Help me plan and draft this week's Instagram post. Use only confirmed shop facts. Ask me for the product/offer, dates, price and photos that are missing; do not invent them." },
     ],
   },
   composer: {
@@ -357,6 +358,7 @@ const zhHK: StudioCopy = {
       { id: "starter_changed", label: "有甚麼變化？", message: "同上次可比較掃描相比，有甚麼變化？" },
       { id: "starter_missing", label: "你需要甚麼資料？", message: "起草之前，你需要我補充甚麼資料？" },
       { id: "starter_draft", label: "起草評論回覆", message: "為未回覆的 Google 評論起草回覆。" },
+      { id: "starter_ig", label: "計劃今個星期 IG 帖文", message: "幫我計劃同起草今個星期嘅 Instagram 帖文。只用已確認嘅舖頭資料；產品、日期、價錢、相片等如果未有，問我攞，唔好自己填。" },
     ],
   },
   composer: {
@@ -500,6 +502,7 @@ const zhTW: StudioCopy = {
       { id: "starter_changed", label: "有什麼變化？", message: "和上次可比較掃描相比，有什麼變化？" },
       { id: "starter_missing", label: "你需要什麼資料？", message: "起草之前，你需要我補充什麼資料？" },
       { id: "starter_draft", label: "起草評論回覆", message: "為未回覆的 Google 評論起草回覆。" },
+      { id: "starter_ig", label: "計劃今個星期 IG 貼文", message: "幫我計劃和起草今個星期嘅 Instagram 貼文。只用已確認的店裡資料；產品、日期、價錢、相片等如果未有，問我拿，不要自己填。" },
     ],
   },
   composer: {
