@@ -24,6 +24,8 @@ export interface InsightsViewProps {
   /** The rescan control for this location (RescanButton), built by the page; omitted when there is none. */
   rescanAllowed?: boolean
   rescan?: ReactNode
+  /** "Continue this in Studio" when the Studio is enabled for this deployment. */
+  studioHref?: string
 }
 
 /** Moved to lib/workspace/format.ts so Home renders the same words. */
@@ -73,7 +75,7 @@ export function insightsLeadSentence(model: InsightsModel, locale: PrototypeLoca
   return fill(pc.missingBecause, { reason: comparisonReasonText(reason, locale) })
 }
 
-export function InsightsView({ locale, workspaceSlug, timezone, locations, model, rescan, rescanAllowed = false }: InsightsViewProps) {
+export function InsightsView({ locale, workspaceSlug, timezone, locations, model, rescan, rescanAllowed = false, studioHref }: InsightsViewProps) {
   const pc = copy[locale].workspaceHome.insights
   const base = `/${locale}/owner/${workspaceSlug}`
   const isAll = model.locationSlug === "all"
@@ -84,7 +86,7 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
   const sentence = insightsLeadSentence(model, locale, rescanAllowed)
   return (
     <div className="insights-page">
-      <PageIntro title={pc.leadTitle} description={isAll || head ? sentence : undefined} actions={<LocationSelect locale={locale} value={model.locationSlug} locations={locations} className="location-select" ariaLabel={pc.chooseInsightsLocation} />} />
+      <PageIntro title={pc.leadTitle} description={isAll || head ? sentence : undefined} actions={<><LocationSelect locale={locale} value={model.locationSlug} locations={locations} className="location-select" ariaLabel={pc.chooseInsightsLocation} />{studioHref && <Link className="owner-studio-link" href={studioHref}>{copy[locale].workspaceHome.home.continueInStudio}<ArrowRight /></Link>}</>} />
       {rescan}
       {isAll ? (
         <>

@@ -164,6 +164,11 @@ The workbench and the Studio still keep two thread stores in this release: brows
 - **Limits:** `smoke:studio` reported SKIPPED because this machine has no LLM gateway key (Vercel sensitive variables decrypt empty through the CLI), and the **15-point hosted browser acceptance still requires an owner-signed-in browser session**. No secret was printed or committed; readiness variables were not added to the web runtime.
 - **Recorded:** the cut-over runbook now documents the REFERENCES precondition and the executed state; readiness notes the same and the remaining owner/operator readiness run.
 
+### 1.17 P3 polish: Today/Insights "Continue in Studio" links (2026-11-09)
+
+- When both conversation flags are enabled, the Today page intro and Insights page intro render a **Continue in Studio** link scoped to the current location (`/{locale}/owner/{slug}/conversation/studio?location=...`), using trilingual copy. It is absent when the Studio is off, so Today remains unchanged on a flag-off deployment.
+- Verified: home-brief and insights-view component tests assert the link, href and absence without the prop; copy parity tests pass; full unit 6882/6882; typecheck/lint/build and JS budget green (workbench 256/300 KB, Studio 252/300 KB).
+
 ### Bug caught by visual verification (pre-integration branch)
 
 The pre-integration e2e/screenshot round exposed two issues that text assertions missed: `buildShellWorkspace` accepted `studioEnabled` but did not copy it into `ShellWorkspace` (the page rendered while nav stayed hidden), and the fixture returned classifier JSON as answer prose. The fixture fix (real SSE + prose) and the no-raw-JSON assertion are kept; the shell flag forwarding became obsolete under Path A, which mounts the entry in the conversation workbench instead of the shell nav.

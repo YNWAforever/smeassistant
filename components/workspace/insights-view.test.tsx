@@ -31,11 +31,19 @@ function model(overrides: Partial<InsightsModel> = {}): InsightsModel {
   };
 }
 
-function render(locale: "en" | "zh-HK" | "zh-TW", overrides: Partial<InsightsModel> = {}) {
+function render(locale: "en" | "zh-HK" | "zh-TW", overrides: Partial<InsightsModel> = {}, studioHref?: string) {
   const root = document.createElement("div");
-  root.innerHTML = renderToStaticMarkup(<InsightsView locale={locale} workspaceSlug="kam-man-house" timezone="Asia/Hong_Kong" locations={[{ slug: location.slug, name: location.name }]} model={model(overrides)} />);
+  root.innerHTML = renderToStaticMarkup(<InsightsView locale={locale} workspaceSlug="kam-man-house" timezone="Asia/Hong_Kong" locations={[{ slug: location.slug, name: location.name }]} model={model(overrides)} studioHref={studioHref} />);
   return root;
 }
+
+it("offers a continue-in-Studio link only when the deployment configures it", () => {
+  const linked = render("en", {}, "/en/owner/kam-man-house/conversation/studio?location=yik-yam");
+  const link = linked.querySelector(".owner-studio-link");
+  expect(link?.textContent).toContain("Continue in Studio");
+  expect(link?.getAttribute("href")).toBe("/en/owner/kam-man-house/conversation/studio?location=yik-yam");
+  expect(render("en").querySelector(".owner-studio-link")).toBeNull();
+});
 
 describe("InsightsView", () => {
   it("shows an attributed card's earlier value instead of claiming there is none", () => {

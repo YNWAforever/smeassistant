@@ -42,6 +42,8 @@ export interface HomeBriefViewProps {
   /** The signed-in member's real role; drives the Rescan button (hidden for viewers). Omitted = no rescan control. */
   role?: WorkspaceRole
   rescanInScope?: boolean
+  /** "Continue this in Studio" when the Studio is enabled for this deployment. */
+  studioHref?: string
   /** NeedsAttentionCard, before the coach card so its <h2> never precedes this page's <h1>. */
   problems?: ReactNode
   /** The getting-started checklist, rendered after today's priority so it never pushes it below the fold. */
@@ -59,7 +61,7 @@ function actionHref(locale: PrototypeLocale, slug: string, action: ActionOvervie
     ? `${href}?version=${encodeURIComponent(action.latestVersion.id)}` : href, location)
 }
 
-export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems, gettingStarted, rescanInScope = true, progressPanel, photoStrip }: HomeBriefViewProps) {
+export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezone, locations, brief, demo = false, role, consentPolicyVersion, problems, gettingStarted, rescanInScope = true, progressPanel, photoStrip, studioHref }: HomeBriefViewProps) {
   const t = copy[locale].home
   const focus = copy[locale].ownerFocus
   const pc = copy[locale].workspaceHome.home
@@ -119,7 +121,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
         eyebrow={priority || copyFollowUp ? undefined : snapshot ? `${pc.snapshot} · ${formatDateTime(snapshot.observedAt, locale, timezone)}` : hasLocations && location === "all" ? pc.allLocationsNoCombined : pc.noSnapshotYet}
         title={pageTitle}
         description={priority || copyFollowUp ? undefined : pageSubtitle}
-        actions={<LocationSelect locale={locale} value={location} locations={locations} />}
+        actions={<><LocationSelect locale={locale} value={location} locations={locations} />{studioHref && <Link className="owner-studio-link" href={studioHref}>{pc.continueInStudio}<ArrowRight /></Link>}</>}
       />
 
       {!hasLocations && <div className="context-banner" role="status"><CircleAlert /><div><strong>{t.noLocationTitle}</strong><span>{t.noLocationBody}</span><Link href={`/${locale}/scan`}>{t.noLocationCta}</Link></div></div>}
