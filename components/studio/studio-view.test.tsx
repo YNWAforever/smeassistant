@@ -379,6 +379,21 @@ describe("StudioView ??honest failures", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
   })
 
+  it("does not offer a retry button when another turn is still running", async () => {
+    installFetch((url, init) => {
+      if (url.includes("/messages") && init.method === "POST") return jsonResponse({ error: "conversation_busy" }, 409)
+      if (init.method === "GET") return jsonResponse({ conversation: conversationA, messages: [], hasMore: false })
+      return jsonResponse({ error: "unavailable" }, 500)
+    })
+    render(<StudioView {...baseProps({ conversations: [conversationA], activeConversationId: conversationA.id })} />)
+    fireEvent.change(composer(), { target: { value: "Second question" } })
+    fireEvent.click(screen.getByRole("button", { name: t.composer.send }))
+    const banner = await screen.findByRole("alert")
+    expect(banner).toHaveTextContent(t.errors.conversation_busy)
+    expect(composer().value).toBe("Second question")
+    expect(screen.queryByRole("button", { name: t.message.retry })).not.toBeInTheDocument()
+  })
+
   it("stops a running turn without inventing an answer", async () => {
     const stream = controlledSse()
     let requestSignal: AbortSignal | null = null

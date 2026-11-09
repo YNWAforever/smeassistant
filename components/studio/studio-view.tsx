@@ -321,6 +321,21 @@ export function StudioView({
       return
     }
 
+    // A second send while the first turn is still finishing is not a failure:
+    // keep the text, say the turn is still running, and never offer a retry
+    // button that would only race the in-flight turn again. The notice clears
+    // itself once the server-side turn has had time to settle.
+    if (result.code === "conversation_busy") {
+      setOptimisticUser(null)
+      setDraftText(content)
+      setRetryText(null)
+      setError({ code: result.code, message: studioErrorText(t, result.code), retryable: false })
+      window.setTimeout(() => {
+        setError((current) => current?.code === "conversation_busy" ? null : current)
+      }, 8_000)
+      return
+    }
+
     if (result.code === "aborted") {
       setOptimisticUser(null)
       await reconcile(conversationId, { afterSeq: baseSeq, restoreText: content })
