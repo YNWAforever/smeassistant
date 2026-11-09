@@ -144,6 +144,12 @@ The workbench and the Studio still keep two thread stores in this release: brows
 - The Studio header gets an **Export transcript** button; the browser downloads `studio-<id>.md`. The existing “no approve/export/publish” surface test now scopes that rule to authority controls and asserts the transcript export is the only export.
 - Verified: transcript builder 3/3, route contract 5/5 (flag/scope/foreign/viewer/audit/limits), Studio component 9/9, Studio browser acceptance 5/5 including a real download whose Markdown contains the answer and boundary, typecheck/lint, build and budget.
 
+### 1.14 P0 preparation: prepared apply-0022 rollout (2026-11-09)
+
+- `docs/implementation/owner-platform-v1/rollout/apply-0022.sql` embeds 0022 byte for byte, requires journal 1–21 with on-disk checksums, runs as `smeassistant_migrator` under the runner advisory lock, verifies the member table/RLS/indexes/FKs/role check/policy/grants, and records row 22. No hosted database was touched.
+- `tests/rollout-apply-0022.test.ts` pins the embedding, journal 1–21, row 22 and post-checks. `test/integration/rollout-apply-0022.integration.test.ts` executes the statement on an owned PostgreSQL fixture after 1–21: row 22, table/RLS/policy verified, normal runner replays as a no-op, and a second execution refuses because the journal is no longer 1–21.
+- The cut-over runbook now uses the prepared file; readiness docs note the pending migration and the owner-only variables.
+
 ### Bug caught by visual verification (pre-integration branch)
 
 The pre-integration e2e/screenshot round exposed two issues that text assertions missed: `buildShellWorkspace` accepted `studioEnabled` but did not copy it into `ShellWorkspace` (the page rendered while nav stayed hidden), and the fixture returned classifier JSON as answer prose. The fixture fix (real SSE + prose) and the no-raw-JSON assertion are kept; the shell flag forwarding became obsolete under Path A, which mounts the entry in the conversation workbench instead of the shell nav.

@@ -46,17 +46,11 @@ corepack pnpm e2e:acceptance -- e2e/acceptance/conversation-studio.spec.ts
 
 ## 3. Apply the migrations
 
-**Current production state (2026-11-09):** the hosted journal is exactly **1–21** (0018–0021 were applied through the repo runner). The only pending migration is **0022_studio_conversation_members.sql** (shared conversations, v1.1 P1.3). Apply it through the repo migration runner with the owner connection: it verifies journal 1–21 by name+SHA-256 and records row 22 in one transaction.
+**Current production state (2026-11-09):** the hosted journal is exactly **1–21** (0018–0021 were applied through the repo runner). The only pending migration is **0022_studio_conversation_members.sql** (shared conversations, v1.1 P1.3).
 
-```powershell
-# Owner connection, never the runtime URL. Run on a Neon test branch of production first.
-neon connection-string production --role-name neondb_owner --database-name neondb > $env:TEMP\migrate-url.txt
-$env:DATABASE_URL = Get-Content $env:TEMP\migrate-url.txt -Raw
-# Run the repository's pending-migration operator path (loads neon/migrations in order;
-# refuses any journal mismatch). Do not insert journal rows by hand.
-```
+Run `docs/implementation/owner-platform-v1/rollout/apply-0022.sql` in the Neon SQL Editor as `neondb_owner` (which must hold `smeassistant_migrator` WITH SET TRUE), on a Neon **test branch of production first**, then production. It is one DO block: it takes the runner advisory lock, verifies journal **1–21** by name+SHA-256, executes the 0022 text byte for byte, checks the member table/RLS/indexes/FK and role check/policy/grants, and records journal row **22**. Any failure rolls the whole statement back.
 
-There is no prepared `apply-0022.sql`. If the target is still at **1–20**, first apply `docs/implementation/owner-platform-v1/rollout/apply-0021.sql` (row 21), then apply 0022 through the runner.
+There is no prepared statement for 0019/0020 (the conversation workstream applied them through the runner); a target still at **1–20** must catch up through the normal runner before this file. Do not hand-insert journal rows.
 
 Post-apply verification (read-only):
 
