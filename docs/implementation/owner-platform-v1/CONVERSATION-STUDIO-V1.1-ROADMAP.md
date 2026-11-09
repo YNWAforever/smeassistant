@@ -59,7 +59,7 @@ The last schema-changing phase; additive migration `0022`.
 
 ## Phase 2 — Quality and operations (parallel, ongoing)
 
-- **Cost/latency telemetry:** per-turn tokens, model, duration and cost aggregation; a read-only ops query; budget alert thresholds; no message text in telemetry.
+- **Cost/latency telemetry (implemented locally):** `pnpm ops:studio-usage` read-only report over persisted turns — conversations, owners, user/assistant turns, failed turns, tokens, cost with unknown-cost visibility, adjacent-turn latency (samples/avg/p50/p95), intents, models and a UTC daily series. It never reads message text and runs in a READ ONLY transaction. See `docs/operations/studio-usage.md`; integration-tested against the owned PostgreSQL fixture. Budget alert thresholds remain a follow-up.
 - **Preview database strategy:** schema-only Neon branch per PR (or a labeled CI branch), journal/checksum verification in CI, never the production branch from previews.
 - **Readiness vars:** add `DATABASE_URL_UNPOOLED`, `NEON_READINESS_HOST`, `NEON_READINESS_DATABASE` if the read-only readiness tooling is adopted; no runtime exposure.
 - **Test depth:** expand Studio browser acceptance (documents, shared threads, mobile), prompt-injection regressions on attached files, streaming load test, a11y audit.
