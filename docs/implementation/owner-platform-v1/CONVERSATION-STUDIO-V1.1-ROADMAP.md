@@ -68,7 +68,7 @@ The last schema-changing phase; additive migration `0022`.
 ## Phase 3 — Product polish (backlog, prioritized after Phase 1)
 
 - Composer attachments/voice; artifact edit-in-place; inline “request changes” flow (design-gated).
-- Conversation search and rename/archive UX remain follow-ups. Transcript export is implemented: `GET /api/studio/conversations/[id]/transcript` returns a read-only Markdown attachment (owner or shared member), audited with counts only, with an Export button in the Studio header.
+- Workbench actions deep-link into a fresh Studio conversation (`?action=`) with a contextual starter; unknown/stale ids fall back to the normal rail. Conversation search and rename/archive UX remain follow-ups. Transcript export is implemented: `GET /api/studio/conversations/[id]/transcript` returns a read-only Markdown attachment (owner or shared member), audited with counts only, with an Export button in the Studio header.
 - Today/Insights deep-links into the same conversation (“continue this in Studio”).
 - Optional provider routing through Neon AI Gateway/cost-aware model selection.
 

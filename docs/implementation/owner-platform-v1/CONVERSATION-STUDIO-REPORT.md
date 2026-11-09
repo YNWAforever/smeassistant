@@ -150,6 +150,12 @@ The workbench and the Studio still keep two thread stores in this release: brows
 - `tests/rollout-apply-0022.test.ts` pins the embedding, journal 1–21, row 22 and post-checks. `test/integration/rollout-apply-0022.integration.test.ts` executes the statement on an owned PostgreSQL fixture after 1–21: row 22, table/RLS/policy verified, normal runner replays as a no-op, and a second execution refuses because the journal is no longer 1–21.
 - The cut-over runbook now uses the prepared file; readiness docs note the pending migration and the owner-only variables.
 
+### 1.15 P3 polish: workbench action deep links (2026-11-09)
+
+- The workbench "Continue existing work" list gains **Discuss this action** when the Studio is enabled; the link opens `/conversation/studio?action=<id>&location=`, and the Studio page resolves the id against the already-authorised briefing.
+- A matching action opens a fresh empty conversation with one contextual starter ("Help with: <title>", localised in all three locales), so the owner can ask about that action without inheriting an unrelated thread; an unknown/stale id falls back to the normal most-recent view. No prefilled answer and no authority route.
+- Verified: workbench component test asserts the link href; Studio browser acceptance now 6/6 including the deep-link flow (starter click, streamed answer, new `?chat=` id); full unit 6880/6880; typecheck/lint/build/budget green.
+
 ### Bug caught by visual verification (pre-integration branch)
 
 The pre-integration e2e/screenshot round exposed two issues that text assertions missed: `buildShellWorkspace` accepted `studioEnabled` but did not copy it into `ShellWorkspace` (the page rendered while nav stayed hidden), and the fixture returned classifier JSON as answer prose. The fixture fix (real SSE + prose) and the no-raw-JSON assertion are kept; the shell flag forwarding became obsolete under Path A, which mounts the entry in the conversation workbench instead of the shell nav.

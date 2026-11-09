@@ -127,6 +127,10 @@ it("shows persistent Studio discussions and the continue bridge when the Studio 
     "href",
     "/en/owner/shop/conversation/studio?chat=c1&location=branch",
   );
+  expect(screen.getByRole("link", { name: "Discuss this action" })).toHaveAttribute(
+    "href",
+    "/en/owner/shop/conversation/studio?action=a1&location=branch",
+  );
   await addNote("Bridge this note");
   expect(screen.getByRole("button", { name: "Continue in Studio" })).toBeInTheDocument();
 });

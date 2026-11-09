@@ -5,7 +5,7 @@ import { StudioView } from "@/components/studio/studio-view";
 import { studioRepository, toStudioConversation, toStudioMessage } from "@/lib/repositories/studio";
 import { buildStudioBriefing, type StudioBriefingResult } from "@/lib/studio/context";
 import { conversationStudioEnabled } from "@/lib/studio/flag";
-import { studioText } from "@/lib/studio/copy";
+import { studioText, formatStudioCopy } from "@/lib/studio/copy";
 import {
   STUDIO_CONVERSATION_PAGE,
   STUDIO_MESSAGE_PAGE,
@@ -75,36 +75,6 @@ export default async function StudioPage(props: OwnerPageProps) {
   });
   const conversations: StudioConversation[] = rows.map(toStudioConversation);
 
-  // `?chat=` is honoured only for a conversation the caller actually owns. An
-  // unknown id is not an error page: the rail still works, so the Studio opens
-  // on the most recent conversation instead of a dead end. Archived rows are
-  // fetched so a bookmark keeps its history (read-only).
-  const requestedChat = page.query.chat && UUID.test(page.query.chat) ? page.query.chat : null;
-  let active = requestedChat ? conversations.find((conversation) => conversation.id === requestedChat) ?? null : null;
-  if (!active && requestedChat) {
-    const row = await repo.getConversation({ workspaceId, actorId, conversationId: requestedChat });
-    if (row) {
-      active = toStudioConversation(row);
-      conversations.unshift(active);
-    }
-  }
-  if (!active && conversations.length > 0) active = conversations[0];
-
-  let messages: StudioMessage[] = [];
-  let hasMore = false;
-  if (active) {
-    const rows = await repo.listMessages({
-      workspaceId,
-      actorId,
-      conversationId: active.id,
-      // One extra row tells the page whether older turns exist; the rendered
-      // window keeps the newest page in ascending order.
-      limit: STUDIO_MESSAGE_PAGE + 1,
-    });
-    hasMore = rows.length > STUDIO_MESSAGE_PAGE;
-    messages = (hasMore ? rows.slice(rows.length - STUDIO_MESSAGE_PAGE) : rows).map(toStudioMessage);
-  }
-
   // The briefing is rebuilt from authorised rows on every load. If the scoped
   // location cannot be resolved (a manager outside that location's scope, or a
   // location that disappeared) fall back to the primary scope and finally to
@@ -130,7 +100,58 @@ export default async function StudioPage(props: OwnerPageProps) {
     pendingInputs: 0,
     brandFactCount: 0,
   };
-  const chips: StudioPromptChip[] = briefing?.promptChips ?? text.empty.starters.map((starter) => ({ id: starter.id, label: starter.label, message: starter.message }));
+
+  // A workbench action can deep-link here as `?action=`. The id is only used to
+  // find an action the briefing already authorises at this location; the new
+  // conversation starts empty with a contextual starter, never with a prefilled
+  // answer. An unknown/stale id simply opens the normal most-recent view.
+  const requestedActionId = page.query.action && UUID.test(page.query.action) ? page.query.action : null;
+  const requestedAction = requestedActionId
+    ? briefing?.briefing.openActions.find((action) => action.id === requestedActionId) ?? null
+    : null;
+
+  // `?chat=` is honoured only for a conversation the caller actually owns. An
+  // unknown id is not an error page: the rail still works, so the Studio opens
+  // on the most recent conversation instead of a dead end. Archived rows are
+  // fetched so a bookmark keeps its history (read-only).
+  const requestedChat = page.query.chat && UUID.test(page.query.chat) ? page.query.chat : null;
+  let active = requestedChat ? conversations.find((conversation) => conversation.id === requestedChat) ?? null : null;
+  if (!active && requestedChat) {
+    const row = await repo.getConversation({ workspaceId, actorId, conversationId: requestedChat });
+    if (row) {
+      active = toStudioConversation(row);
+      conversations.unshift(active);
+    }
+  }
+  // An action deep link starts a fresh conversation so its contextual starter is
+  // visible; it must not silently continue an unrelated old thread.
+  if (!requestedChat && !requestedAction && conversations.length > 0) active = conversations[0];
+
+  let messages: StudioMessage[] = [];
+  let hasMore = false;
+  if (active) {
+    const rows = await repo.listMessages({
+      workspaceId,
+      actorId,
+      conversationId: active.id,
+      // One extra row tells the page whether older turns exist; the rendered
+      // window keeps the newest page in ascending order.
+      limit: STUDIO_MESSAGE_PAGE + 1,
+    });
+    hasMore = rows.length > STUDIO_MESSAGE_PAGE;
+    messages = (hasMore ? rows.slice(rows.length - STUDIO_MESSAGE_PAGE) : rows).map(toStudioMessage);
+  }
+
+  const chips: StudioPromptChip[] = [
+    ...(requestedAction
+      ? [{
+          id: `action:${requestedAction.id}`,
+          label: formatStudioCopy(text.empty.actionStarterLabel, { title: requestedAction.title }),
+          message: formatStudioCopy(text.empty.actionStarterMessage, { title: requestedAction.title }),
+        }]
+      : []),
+    ...(briefing?.promptChips ?? text.empty.starters.map((starter) => ({ id: starter.id, label: starter.label, message: starter.message }))),
+  ];
 
   return (
     <StudioView

@@ -166,6 +166,23 @@ test.describe("Conversation Studio", () => {
     await expect(page.getByRole("link", { name: /Open persistent copy/ }).first()).toBeVisible();
   });
 
+  test("starts a new Studio conversation from a workbench action deep link", async ({ page, merchant, environment }) => {
+    await setModelScript(environment);
+    await signIn(page, environment, merchant, "owner");
+    await page.goto(`/en/owner/${merchant.slug}/conversation?location=primary`);
+
+    const discuss = page.getByRole("link", { name: "Discuss this action" }).first();
+    await expect(discuss).toBeVisible();
+    await discuss.click();
+    await expect(page).toHaveURL(new RegExp(`/en/owner/${merchant.slug}/conversation/studio\\?action=`));
+    await expect(page.getByRole("heading", { name: "What should we work on?" })).toBeVisible();
+
+    // The action is a contextual starter, not a prefilled answer or an authority.
+    await page.getByRole("button", { name: "Help with: Reply to reviews" }).click();
+    await expect(page.locator(".studio-message-assistant").last()).toContainText("Start with the unanswered reviews", { timeout: 90_000 });
+    expect(new URL(page.url()).searchParams.get("chat")).toMatch(/^[a-f0-9-]{36}$/);
+  });
+
   test("shares a conversation with an accepted teammate and enforces viewer read-only", async ({ page, merchant, environment }) => {
     await setModelScript(environment);
     await signIn(page, environment, merchant, "owner");
