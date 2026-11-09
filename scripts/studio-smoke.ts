@@ -14,65 +14,22 @@ import { llmChatDetailed, llmChatStreamDetailed, llmConfigured, type LLMChatMess
  *   corepack pnpm smoke:studio
  */
 
-export const SMOKE_CLASSIFIER_MESSAGES: LLMChatMessage[] = [
-  { role: "system", content: "You are a connectivity probe. Return one JSON object and nothing else." },
-  { role: "user", content: 'Return exactly {"intent":"answer"} and no other keys.' },
-];
+import {
+  SMOKE_ANSWER_MESSAGES,
+  SMOKE_CLASSIFIER_MESSAGES,
+  parseStudioSmokeIntent,
+  summarizeStudioSmoke,
+  type StudioSmokeInput,
+  type StudioSmokeResult,
+} from "../lib/studio/smoke";
 
-export const SMOKE_ANSWER_MESSAGES: LLMChatMessage[] = [
-  { role: "system", content: "You are a connectivity probe. Reply in one short sentence." },
-  { role: "user", content: "Say that the Studio gateway is reachable." },
-];
-
-export interface StudioSmokeInput {
-  classifierOk: boolean;
-  /** Parsed intent from the classifier completion, or null when it did not parse. */
-  classifierIntent: string | null;
-  stream: LLMStreamOutcome;
-  /** The deltas the stream emitted, in order. */
-  deltas: readonly string[];
-}
-
-export interface StudioSmokeResult {
-  ok: boolean;
-  checks: {
-    classifierCompleted: boolean;
-    classifierJsonParsed: boolean;
-    classifierIntentAnswer: boolean;
-    streamCompleted: boolean;
-    streamUsedDeltas: boolean;
-    streamTextNonEmpty: boolean;
-    deltasMatchText: boolean;
-  };
-}
-
-/**
- * Pure verdict for the two calls: every check is reported even when a later one
- * cannot pass, so an operator sees the first failing shape in the output.
- */
-export function summarizeStudioSmoke(input: StudioSmokeInput): StudioSmokeResult {
-  const checks = {
-    classifierCompleted: input.classifierOk,
-    classifierJsonParsed: input.classifierIntent !== null,
-    classifierIntentAnswer: input.classifierIntent === "answer",
-    streamCompleted: input.stream.ok,
-    streamUsedDeltas: input.stream.ok && input.stream.streamed === true,
-    streamTextNonEmpty: input.stream.ok && input.stream.result.text.trim().length > 0,
-    deltasMatchText: input.stream.ok && input.deltas.join("") === input.stream.result.text,
-  };
-  return { ok: Object.values(checks).every(Boolean), checks };
-}
-
-function parseIntent(text: string): string | null {
-  try {
-    const value: unknown = JSON.parse(text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""));
-    return value && typeof value === "object" && !Array.isArray(value) && typeof (value as { intent?: unknown }).intent === "string"
-      ? (value as { intent: string }).intent
-      : null;
-  } catch {
-    return null;
-  }
-}
+export {
+  SMOKE_ANSWER_MESSAGES,
+  SMOKE_CLASSIFIER_MESSAGES,
+  summarizeStudioSmoke,
+  type StudioSmokeInput,
+  type StudioSmokeResult,
+} from "../lib/studio/smoke";
 
 async function main(): Promise<void> {
   if (!llmConfigured()) {
@@ -87,7 +44,7 @@ async function main(): Promise<void> {
     temperature: 0,
     timeoutMs: 20_000,
   });
-  const classifierIntent = classifier.ok ? parseIntent(classifier.result.text) : null;
+  const classifierIntent = classifier.ok ? parseStudioSmokeIntent(classifier.result.text) : null;
 
   const deltas: string[] = [];
   const stream = await llmChatStreamDetailed(SMOKE_ANSWER_MESSAGES, {
