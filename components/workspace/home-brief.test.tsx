@@ -45,7 +45,7 @@ function baseBrief(proof: HomeBrief["proof"]): HomeBrief {
   };
 }
 
-function render(proof: HomeBrief["proof"], problems?: ReactNode) {
+function render(proof: HomeBrief["proof"], problems?: ReactNode, studioHref?: string) {
   const root = document.createElement("div");
   root.innerHTML = renderToStaticMarkup(
     <HomeBriefView
@@ -59,10 +59,19 @@ function render(proof: HomeBrief["proof"], problems?: ReactNode) {
       brief={baseBrief(proof)}
       consentPolicyVersion="2026-07-28"
       problems={problems}
+      studioHref={studioHref}
     />,
   );
   return root;
 }
+
+it("offers a continue-in-Studio link only when the deployment configures it", () => {
+  const linked = render(null, undefined, "/en/owner/kam-man-house/conversation/studio?location=yik-yam");
+  const link = linked.querySelector(".owner-studio-link");
+  expect(link?.textContent).toContain("Continue in Studio");
+  expect(link?.getAttribute("href")).toBe("/en/owner/kam-man-house/conversation/studio?location=yik-yam");
+  expect(render(null).querySelector(".owner-studio-link")).toBeNull();
+});
 
 describe("returning owner version-bound follow-up", () => {
   const followUp: NonNullable<HomeBrief["reviewFollowUp"]> = {

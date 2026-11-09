@@ -8,6 +8,7 @@
 
 export type WorkspaceHomeCopy = {
   home: {
+    continueInStudio: string;
     growthWorkspace: string; freePlan: string; comparable: string; notComparable: string; snapshot: string;
     allLocationsNoCombined: string; noSnapshotYet: string; todaySOperatingBrief: string; nothingOpen: string; ownerTime: string;
     noActionNeedsYour: string; actionsAreDerivedFrom: string; observed: string; askWhyThisComes: string; contextChangedToAll: string;
@@ -76,6 +77,7 @@ export type WorkspaceHomeCopy = {
 
 export const workspaceHomeEn: WorkspaceHomeCopy = {
   home: {
+    continueInStudio: "Continue in Studio",
     growthWorkspace: "Growth plan",
     freePlan: "Free plan",
     comparable: "Comparable",
@@ -271,6 +273,7 @@ export const workspaceHomeEn: WorkspaceHomeCopy = {
 
 export const workspaceHomeZhHK: WorkspaceHomeCopy = {
   home: {
+    continueInStudio: "喺 Studio 繼續",
     growthWorkspace: "增長方案",
     freePlan: "免費方案",
     comparable: "可以同上次比",
@@ -466,6 +469,7 @@ export const workspaceHomeZhHK: WorkspaceHomeCopy = {
 
 export const workspaceHomeZhTW: WorkspaceHomeCopy = {
   home: {
+    continueInStudio: "在 Studio 繼續",
     growthWorkspace: "成長方案",
     freePlan: "免費方案",
     comparable: "可比較",

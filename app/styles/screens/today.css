@@ -469,3 +469,14 @@
 .compact-action-list > a:not(:has(> .priority-marker)) small { margin-top: 3px; color: var(--ink-3); font-size: 12px; }
 .compact-action-list + .plan-actions { margin-top: 14px; }
 }
+
+.owner-studio-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-inline-start: 0.75rem;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

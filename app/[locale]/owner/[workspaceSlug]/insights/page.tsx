@@ -6,6 +6,9 @@ import { RescanButton } from "@/components/workspace/rescan-button";
 import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
 import { canRescan, rescanOwnerCopy } from "@/lib/workspace/rescan-eligibility";
 import { getInsights } from "@/lib/workspace/queries-pages";
+import { conversationStudioEnabled } from "@/lib/studio/flag";
+import { conversationHomeEnabled } from "@/lib/workspace/conversation-flag";
+import { withLocation } from "@/lib/workspace/format";
 
 export const dynamic = "force-dynamic";
 
@@ -18,5 +21,8 @@ export default async function InsightsRoute(props: OwnerPageProps) {
   const model = await getInsights(page.ctx, page.locationSlug);
   const locationId = model.location?.id ?? null;
   const allowed = model.series.length > 0 && canRescan({ tier: page.ctx.workspace.tier, role: page.membership.role, locationId, inScope: inScopeFor(page.membership, locationId) });
-  return <InsightsView locale={page.locale} workspaceSlug={page.workspaceSlug} timezone={page.ctx.workspace.timezone} locations={page.locations} model={model} rescanAllowed={allowed} rescan={allowed && <div className="owner-results-tools"><p>{rescanOwnerCopy[page.locale].prompt}</p><RescanButton locale={page.locale} workspaceId={page.ctx.workspace.id} workspaceSlug={page.workspaceSlug} locationId={locationId} tier={page.ctx.workspace.tier} role={page.membership.role} consentPolicyVersion={currentScanConsentPolicyVersion()} /></div>} />;
+  const studioHref = conversationStudioEnabled() && conversationHomeEnabled()
+    ? withLocation(`/${page.locale}/owner/${page.workspaceSlug}/conversation/studio`, page.locationSlug)
+    : undefined;
+  return <InsightsView locale={page.locale} workspaceSlug={page.workspaceSlug} timezone={page.ctx.workspace.timezone} locations={page.locations} model={model} rescanAllowed={allowed} rescan={allowed && <div className="owner-results-tools"><p>{rescanOwnerCopy[page.locale].prompt}</p><RescanButton locale={page.locale} workspaceId={page.ctx.workspace.id} workspaceSlug={page.workspaceSlug} locationId={locationId} tier={page.ctx.workspace.tier} role={page.membership.role} consentPolicyVersion={currentScanConsentPolicyVersion()} /></div>} studioHref={studioHref} />;
 }

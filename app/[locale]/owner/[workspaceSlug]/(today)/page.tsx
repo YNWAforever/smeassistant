@@ -13,6 +13,9 @@ import { GettingStarted } from "@/components/workspace/getting-started";
 import { ShopPhotoStrip, TodayProgress } from "@/components/workspace/today-progress";
 import { loadTodayProgress } from "@/lib/workspace/progress-loader";
 import { stockPhotosEnabled } from "@/lib/stock-photos";
+import { conversationStudioEnabled } from "@/lib/studio/flag";
+import { conversationHomeEnabled } from "@/lib/workspace/conversation-flag";
+import { withLocation } from "@/lib/workspace/format";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +44,9 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
   // Effort only: tasks done this month against what is still open, in this scope.
   const today = await loadTodayProgress(page.ctx, { monthDone: brief.month.completed, open: brief.openActionCount ?? brief.openActions.length, locationId });
   const base = `/${page.locale}/owner/${page.workspaceSlug}`;
+  const studioHref = conversationStudioEnabled() && conversationHomeEnabled()
+    ? withLocation(`${base}/conversation/studio`, page.locationSlug)
+    : undefined;
   const forbidden = page.query.forbidden === "1";
   return (
     <>
@@ -61,6 +67,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
         demo={page.ctx.workspace.isDemo}
         role={page.membership.role}
         rescanInScope={inScopeFor(page.membership, brief.location?.id ?? null)}
+        studioHref={studioHref}
         gettingStarted={gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
         progressPanel={today.progress && <TodayProgress locale={page.locale} progress={today.progress} moduleStates={brief.snapshot?.moduleStates ?? null} base={base} location={page.locationSlug} canAct={page.membership.role !== "viewer"} />}
         photoStrip={today.progress && <ShopPhotoStrip locale={page.locale} workspaceId={page.ctx.workspace.id} photos={today.photos} base={base} location={page.locationSlug} canUpload={page.membership.role !== "viewer"} showStock={stockPhotosEnabled()} />}
