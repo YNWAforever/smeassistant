@@ -192,6 +192,14 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
             <strong>{workspaceSection}</strong>
           </div>
           <div className="workspace-topbar-spacer" />
+          {workspace.conversationEnabled && (
+            <Button asChild variant="ghost" size="sm" className="conversation-topbar-link">
+              <Link href={`${base}/conversation?location=${encodeURIComponent(location)}`}>
+                <MessagesSquare aria-hidden="true" />
+                <span>{d.discussion}</span>
+              </Link>
+            </Button>
+          )}
           <ContextualAssistant locale={locale} surface={assistantSurface} triggerLabel={t.assistant.name} mode={workspace.assistant ? "live" : "demo"} context={workspace.assistant} basePath={workspace.assistant ? base : undefined} locationParam={location} />
           <Button asChild variant="ghost" size="icon" className="notification-button">
             <Link href={scopedHref(`${base}/settings/notifications`)} aria-label={notificationsLabel}><Bell />{workspace.unreadNotifications > 0 && <span className="notification-dot" />}</Link>
