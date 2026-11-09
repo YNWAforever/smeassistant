@@ -83,6 +83,9 @@ for (const item of [
     await signIn(page, environment, merchant);
     await page.setViewportSize({ width: item.width, height: 900 });
     await page.goto(`/${item.locale}/owner/onboarding?claim=${job.slug}`);
+    // Keyboard navigation starts immediately; wait for the client handlers so
+    // Enter never races a pre-hydration native form/navigation.
+    await waitForHydration(page);
     let submissions = 0;
     page.on("request", request => {
       if (new URL(request.url()).pathname === "/api/workspaces/claim" && request.method() === "POST") submissions++;
