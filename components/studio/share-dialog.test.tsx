@@ -57,6 +57,16 @@ describe("StudioShareDialog", () => {
     ));
   });
 
+  it("focuses the close button and dismisses with Escape", async () => {
+    const onClose = vi.fn();
+    render(<StudioShareDialog locale="en" workspaceId={WORKSPACE} conversationId={CONVERSATION} onClose={onClose} />);
+    const close = screen.getByRole("button", { name: "Close" });
+    expect(close).toHaveFocus();
+    await screen.findByText("editor@example.test");
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("removes an existing member and reports failures honestly", async () => {
     render(<StudioShareDialog locale="en" workspaceId={WORKSPACE} conversationId={CONVERSATION} onClose={vi.fn()} />);
     await screen.findByText("editor@example.test");
