@@ -39,6 +39,8 @@ export type StudioCopy = {
     title: string
     body: string
     boundary: string
+    actionStarterLabel: string
+    actionStarterMessage: string
     starters: Array<{ id: string; label: string; message: string }>
   }
   composer: {
@@ -205,6 +207,8 @@ const en: StudioCopy = {
     title: "What should we work on?",
     body: "I can see this workspace's latest scan, open actions, drafts and brand facts. Ask a question, or tell me what you want to get done.",
     boundary: "Nothing is approved, exported or published from this conversation. You confirm every version.",
+    actionStarterLabel: "Help with: {title}",
+    actionStarterMessage: "Help me work on \"{title}\". What should I do first?",
     starters: [
       { id: "starter_priorities", label: "What should I do first?", message: "What should I do first, and why?" },
       { id: "starter_changed", label: "What changed?", message: "What changed since the last comparable scan?" },
@@ -346,6 +350,8 @@ const zhHK: StudioCopy = {
     title: "我們先處理哪一件事？",
     body: "我看得到這個工作台最新的掃描、未完成行動、草稿及品牌事實。你可以直接提問，或告訴我想完成甚麼。",
     boundary: "這個對話不會核准、匯出或發佈任何內容；每個版本都由你確認。",
+    actionStarterLabel: "幫我處理：{title}",
+    actionStarterMessage: "幫我處理「{title}」。我應該先做甚麼？",
     starters: [
       { id: "starter_priorities", label: "我應該先做甚麼？", message: "我應該先做甚麼？為甚麼？" },
       { id: "starter_changed", label: "有甚麼變化？", message: "同上次可比較掃描相比，有甚麼變化？" },
@@ -487,6 +493,8 @@ const zhTW: StudioCopy = {
     title: "我們先處理哪一件事？",
     body: "我看得到這個工作區最新的掃描、未完成行動、草稿及品牌事實。你可以直接提問，或告訴我想完成什麼。",
     boundary: "這個對話不會核准、匯出或發布任何內容；每個版本都由你確認。",
+    actionStarterLabel: "幫我處理：{title}",
+    actionStarterMessage: "幫我處理「{title}」。我應該先做什麼？",
     starters: [
       { id: "starter_priorities", label: "我應該先做什麼？", message: "我應該先做什麼？為什麼？" },
       { id: "starter_changed", label: "有什麼變化？", message: "和上次可比較掃描相比，有什麼變化？" },

@@ -329,3 +329,14 @@
   }
   @media (max-width: 359px) { .conversation-templates { grid-template-columns: minmax(0, 1fr); } }
 }
+
+.conversation-discuss-link {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.conversation-discuss-link:hover {
+  color: var(--foreground);
+}

@@ -13,7 +13,7 @@ type DesignCopy = {
   effort: string; continue: string; recent: string; local: string; savedVersion: string; tools: string; toolHint: string;
   persistent: string; persistentEmpty: string; continueInStudio: string; importing: string; importFailed: string;
   openPersistent: string; importAll: string; importingAll: string; importAllFailed: string; importAllDone: string;
-  legacyNotes: string; legacyHint: string; newPersistent: string;
+  legacyNotes: string; legacyHint: string; newPersistent: string; discussAction: string;
   language: string; localNote: string; contextHint: string;
 };
 
@@ -34,7 +34,7 @@ export const conversationDesignCopy: Record<PrototypeLocale, DesignCopy> = {
     effort: "Work in this scope · task activity, not a claim of business results.", continue: "Continue", recent: "Recent discussions", local: "Only in this browser", savedVersion: "A saved version is available", tools: "Documents, search & sources", toolHint: "Open a tool when you need it. Reads and confirmations stay under your control.",
     persistent: "Persistent discussions", persistentEmpty: "No persistent discussions yet.", continueInStudio: "Continue in Studio", importing: "Saving…", importFailed: "Could not save this discussion. Try again.",
     openPersistent: "Open persistent copy", importAll: "Import all to Studio", importingAll: "Importing…", importAllFailed: "Could not import your local threads. Try again.", importAllDone: "Local threads are now in Studio.",
-    legacyNotes: "Browser-only notes", legacyHint: "These notes stay in this browser only. Use the persistent discussions above to continue with the assistant.", newPersistent: "New discussion",
+    legacyNotes: "Browser-only notes", legacyHint: "These notes stay in this browser only. Use the persistent discussions above to continue with the assistant.", newPersistent: "New discussion", discussAction: "Discuss this action",
     language: "English", localNote: `Discussions save as browser-local notes. No AI reply is generated here. Per account, workspace and location: up to ${CONVERSATION_LIMITS.threads} threads, ${CONVERSATION_LIMITS.notes} notes per thread, ${CONVERSATION_LIMITS.noteLength.toLocaleString("en-US")} characters per note.`, contextHint: "Use confirmed shop details and check your sources before approving work.",
   },
   "zh-HK": {
@@ -53,7 +53,7 @@ export const conversationDesignCopy: Record<PrototypeLocale, DesignCopy> = {
     effort: "目前範圍嘅工作紀錄，唔代表生意成效。", continue: "繼續", recent: "最近討論", local: "只喺呢個瀏覽器", savedVersion: "有已存版本可以繼續", tools: "文件、搜尋同資料來源", toolHint: "有需要先打開工具。讀取資料同確認工作，都由你決定。",
     persistent: "持續討論", persistentEmpty: "尚未有持續討論。", continueInStudio: "在對話工作台繼續", importing: "匯入中…", importFailed: "未能匯入，請再試一次。",
     openPersistent: "開啟持續副本", importAll: "全部匯入對話工作台", importingAll: "匯入中…", importAllFailed: "未能匯入本機討論，請再試一次。", importAllDone: "本機討論已存入對話工作台。",
-    legacyNotes: "只在此瀏覽器的筆記", legacyHint: "呢啲筆記只留喺呢個瀏覽器。用上面嘅持續討論，先可以同助理繼續。", newPersistent: "新討論",
+    legacyNotes: "只在此瀏覽器的筆記", legacyHint: "呢啲筆記只留喺呢個瀏覽器。用上面嘅持續討論，先可以同助理繼續。", newPersistent: "新討論", discussAction: "討論呢項工作",
     language: "繁體中文・香港", localNote: `討論會存成本機筆記，呢度唔會產生 AI 回覆。每個帳戶、工作空間同分店範圍最多 ${CONVERSATION_LIMITS.threads} 個討論串；每串最多 ${CONVERSATION_LIMITS.notes} 則筆記，每則最多 ${CONVERSATION_LIMITS.noteLength.toLocaleString("en-US")} 字元。`, contextHint: "用已確認嘅舖頭資料，確認工作前先核對來源。",
   },
   "zh-TW": {
@@ -72,7 +72,7 @@ export const conversationDesignCopy: Record<PrototypeLocale, DesignCopy> = {
     effort: "目前範圍的工作紀錄，不代表生意成效。", continue: "繼續", recent: "最近討論", local: "只在這個瀏覽器", savedVersion: "有已存版本可以繼續", tools: "文件、搜尋與資料來源", toolHint: "有需要再開啟工具。讀取資料和確認工作，都由你決定。",
     persistent: "持續討論", persistentEmpty: "尚未有持續討論。", continueInStudio: "在對話工作台繼續", importing: "匯入中…", importFailed: "未能匯入，請再試一次。",
     openPersistent: "開啟持續副本", importAll: "全部匯入對話工作台", importingAll: "匯入中…", importAllFailed: "未能匯入本機討論，請再試一次。", importAllDone: "本機討論已存入對話工作台。",
-    legacyNotes: "只在這個瀏覽器的筆記", legacyHint: "這些筆記只留在這個瀏覽器。用上面的持續討論，才能和助理繼續。", newPersistent: "新討論",
+    legacyNotes: "只在這個瀏覽器的筆記", legacyHint: "這些筆記只留在這個瀏覽器。用上面的持續討論，才能和助理繼續。", newPersistent: "新討論", discussAction: "討論這項工作",
     language: "繁體中文・台灣", localNote: `討論會存成本機筆記，這裡不會產生 AI 回覆。每個帳戶、工作空間和分店範圍最多 ${CONVERSATION_LIMITS.threads} 個討論串；每串最多 ${CONVERSATION_LIMITS.notes} 則筆記，每則最多 ${CONVERSATION_LIMITS.noteLength.toLocaleString("en-US")} 字元。`, contextHint: "使用已確認的店裡資料，確認工作前先核對來源。",
   },
 };
