@@ -20,7 +20,7 @@ The Studio is integrated as the persistent mode of the conversation workbench (P
 | P0.3 | Execute the 15-point hosted acceptance in `CONVERSATION-STUDIO-CUTOVER.md` | Owner/member, three locales, mobile, import, evidence, draft-to-version, privacy, limits, audit |
 | P0.4 | Record release evidence (CI run, deployment id, acceptance result) | Evidence file linked from the cut-over runbook |
 
-Blocked on explicit owner authorization to flip the flag. Everything below can proceed with the Studio still off.
+**Status 2026-11-09:** P0.1 is **done** (journal 22 applied through the prepared rollout after a disposable-branch dry run; `CONVERSATION_STUDIO_ENABLED=true` set in Vercel Production and redeployed). P0.2 has not produced `ok: true` on this machine — the smoke was SKIPPED because no LLM gateway key is available locally and Vercel sensitive variables decrypt empty. P0.3 (15-point hosted acceptance) remains an owner/manual browser step. P0.4 evidence is recorded in the cut-over runbook and report §1.16; production API now returns 401 rather than the flag-off 404.
 
 ## Phase 1 — Finish convergence (2–3 PRs, ~2 weeks)
 

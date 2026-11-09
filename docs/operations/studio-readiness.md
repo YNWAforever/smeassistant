@@ -38,6 +38,8 @@ Does not prove:
 - Auth delivery, mail delivery, provider response or LLM output;
 - row-level data or business behavior. Those are hosted acceptance items.
 
-## Current hosted gap (2026-11-09)
+## Current hosted status (2026-11-09)
 
-Production's Vercel environment has the sensitive `DATABASE_URL` and Auth variables, but `DATABASE_URL_UNPOOLED`, `NEON_READINESS_HOST` and `NEON_READINESS_DATABASE` are not set. Until the owner adds them (plus the pending migration 0022), readiness cannot run against production. The hosted DB is at journal 21; `0022_studio_conversation_members.sql` is pending, with a prepared rollout (`docs/implementation/owner-platform-v1/rollout/apply-0022.sql`) and an owned-fixture execution test. That is an owner action; this repository change does not add variables or apply the migration.
+Production now has journal **22**: `0022_studio_conversation_members.sql` was applied through `docs/implementation/owner-platform-v1/rollout/apply-0022.sql` after `neondb_owner` granted `REFERENCES ON public.studio_conversations TO smeassistant_migrator`. `CONVERSATION_STUDIO_ENABLED=true` is set in Vercel Production and the app was redeployed; a signed-out `/api/studio/conversations` request now returns **401 unauthenticated** instead of the flag-off 404, and the owner route redirects to sign-in.
+
+`pnpm neon:readiness` has **not** been run against production from this machine: the Vercel `DATABASE_URL` is a sensitive secret that the CLI returns empty, and the enough-privileged direct URL plus the readiness variables belong in the separate read-only operator process (never the web runtime). The migration itself was verified structurally: journal 22/checksum through the prepared statement, RLS true, one policy, two indexes, expected FKs/role check, `sme_app_runtime` DML, and `check-missing-columns.sql` returned 0 rows. A full readiness run remains the owner/operator follow-up.

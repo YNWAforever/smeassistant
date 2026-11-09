@@ -1,6 +1,6 @@
 # Conversation Studio — hosted cut-over runbook (Path A: Studio inside the conversation workbench)
 
-**Status:** PREPARED, NOT EXECUTED. Nothing in this runbook has been applied to a hosted database or deployed from this workspace. Hosted target confirmation and the production migration remain owner actions.
+**Status: EXECUTED 2026-11-09.** Production journal is **22** (`0022_studio_conversation_members.sql` applied after a verified run on a disposable Neon branch), `CONVERSATION_STUDIO_ENABLED=true` is set in Vercel Production, and production was redeployed. Evidence: `/api/studio/conversations` now answers **401 unauthenticated** for a signed-out request (previously flag-off 404), `/zh-HK/owner/select-workspace` redirects **307 to sign-in**, the member table has RLS, one `server_application` policy, two indexes, the expected FKs/role check and runtime DML, and `check-missing-columns.sql` returns 0 rows. `smoke:studio` was **SKIPPED** on this machine (no LLM gateway key; Vercel secrets are not decryptable locally), and the **15-point hosted browser acceptance remains an owner/manual step** with a signed-in owner session.
 
 **Integration shape (approved Path A):** the Studio is the persistent, model-backed **mode of the existing conversation workbench**. Today remains the default workspace URL. The workbench (`/{locale}/owner/{workspaceSlug}/conversation`) is the single entry point and shows an “Open Studio” link when both flags are on. The Studio route is `/{locale}/owner/{workspaceSlug}/conversation/studio`; there is no owner-nav item and no root redirect.
 
@@ -46,9 +46,9 @@ corepack pnpm e2e:acceptance -- e2e/acceptance/conversation-studio.spec.ts
 
 ## 3. Apply the migrations
 
-**Current production state (2026-11-09):** the hosted journal is exactly **1–21** (0018–0021 were applied through the repo runner). The only pending migration is **0022_studio_conversation_members.sql** (shared conversations, v1.1 P1.3).
+**Current production state (2026-11-09, executed):** the hosted journal is exactly **1–22**. `0022_studio_conversation_members.sql` was applied through the prepared file below. Before it, `neondb_owner` granted `REFERENCES ON public.studio_conversations TO smeassistant_migrator`; the 0021 tables are owned by `neondb_owner`, while the migrator creates the 0022 table, so the FK needs that privilege. The same sequence was executed once on a disposable Neon branch first (`rollout-0022-test`, then deleted).
 
-Run `docs/implementation/owner-platform-v1/rollout/apply-0022.sql` in the Neon SQL Editor as `neondb_owner` (which must hold `smeassistant_migrator` WITH SET TRUE), on a Neon **test branch of production first**, then production. It is one DO block: it takes the runner advisory lock, verifies journal **1–21** by name+SHA-256, executes the 0022 text byte for byte, checks the member table/RLS/indexes/FK and role check/policy/grants, and records journal row **22**. Any failure rolls the whole statement back.
+For a fresh target, run `docs/implementation/owner-platform-v1/rollout/apply-0022.sql` in the Neon SQL Editor as `neondb_owner` (which must hold `smeassistant_migrator` WITH SET TRUE), on a Neon **test branch of production first**, then production. It is one DO block: it takes the runner advisory lock, verifies journal **1–21** by name+SHA-256, executes the 0022 text byte for byte, checks the member table/RLS/indexes/FK and role check/policy/grants, and records journal row **22**. Any failure rolls the whole statement back. The `REFERENCES` grant above must be issued first.
 
 There is no prepared statement for 0019/0020 (the conversation workstream applied them through the runner); a target still at **1–20** must catch up through the normal runner before this file. Do not hand-insert journal rows.
 
