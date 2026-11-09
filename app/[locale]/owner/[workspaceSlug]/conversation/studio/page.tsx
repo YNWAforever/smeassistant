@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { StudioView } from "@/components/studio/studio-view";
 import { studioRepository, toStudioConversation, toStudioMessage } from "@/lib/repositories/studio";
 import { buildStudioBriefing, type StudioBriefingResult } from "@/lib/studio/context";
+import { ensureStudioStarter } from "@/lib/studio/chips";
 import { conversationStudioEnabled } from "@/lib/studio/flag";
 import { studioText, formatStudioCopy } from "@/lib/studio/copy";
 import {
@@ -152,6 +153,9 @@ export default async function StudioPage(props: OwnerPageProps) {
       : []),
     ...(briefing?.promptChips ?? text.empty.starters.map((starter) => ({ id: starter.id, label: starter.label, message: starter.message }))),
   ];
+  // The model-backed IG workflow starter must remain reachable even when the
+  // briefing replaces the generic starters with contextual chips.
+  const chipsWithIg = ensureStudioStarter(chips, text.empty.starters, "starter_ig");
 
   return (
     <StudioView
@@ -167,7 +171,7 @@ export default async function StudioPage(props: OwnerPageProps) {
       initialMessages={messages}
       initialHasMore={hasMore}
       contextSummary={contextSummary}
-      chips={chips}
+      chips={chipsWithIg}
     />
   );
 }
