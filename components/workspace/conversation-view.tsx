@@ -218,8 +218,11 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
         <span><Globe aria-hidden="true" />{d.language}</span>
         {resources && <><button type="button" onClick={() => openConversationTool("conversation-documents")}><Paperclip aria-hidden="true" />{d.documents}</button><button type="button" onClick={() => openConversationTool("conversation-sources")}><Plug aria-hidden="true" />{d.sources}</button></>}
       </div>
-      {studioEnabled && <Link className="conversation-studio-entry" href={`/${locale}/owner/${workspaceSlug}/conversation/studio?${locationQuery}`}><MessagesSquare aria-hidden="true" />{studioText(locale).header.openStudio}<ArrowRight aria-hidden="true" /></Link>}
     </header>
+    {studioEnabled && <section className="conversation-studio-callout" aria-label={d.discussion}>
+      <div><strong>{d.studioCalloutTitle}</strong><p>{d.studioCalloutBody}</p></div>
+      <Link className="conversation-studio-entry" href={`/${locale}/owner/${workspaceSlug}/conversation/studio?${locationQuery}`}><MessagesSquare aria-hidden="true" />{studioText(locale).header.openStudio}<ArrowRight aria-hidden="true" /></Link>
+    </section>}
     {resources && connectionOutcome && <p role="status">{connectionOutcome === "ok" ? resourceCopy[locale].oauthConnected : connectionOutcome === "declined" ? resourceCopy[locale].oauthDeclined : resourceCopy[locale].oauthFailed}</p>}
     <div className="conversation-layout">
       <section className="conversation-work" aria-label={t.switchLabel}>
