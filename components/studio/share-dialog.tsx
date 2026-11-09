@@ -1,7 +1,7 @@
 "use client"
 
 import { X } from "lucide-react"
-import { useEffect, useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import type { PrototypeLocale } from "@/lib/copy"
@@ -32,12 +32,28 @@ export function StudioShareDialog({
 }) {
   const t = studioText(locale)
   const titleId = useId()
+  const closeRef = useRef<HTMLButtonElement>(null)
   const [data, setData] = useState<StudioConversationMembersResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [candidateId, setCandidateId] = useState("")
   const [role, setRole] = useState<StudioConversationMemberRole>("editor")
+
+  // Dialog hygiene: focus the close button on open and let Escape dismiss it
+  // from anywhere inside the dialog. No focus trap dependency is required for
+  // this small owner-only surface; the backdrop blocks pointer interaction.
+  useEffect(() => {
+    closeRef.current?.focus()
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        onClose()
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [onClose])
 
   async function reload(): Promise<void> {
     const result = await listStudioConversationMembers(workspaceId, conversationId)
@@ -103,7 +119,7 @@ export function StudioShareDialog({
       <section className="studio-share-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header className="studio-share-head">
           <h2 id={titleId}>{t.share.title}</h2>
-          <button type="button" className="studio-icon-button" onClick={onClose} aria-label={t.share.close} title={t.share.close}>
+          <button ref={closeRef} type="button" className="studio-icon-button" onClick={onClose} aria-label={t.share.close} title={t.share.close}>
             <X aria-hidden="true" />
           </button>
         </header>

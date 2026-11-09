@@ -20,7 +20,7 @@ Design: `docs/superpowers/specs/2026-11-08-conversation-studio-design.md`. Recor
    SELECT ordinal, name, checksum FROM neon_migrations.journal ORDER BY ordinal;
    ```
    Any missing/extra/mismatched row is a release blocker; do not fake history.
-3. Confirm the runtime role is not the owner/superuser and that `sme_app_runtime` exists with the expected privileges. `neon:readiness` on the intended checkout and explicit host/database is the supported read-only check.
+3. Confirm the runtime role is not the owner/superuser and that `sme_app_runtime` exists with the expected privileges. Add `DATABASE_URL_UNPOOLED`, `NEON_READINESS_HOST` and `NEON_READINESS_DATABASE` to the separate read-only operator process (never the web runtime or previews), then run `pnpm neon:readiness` on the intended checkout. It also verifies every Studio table/column, including the 0022 member table; see `docs/operations/studio-readiness.md`.
 4. Confirm the deployed LLM gateway is configured and funded. AI pause/budget gates still apply.
 
 ## 2. Local quality gates (before any hosted action)
