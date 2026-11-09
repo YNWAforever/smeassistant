@@ -44,6 +44,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string; zhTW?:
   "conversation.imported": { en: "Discussion saved to Studio", zh: "討論已存入對話工作台" },
   "conversation.shared": { en: "Discussion shared", zh: "討論已分享" },
   "conversation.member_removed": { en: "Discussion member removed", zh: "已移除討論成員" },
+  "conversation.exported": { en: "Discussion transcript exported", zh: "已匯出對話記錄" },
   "consent.public_evidence": { en: "Public evidence consent", zh: "公開證據同意" },
   "fix_pack.reviewed": { en: "Fimmick draft reviewed", zh: "已處理 Fimmick 嘅稿", zhTW: "已處理 Fimmick 準備的稿" },
   "access_request.submitted": { en: "Access request submitted", zh: "已提交存取申請" },

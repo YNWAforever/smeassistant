@@ -15,7 +15,7 @@ export const AUDIT_EVENTS = [
   "run.started", "run.succeeded", "run.failed", "run.timed_out", "version.created", "version.approved", "version.changes_requested", "version.rejected",
   "delivery.exported", "delivery.copied", "workspace.claimed", "member.invited", "member.invitation_resent", "member.role_changed", "integration.updated",
   "brand.updated", "asset.uploaded", "asset.rights_confirmed", "assistant.run", "consent.public_evidence",
-  "conversation.imported", "conversation.shared", "conversation.member_removed",
+  "conversation.imported", "conversation.shared", "conversation.member_removed", "conversation.exported",
   "fix_pack.reviewed",
   "access_request.submitted", "access_request.reviewed", "access_request.information_requested",
   "access_request.approved", "access_request.rejected", "workspace.assigned",

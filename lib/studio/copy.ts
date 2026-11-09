@@ -10,6 +10,7 @@ import type { PrototypeLocale } from "@/lib/copy"
  * Interpolated strings use `{name}` placeholders resolved by `formatStudioCopy`.
  */
 export type StudioCopy = {
+  transcript: { export: string; exporting: string; failed: string; empty: string }
   nav: { label: string; aria: string }
   rail: {
     title: string
@@ -146,6 +147,7 @@ export function formatStudioCopy(template: string, values: Record<string, string
 }
 
 const en: StudioCopy = {
+  transcript: { export: "Export transcript", exporting: "Exporting…", failed: "Could not export this transcript.", empty: "No messages in this conversation yet." },
   share: {
     title: "Share conversation",
     action: "Share",
@@ -286,6 +288,7 @@ const en: StudioCopy = {
 }
 
 const zhHK: StudioCopy = {
+  transcript: { export: "匯出對話記錄", exporting: "匯出中…", failed: "未能匯出對話記錄。", empty: "呢個對話未有訊息。" },
   share: {
     title: "分享討論",
     action: "分享",
@@ -426,6 +429,7 @@ const zhHK: StudioCopy = {
 }
 
 const zhTW: StudioCopy = {
+  transcript: { export: "匯出對話記錄", exporting: "匯出中…", failed: "未能匯出對話記錄。", empty: "這個對話沒有訊息。" },
   share: {
     title: "分享討論",
     action: "分享",

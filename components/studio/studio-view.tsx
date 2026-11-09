@@ -1,6 +1,6 @@
 "use client"
 
-import { Menu, PanelRight, Plus, Share2 } from "lucide-react"
+import { Download, Menu, PanelRight, Plus, Share2 } from "lucide-react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,7 @@ import {
   conversationTitleFromMessage,
   createLocalUserMessage,
   createStudioConversation,
+  downloadStudioTranscript,
   isRetryableStudioFailure,
   listStudioConversations,
   readStudioConversation,
@@ -142,6 +143,8 @@ export function StudioView({
   const [error, setError] = useState<StudioThreadError | null>(null)
   const [retryText, setRetryText] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState(false)
   const [aiBlocked, setAiBlocked] = useState<AiBlocked | null>(null)
   const [railOpen, setRailOpen] = useState(false)
   // Desktop: the context pane is a pinned third column (default open).
@@ -158,6 +161,15 @@ export function StudioView({
   const locationId = locations.find((location) => location.slug === locationSlug)?.id ?? null
   const activeConversation = conversations.find((conversation) => conversation.id === activeId) ?? null
   const archived = activeConversation?.status === "archived"
+
+  async function exportTranscript() {
+    if (!activeConversation || exporting) return
+    setExporting(true)
+    setExportError(false)
+    const result = await downloadStudioTranscript(workspaceId, activeConversation.id, locale)
+    setExporting(false)
+    if (!result.ok) setExportError(true)
+  }
 
   function toggleContext() {
     if (isWide) setContextPinned((open) => !open)
@@ -490,6 +502,12 @@ export function StudioView({
                   </select>
                 </label>
               )}
+              {activeConversation && (
+                <Button type="button" size="sm" variant="outline" onClick={() => void exportTranscript()} disabled={exporting}>
+                  <Download aria-hidden="true" />
+                  <span>{exporting ? t.transcript.exporting : t.transcript.export}</span>
+                </Button>
+              )}
               {activeConversation?.accessRole === "owner" && !archived && (
                 <Button type="button" size="sm" variant="outline" onClick={() => setShareOpen(true)}>
                   <Share2 aria-hidden="true" />
@@ -514,6 +532,7 @@ export function StudioView({
             </div>
           </header>
           <p className="studio-header-subtitle">{t.header.subtitle}</p>
+          {exportError && <p className="studio-role-note" role="alert">{t.transcript.failed}</p>}
 
           {loadingConversation ? (
             <div className="studio-thread-region">

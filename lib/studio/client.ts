@@ -278,6 +278,49 @@ export async function removeStudioConversationMember(
   return { ok: true, data: { removed: true } }
 }
 
+/**
+ * Read-only transcript download (P3). Fetches the Markdown attachment and hands
+ * it to the browser as a file; nothing is persisted client-side beyond the
+ * transient object URL.
+ */
+export async function downloadStudioTranscript(
+  workspaceId: string,
+  conversationId: string,
+  locale: PrototypeLocale,
+): Promise<StudioClientResult<{ filename: string }>> {
+  if (isOffline()) return { ok: false, status: 0, code: "network", error: "offline" }
+  let response: Response
+  try {
+    response = await fetch(
+      `/api/studio/conversations/${encodeURIComponent(conversationId)}/transcript?workspaceId=${encodeURIComponent(workspaceId)}&locale=${encodeURIComponent(locale)}`,
+      { credentials: "same-origin" },
+    )
+  } catch {
+    return { ok: false, status: 0, code: "network", error: "network" }
+  }
+  if (!response.ok) {
+    const failure = failureFromBody(response.status, await readJson(response))
+    return failure
+  }
+  const markdown = await response.text()
+  const filename = `studio-${conversationId}.md`
+  if (typeof document !== "undefined" && typeof URL.createObjectURL === "function") {
+    const objectUrl = URL.createObjectURL(new Blob([markdown], { type: "text/markdown;charset=utf-8" }))
+    try {
+      const anchor = document.createElement("a")
+      anchor.href = objectUrl
+      anchor.download = filename
+      anchor.rel = "noopener"
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+    } finally {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }
+  return { ok: true, data: { filename } }
+}
+
 export async function readStudioConversation(
   workspaceId: string,
   conversationId: string,

@@ -845,6 +845,29 @@ export function studioRepository(client?: Executor, transaction: StudioTransacti
     },
 
     /**
+     * Full ordered transcript for export (read-only). The join is the same
+     * access proof as `listMessages`; the row cap keeps memory bounded while
+     * still covering a very long conversation.
+     */
+    listConversationTranscript(input: StudioConversationRef): Promise<StudioMessageRow[]> {
+      if (!isUuid(input.conversationId)) return Promise.resolve([]);
+      return operation(async () => {
+        return (
+          await db().query<StudioMessageRow>(
+            `SELECT ${messageColumns("m.")} FROM studio_messages m
+             JOIN studio_conversations c ON c.id=m.conversation_id AND c.workspace_id=m.workspace_id
+             WHERE m.workspace_id=$1 AND m.conversation_id=$2
+               AND (c.created_by=$3 OR EXISTS(
+                 SELECT 1 FROM studio_conversation_members sm
+                 WHERE sm.conversation_id=c.id AND sm.workspace_id=$1 AND sm.user_id=$3))
+             ORDER BY m.seq ASC LIMIT 1000`,
+            [input.workspaceId, input.conversationId, input.actorId],
+          )
+        ).rows;
+      });
+    },
+
+    /**
      * One conversation's turns, ascending seq (oldest first), `limit` newest
      * turns below `beforeSeq`. The join is the scope proof: a message is only
      * readable through a conversation this member created in this workspace.
