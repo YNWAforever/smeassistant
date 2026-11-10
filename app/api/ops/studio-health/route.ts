@@ -36,13 +36,23 @@ export async function POST(request: Request): Promise<Response> {
   if (!llmConfigured()) return json({ ok: false, reason: "provider_unconfigured" }, 503);
 
   const startedAt = Date.now();
-  const classifier = await llmChatDetailed(SMOKE_CLASSIFIER_MESSAGES, {
+  const classify = async () => llmChatDetailed(SMOKE_CLASSIFIER_MESSAGES, {
     jsonMode: true,
     maxTokens: 60,
     temperature: 0,
     timeoutMs: 20_000,
   });
-  const classifierIntent = classifier.ok ? parseStudioSmokeIntent(classifier.result.text) : null;
+  let classifier = await classify();
+  let classifierIntent = classifier.ok ? parseStudioSmokeIntent(classifier.result.text) : null;
+  let classifierAttempts = 1;
+  // The provider occasionally corrupts the small JSON completion
+  // (`{"int##ent##": "##"}`); the Studio retries once too, so the probe reports
+  // the capability that matters rather than a one-off token glitch.
+  if (!classifier.ok || classifierIntent === null) {
+    classifier = await classify();
+    classifierIntent = classifier.ok ? parseStudioSmokeIntent(classifier.result.text) : null;
+    classifierAttempts = 2;
+  }
 
   const deltas: string[] = [];
   const stream = await llmChatStreamDetailed(SMOKE_ANSWER_MESSAGES, {
@@ -63,7 +73,7 @@ export async function POST(request: Request): Promise<Response> {
     model: (process.env.LLM_MODEL ?? "").trim() || null,
     latencyMs: Date.now() - startedAt,
     checks: result.checks,
-    classifier: classifier.ok ? { ok: true, text: classifier.result.text.slice(0, 240) } : { ok: false, code: classifier.code },
+    classifier: classifier.ok ? { ok: true, text: classifier.result.text.slice(0, 240), attempts: classifierAttempts } : { ok: false, code: classifier.code, attempts: classifierAttempts },
     stream: stream.ok
       ? { ok: true, streamed: stream.streamed === true, characters: stream.result.text.trim().length }
       : { ok: false, code: stream.code, streamed: stream.streamed === true },

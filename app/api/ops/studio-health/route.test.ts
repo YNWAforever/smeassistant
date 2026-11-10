@@ -52,7 +52,7 @@ describe("POST /api/ops/studio-health", () => {
     expect(response.status).toBe(200);
     const body = await response.json() as Record<string, unknown>;
     expect(body).toMatchObject({ ok: true, model: "deepseek-v4.1-flash" });
-    expect(body.classifier).toMatchObject({ ok: true, text: '{"intent":"answer"}' });
+    expect(body.classifier).toMatchObject({ ok: true, text: '{"intent":"answer"}', attempts: 1 });
     expect(body.stream).toMatchObject({ ok: true, streamed: true });
     expect(JSON.stringify(body)).not.toContain("Studio gateway reachable");
     expect(mocks.llmChatDetailed).toHaveBeenCalledWith(expect.any(Array), expect.objectContaining({ jsonMode: true }));
@@ -66,6 +66,17 @@ describe("POST /api/ops/studio-health", () => {
     const body = await response.json() as Record<string, unknown>;
     expect(body).toMatchObject({ ok: false, stream: { ok: false, code: "provider_unavailable" } });
     expect(JSON.stringify(body)).not.toContain("SENTINEL");
+  });
+
+  it("retries an unparseable classifier once", async () => {
+    mocks.llmChatDetailed
+      .mockResolvedValueOnce({ ok: true, result: { text: '{"int##ent##": "##"}', usage: { inputTokens: 1, outputTokens: 2 } } })
+      .mockResolvedValueOnce({ ok: true, result: { text: '{"intent":"answer"}', usage: { inputTokens: 1, outputTokens: 2 } } });
+    const response = await POST(request(TOKEN));
+    expect(response.status).toBe(200);
+    const body = await response.json() as Record<string, unknown>;
+    expect(body.classifier).toMatchObject({ ok: true, attempts: 2 });
+    expect(mocks.llmChatDetailed).toHaveBeenCalledTimes(2);
   });
 
   it("returns 503 when the deployment has no gateway configuration", async () => {
