@@ -52,11 +52,16 @@ One earlier probe returned `classifierJsonParsed: false` while the streamed answ
 - `studio_conversation_members`: RLS true, one `server_application` policy, two indexes, expected FKs + editor/viewer check, `sme_app_runtime` DML.
 - `docs/operations/check-missing-columns.sql` → 0 rows.
 
+## Readiness (executed)
+
+- Result: **ready** against `production` / `neondb` (journal, schema, runtime role and privileges all passed).
+- Method: temporary least-privilege login role, dropped immediately; no Vercel secret changed.
+
 ## Still pending (owner/operator)
 
 1. **15-point hosted browser acceptance** with a signed-in owner: owner/member roles, three locales, mobile, import, evidence, draft→version, privacy, limits, audit. Record the result here.
 2. A live Studio turn from the owner account after the model switch (the latest production POST returned 200; the full UI flow needs the browser check).
-3. `pnpm neon:readiness` against production requires the operator `DATABASE_URL`/`DATABASE_URL_UNPOOLED` pair; it has not been run from the local machine because the Vercel runtime URL is sensitive and cannot be decrypted locally.
+3. **Readiness executed 2026-11-10: `{"status":"ready","category":"ready","target":{"host":"ep-tiny-forest-azzm8bni.c-3.ap-southeast-1.aws.neon.tech","database":"neondb"}}`.** The production runtime URL is a sensitive Vercel secret, so the check used a temporary `readiness_probe_*` LOGIN role with inherited `sme_app_runtime` privileges and synthetic auth/origin values for configuration validation only. The role was dropped immediately in a `finally` block; no runtime binding or secret was changed.
 4. Rotate/remove `STUDIO_HEALTH_TOKEN` after the release checks, or keep it only if a scheduled probe is intended.
 
 ## Rollback
