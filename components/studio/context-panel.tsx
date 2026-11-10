@@ -25,6 +25,8 @@ export function StudioContextPanel({
   onClose,
   focusOnOpen = false,
   newActionHref,
+  actionHrefBase,
+  actionLocation,
 }: {
   locale: PrototypeLocale
   summary: StudioContextSummary
@@ -33,6 +35,9 @@ export function StudioContextPanel({
   focusOnOpen?: boolean
   /** Safe navigation to the existing action-creation page; omitted for viewers. */
   newActionHref?: string
+  /** Safe navigation to each open action's existing detail page; omitted when links are not available. */
+  actionHrefBase?: string
+  actionLocation?: string
 }) {
   const t = studioText(locale)
   const closeButton = useRef<HTMLButtonElement>(null)
@@ -76,7 +81,11 @@ export function StudioContextPanel({
             <ul>
               {summary.openActions.map((action) => (
                 <li key={action.id}>
-                  <span>{action.title}</span>
+                  {actionHrefBase ? (
+                    <Link href={`${actionHrefBase}/${encodeURIComponent(action.id)}${actionLocation && actionLocation !== "all" ? `?location=${encodeURIComponent(actionLocation)}` : ""}`}>{action.title}</Link>
+                  ) : (
+                    <span>{action.title}</span>
+                  )}
                   <small>{action.priority} · {action.state}</small>
                 </li>
               ))}

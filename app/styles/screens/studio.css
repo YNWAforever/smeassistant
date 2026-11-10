@@ -1542,3 +1542,10 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+.studio-context-actions li a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
