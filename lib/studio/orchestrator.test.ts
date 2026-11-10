@@ -385,6 +385,21 @@ describe("runStudioTurn", () => {
     expect(failing.appends.at(-1)?.content).toBe("Hello owner");
   });
 
+  it("retries a transient classifier failure once before degrading", async () => {
+    const log: CallLog = { events: [], appends: [], order: [] };
+    const llm = makeLlm(log);
+    let calls = 0;
+    llm.classify = async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("transient classifier failure");
+      return { ok: true, result: { text: JSON.stringify({ intent: "answer", title: "Retried title" }), usage: { inputTokens: 2, outputTokens: 1 } } };
+    };
+    const result = await runStudioTurn(baseInput(log, { llm }));
+    expect(result.ok).toBe(true);
+    expect(calls).toBe(2);
+    expect(log.appends.at(-1)?.content).toBe("Hello owner");
+  });
+
   it("passes recent history and the fenced briefing to the answer call", async () => {
     const log: CallLog = { events: [], appends: [], order: [] };
     const history: StudioMessage[] = [

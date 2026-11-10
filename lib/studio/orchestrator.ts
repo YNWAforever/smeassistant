@@ -285,27 +285,31 @@ export async function runStudioTurn(input: StudioTurnInput): Promise<StudioTurnR
 
     let classification: StudioClassification = { intent: "answer", evidenceIds: [], nextStep: null };
     const firstTurn = history.length === 0;
+    const classifierMessages = studioClassifierMessages({
+      locale,
+      systemBriefing: briefing.systemBriefing,
+      message: text,
+      allowedEvidenceIds,
+      allowedActions: briefing.briefing.openActions.map((action) => ({
+        id: action.id,
+        title: action.title,
+        state: action.state,
+        missingInputs: action.missingInputs,
+      })),
+      allowedVersions: briefing.briefing.waitingVersions.map((version) => ({ id: version.id, actionId: version.actionId, versionNo: version.versionNo })),
+      firstTurn,
+    });
+    // The classifier is a small best-effort JSON call; a transient provider
+    // failure must not silently lose the conversation title/intent. Retry once
+    // before the documented grounded-answer fallback.
+    let classifierOutcome: Awaited<ReturnType<StudioTurnLlm["classify"]>> | null = null;
     try {
-      const outcome = await input.llm.classify(studioClassifierMessages({
-        locale,
-        systemBriefing: briefing.systemBriefing,
-        message: text,
-        allowedEvidenceIds,
-        allowedActions: briefing.briefing.openActions.map((action) => ({
-          id: action.id,
-          title: action.title,
-          state: action.state,
-          missingInputs: action.missingInputs,
-        })),
-        allowedVersions: briefing.briefing.waitingVersions.map((version) => ({ id: version.id, actionId: version.actionId, versionNo: version.versionNo })),
-        firstTurn,
-      }));
-      if (outcome.ok) classification = parseStudioClassification(outcome.result.text, allowlist);
+      classifierOutcome = await input.llm.classify(classifierMessages);
+      if (!classifierOutcome.ok) classifierOutcome = await input.llm.classify(classifierMessages);
     } catch {
-      // A classifier failure degrades to a grounded answer; the answer call is
-      // the real provider check, and a provider outage surfaces there honestly.
-      classification = { intent: "answer", evidenceIds: [], nextStep: null };
+      try { classifierOutcome = await input.llm.classify(classifierMessages); } catch { classifierOutcome = null; }
     }
+    if (classifierOutcome?.ok) classification = parseStudioClassification(classifierOutcome.result.text, allowlist);
 
     // v1.1: the first turn may name the conversation. This is cosmetic and must
     // never fail the turn; the deterministic first-message title is the fallback.
