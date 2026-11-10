@@ -28,6 +28,8 @@ export interface ActionDetailViewProps {
   ownerCheck?: OwnerCheckContext
   ownerCheckIdentity?: string
   embedded?: boolean
+  /** Arrived from a saved Studio draft. */
+  studioHandoff?: boolean
 }
 
 /**

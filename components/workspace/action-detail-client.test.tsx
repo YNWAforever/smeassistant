@@ -129,7 +129,7 @@ function versionRow(overrides: Partial<ActionDetail["versions"][number]> & { id:
   };
 }
 
-function render(templateKey: TemplateKey, measurements: ActionDetail["measurements"] = [], embedded = false) {
+function render(templateKey: TemplateKey, measurements: ActionDetail["measurements"] = [], embedded = false, studioHandoff = false) {
   const root = document.createElement("div");
   root.innerHTML = renderToStaticMarkup(
     <ActionDetailClient
@@ -145,10 +145,19 @@ function render(templateKey: TemplateKey, measurements: ActionDetail["measuremen
       locations={[{ slug: "yik-yam", name: "Yik Yam" }]}
       approvedAssets={[]}
       embedded={embedded}
+      studioHandoff={studioHandoff}
     />,
   );
   return root;
 }
+
+it("shows the Studio edit/approve handoff banner only when arriving from a saved Studio draft", () => {
+  const withBanner = render("review-response", [], false, true);
+  expect(withBanner.querySelector('[data-testid="studio-handoff-banner"]')).not.toBeNull();
+  expect(withBanner.textContent).toContain("Studio draft saved");
+  expect(withBanner.textContent).toContain("Back to Conversation Studio");
+  expect(render("review-response").querySelector('[data-testid="studio-handoff-banner"]')).toBeNull();
+});
 
 it("drops the Back to actions link in the side panel, where Close keeps the queue's filters", () => {
   expect(render("review-response").textContent).toContain("Back to To do");

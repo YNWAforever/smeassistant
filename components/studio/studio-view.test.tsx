@@ -350,6 +350,7 @@ describe("StudioView ??inline work", () => {
     expect(JSON.parse(String((save[1] as RequestInit).body))).toEqual({ assistant_run_id: "run-1" })
     const review = await screen.findByRole("link", { name: t.message.reviewVersion })
     expect(review.getAttribute("href")).toContain(`/actions/${ACTION_ID}?version=${VERSION_ID}`)
+    expect(review.getAttribute("href")).toContain("from=studio")
     expect(screen.getByText(t.message.versionSaved)).toBeInTheDocument()
 
     for (const pattern of [/approve/i, /publish/i]) {

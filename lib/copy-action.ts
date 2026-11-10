@@ -82,6 +82,8 @@ export type ActionCopy = {
     next: { inspect: string; inputs: string; saveFirst: string; export: string; review: string; generate: string }
   }
   offline: { title: string; body: string; reconnect: string }
+  /** Shown when the owner arrives from a saved Studio draft and must edit/approve here. */
+  studioHandoff: { title: string; body: string; back: string }
   tabs: { draft: string; evidence: string; workflow: string; history: string }
   /** The owner path on an action: edit, confirm, then send. Checklist actions do not use it. */
   ownerSteps: { aria: string; edit: string; confirm: string; send: string }
@@ -267,6 +269,11 @@ export const actionEn: ActionCopy = {
     title: "You are offline",
     body: "Text remains on this device, but save, approval and export stay blocked until the server confirms a safe transition.",
     reconnect: "Reconnect",
+  },
+  studioHandoff: {
+    title: "Studio draft saved",
+    body: "This version came from the Conversation Studio. Edit below if needed, then approve this exact version; nothing publishes automatically.",
+    back: "Back to Conversation Studio",
   },
   tabs: { draft: "Write & confirm", evidence: "Source evidence", workflow: "Workflow states", history: "History" },
   ownerSteps: { aria: "What you do", edit: "Edit", confirm: "Confirm", send: "Copy" },
@@ -466,6 +473,11 @@ export const actionZhHK: ActionCopy = {
     body: "文字會保留在此裝置，但儲存、確認及匯出會暫停，直至伺服器確認安全轉換。",
     reconnect: "重新連接",
   },
+  studioHandoff: {
+    title: "Studio 草稿已儲存",
+    body: "此版本來自對話工作室。如需要可先在下方修改，然後確認這個指定版本；不會自動發佈。",
+    back: "返回對話工作室",
+  },
   tabs: { draft: "寫稿同確認", evidence: "來源證據", workflow: "流程狀態", history: "紀錄" },
   ownerSteps: { aria: "你要做嘅三步", edit: "改稿", confirm: "確認", send: "複製文字" },
   editor: {
@@ -663,6 +675,11 @@ export const actionZhTW: ActionCopy = {
     title: "你目前離線",
     body: "文字會保留在此裝置，但儲存、確認及匯出會暫停，直至伺服器確認安全轉換。",
     reconnect: "重新連接",
+  },
+  studioHandoff: {
+    title: "Studio 草稿已儲存",
+    body: "此版本來自對話工作室。如需修改，可在下方編輯，然後確認這個指定版本；不會自動發佈。",
+    back: "返回對話工作室",
   },
   tabs: { draft: "寫稿與確認", evidence: "來源證據", workflow: "流程狀態", history: "紀錄" },
   ownerSteps: { aria: "你要做的三步", edit: "改稿", confirm: "確認", send: "複製文字" },
