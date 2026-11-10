@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 
 import { test, expect, signIn, waitForHydration } from "../../test/e2e/fixtures";
 import { sql, type AcceptanceEnvironment } from "../../test/e2e/environment";
@@ -34,6 +35,35 @@ async function setModelScript(environment: AcceptanceEnvironment) {
     ]),
   });
   expect(response.status).toBe(200);
+}
+
+/** The fixture model classifies a generate_social draft, then returns the agent's own JSON draft. */
+async function setSocialDraftScript(environment: AcceptanceEnvironment, actionId: string) {
+  const response = await fetch(`${environment.llm}/outputs`, {
+    method: "POST",
+    body: JSON.stringify([
+      { intent: "draft", intentId: "generate_social", actionId, title: "Plan the IG post" },
+      {
+        title: "This week at the shop",
+        body: "A warm invitation to visit this week. Text-only post: confirmed facts only.",
+        alt_text: null,
+        acceptance_criteria: ["Confirm the photo rights before posting"],
+        warnings: ["Owner review required"],
+        facts_used: [],
+        facts_needed: [],
+      },
+    ]),
+  });
+  expect(response.status).toBe(200);
+}
+
+/** Adds one open social-post action the Studio can legitimately draft from. */
+function seedSocialAction(environment: AcceptanceEnvironment, merchant: { workspaceId: string; locationId: string }) {
+  const id = randomUUID();
+  const title = JSON.stringify({ en: "Plan this week Instagram post", "zh-HK": "計劃今個星期 IG 帖文", "zh-TW": "規劃這週 IG 貼文" });
+  sql(environment.db, `insert into actions(id,workspace_id,location_id,template_key,title,summary,evidence,priority,priority_score,priority_factors,effort_minutes,capability,dedupe_key,provided_inputs)
+    values ('${id}','${merchant.workspaceId}','${merchant.locationId}','social-post','${title}','{"en":"Fixture social post"}','{}','high',80,'{}',10,'Live','${id}','{"text_only":true}');`);
+  return id;
 }
 
 test.describe("Conversation Studio", () => {
@@ -125,6 +155,51 @@ test.describe("Conversation Studio", () => {
     expect(exported).toContain("Start with the unanswered reviews");
     expect(exported).toContain("Drafts stay drafts");
     expect(exported).not.toContain('"kind"');
+  });
+
+  test("drafts an IG post, saves a version and hands off to the action page for approval and copy-ready delivery", async ({ page, merchant, environment }) => {
+    const socialActionId = seedSocialAction(environment, merchant);
+    await setSocialDraftScript(environment, socialActionId);
+    await signIn(page, environment, merchant);
+
+    await page.goto(`/en/owner/${merchant.slug}/conversation/studio?location=primary`);
+    await waitForHydration(page);
+    await page.getByRole("button", { name: "Plan this week's IG post" }).click();
+    await expect(page.locator(".studio-artifact-card")).toBeVisible({ timeout: 90_000 });
+    await expect(page.locator(".studio-artifact-card")).toContainText("This week at the shop");
+
+    // Saving posts to the existing version route, not an authority route.
+    const saves = page.waitForResponse((response) => response.url().endsWith(`/api/actions/${socialActionId}/versions`) && response.request().method() === "POST" && response.status() === 201);
+    await page.getByRole("button", { name: "Save as a version" }).click();
+    const saved = await saves;
+    const { versionId } = await saved.json() as { versionId: string };
+    expect(versionId).toMatch(/^[a-f0-9-]{36}$/);
+    expect(sql(environment.db, `select count(*) from output_versions where action_id='${socialActionId}';`)).toBe("1");
+
+    // The review link selects that exact version and marks the Studio handoff.
+    const review = page.getByRole("link", { name: "Review version" });
+    const href = await review.getAttribute("href");
+    expect(href).toContain(`version=${versionId}`);
+    expect(href).toContain("from=studio");
+    await review.click();
+    await page.waitForURL(new RegExp(`/actions/${socialActionId}\\?`));
+    await expect(page.getByTestId("studio-handoff-banner")).toContainText("Studio draft saved");
+    await expect(page.getByTestId("studio-handoff-banner")).toContainText("Back to Conversation Studio");
+
+    // B: approve the exact version on the action page; the Instagram delivery is
+    // then available as Copy text (export-ready, never auto-published).
+    await page.locator(".approval-panel").getByRole("button", { name: "Confirm this version" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Confirm this version" }).click();
+    await expect.poll(() => sql(environment.db, `select approval_state from output_versions where id='${versionId}';`)).toBe("approved");
+    await expect(page.getByRole("button", { name: "Copy text" })).toBeVisible();
+
+    // Returning keeps the same persistent conversation.
+    await page.getByTestId("studio-handoff-banner").getByRole("link", { name: "Back to Conversation Studio" }).click();
+    await expect(page).toHaveURL(new RegExp(`/conversation/studio\\?.*location=primary`));
+    await expect(page.locator(".studio-message-user").first()).toContainText("Help me plan and draft this week's Instagram post");
+    await expect(page.locator(".studio-artifact-card")).toContainText("This week at the shop");
   });
 
   test("promotes a browser-local note thread into a persistent Studio conversation", async ({ page, merchant, environment }) => {
