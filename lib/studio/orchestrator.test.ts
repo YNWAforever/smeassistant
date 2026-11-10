@@ -476,6 +476,37 @@ describe("runStudioTurn", () => {
     });
   });
 
+  it("executes a generate_social draft and carries an Instagram-ready artifact", async () => {
+    const log: CallLog = { events: [], appends: [], order: [] };
+    const llm = makeLlm(log, { classification: { intent: "draft", intentId: "generate_social", actionId: ACTION_ID } });
+    const liveAssistant = async () => liveRun({
+      state: "needs_approval",
+      requiresApproval: true,
+      draftRunId: "run-ig",
+      nextStep: undefined,
+      output: {
+        type: "social_post",
+        artifactId: "art_ig",
+        version: 1,
+        title: "This week on Instagram",
+        body: "Caption: a warm invitation to visit. Carousel: 4 slides with confirmed facts only.",
+        acceptanceCriteria: ["Uses only confirmed facts", "No invented price or date"],
+      },
+    });
+    const result = await runStudioTurn(baseInput(log, { llm, liveAssistant }));
+    expect(result).toMatchObject({ ok: true, intent: "generate_social", turn: "draft", artifact: true });
+    const artifact = log.appends.at(-1)?.parts.find((part) => part.kind === "artifact");
+    expect(artifact).toMatchObject({
+      kind: "artifact",
+      actionId: ACTION_ID,
+      artifactType: "social_post",
+      title: "This week on Instagram",
+      requiresApproval: true,
+      draftRunId: "run-ig",
+    });
+    expect(artifact?.kind === "artifact" ? artifact.body : "").toContain("Carousel");
+  });
+
   it("refuses a viewer's draft attempt, shows the role boundary and stores no artifact", async () => {
     const log: CallLog = { events: [], appends: [], order: [] };
     const llm = makeLlm(log, { classification: { intent: "draft", intentId: "draft_review_reply", actionId: ACTION_ID } });
