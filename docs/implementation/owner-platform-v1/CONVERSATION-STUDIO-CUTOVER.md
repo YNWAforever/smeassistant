@@ -1,6 +1,6 @@
 # Conversation Studio — hosted cut-over runbook (Path A: Studio inside the conversation workbench)
 
-**Status: EXECUTED 2026-11-09.** Production journal is **22** (`0022_studio_conversation_members.sql` applied after a verified run on a disposable Neon branch), `CONVERSATION_STUDIO_ENABLED=true` is set in Vercel Production, and production was redeployed. Evidence: `/api/studio/conversations` now answers **401 unauthenticated** for a signed-out request (previously flag-off 404), `/zh-HK/owner/select-workspace` redirects **307 to sign-in**, the member table has RLS, one `server_application` policy, two indexes, the expected FKs/role check and runtime DML, and `check-missing-columns.sql` returns 0 rows. `smoke:studio` was **SKIPPED** on this machine (no LLM gateway key; Vercel secrets are not decryptable locally), and the **15-point hosted browser acceptance remains an owner/manual step** with a signed-in owner session.
+**Status: EXECUTED 2026-11-09.** Production journal is **22** (`0022_studio_conversation_members.sql` applied after a verified run on a disposable Neon branch), `CONVERSATION_STUDIO_ENABLED=true` is set in Vercel Production, and production was redeployed. Evidence: `/api/studio/conversations` now answers **401 unauthenticated** for a signed-out request (previously flag-off 404), `/zh-HK/owner/select-workspace` redirects **307 to sign-in**, the member table has RLS, one `server_application` policy, two indexes, the expected FKs/role check and runtime DML, and `check-missing-columns.sql` returns 0 rows. `smoke:studio` was **SKIPPED** on this machine (no LLM gateway key; Vercel secrets are not decryptable locally), and the **15-point hosted browser acceptance was completed by the owner on 2026-11-11 and reported all checks correct**.
 
 **Integration shape (approved Path A):** the Studio is the persistent, model-backed **mode of the existing conversation workbench**. Today remains the default workspace URL. The workbench (`/{locale}/owner/{workspaceSlug}/conversation`) is the single entry point and shows an “Open Studio” link when both flags are on. The Studio route is `/{locale}/owner/{workspaceSlug}/conversation/studio`; there is no owner-nav item and no root redirect.
 
@@ -94,6 +94,8 @@ SELECT count(*) FROM pg_policies
 | 14 | Mobile | 390px: rail/context drawers, composer above the mobile nav, no horizontal scroll |
 | 15 | Flag-off | With `CONVERSATION_STUDIO_ENABLED` unset, the entry and route are absent and the workbench/Today are unchanged |
 
+**Acceptance result (2026-11-11):** the owner reported all 15 checks correct. The owner also re-ran the post-apply read-only check: `max(ordinal)=22` and `check-missing-columns.sql` returned no missing-column rows (`[{"last_migration":22}]`).
+
 Evidence queries (replace the workspace id):
 
 ```sql
@@ -117,4 +119,4 @@ SELECT actor_type, event, entity_type, payload
 - Journal must be exactly 1–21 before 0021 (the conversation workstream’s 0019/0020 must already be applied).
 - Conversations are private per member in v1. Shared team threads are a v1.1 design decision (schema/policy change), not a config toggle.
 - The Studio adds model cost: one classifier completion plus one streamed answer per turn; the existing AI daily budget and pause gates apply. The first-turn title rides in the classifier JSON, so it adds no extra call.
-- Hosted acceptance and this runbook were **not executed** from the development workspace; the local evidence is in `CONVERSATION-STUDIO-REPORT.md`.
+- Hosted acceptance was executed by the owner on the hosted app on 2026-11-11 and reported all 15 checks correct; the post-apply check returned `[{"last_migration":22}]` with no missing columns. This development workspace did not sign in and did not create the owner session. The local evidence is in `CONVERSATION-STUDIO-REPORT.md`.
