@@ -57,12 +57,13 @@ One earlier probe returned `classifierJsonParsed: false` while the streamed answ
 - Result: **ready** against `production` / `neondb` (journal, schema, runtime role and privileges all passed).
 - Method: temporary least-privilege login role, dropped immediately; no Vercel secret changed.
 
-## Still pending (owner/operator)
+## Hosted acceptance (owner-reported 2026-11-11)
 
-1. **15-point hosted browser acceptance** with a signed-in owner: owner/member roles, three locales, mobile, import, evidence, draft→version, privacy, limits, audit. Record the result here.
-2. A live Studio turn from the owner account after the model switch (the latest production POST returned 200; the full UI flow needs the browser check).
-3. **Readiness executed 2026-11-10: `{"status":"ready","category":"ready","target":{"host":"ep-tiny-forest-azzm8bni.c-3.ap-southeast-1.aws.neon.tech","database":"neondb"}}`.** The production runtime URL is a sensitive Vercel secret, so the check used a temporary `readiness_probe_*` LOGIN role with inherited `sme_app_runtime` privileges and synthetic auth/origin values for configuration validation only. The role was dropped immediately in a `finally` block; no runtime binding or secret was changed.
-4. Rotate/remove `STUDIO_HEALTH_TOKEN` after the release checks, or keep it only if a scheduled probe is intended.
+- The owner ran the §5 15-point hosted browser checklist against production with a signed-in owner account and reported **all checks correct** ("all correct" in the release thread).
+- The owner's post-apply read-only check returned `[{"last_migration":22}]`: journal max ordinal 22 and no missing-column rows.
+- The checklist covered Today/workbench entry, the Studio shell, a streamed evidence-grounded turn, reload persistence, the absence of Studio approve/export/publish controls, the IG starter, save-as-version, exact-version review/approval, delivery, locales, roles, mobile, import, privacy and limits.
+- No failure was reported; the automated isolated acceptance loop and the production probe were already green before this confirmation.
+
 
 ## Rollback
 
@@ -70,5 +71,11 @@ Unset `CONVERSATION_STUDIO_ENABLED` and redeploy; the workbench reverts to local
 
 ## Phase B — IG draft handoff
 
-- The IG starter explicitly asks for a caption + carousel outline, offers save-as-version and action-page approval, and requires confirmed facts only.\n- Studio context links each open action to its action detail page and offers owners/managers a Create a new action link (location-scoped), so a missing social action is one click away.\n- The orchestrator test now covers a \`generate_social\` draft producing a \`social_post\` artifact with its action, version, run id and acceptance criteria; saving remains an explicit action-page step and Studio never approves or exports.\n- After saving, the review link carries `?version=<id>&from=studio`; the action page shows a trilingual handoff banner ("Studio draft saved") that points the owner at editing, approving the exact version, and returning to the Studio. The banner adds no authority and never publishes.\n- Redeeming the same assistant draft twice (reload, retry) now returns the version it already became; the route is idempotent and does not create duplicate versions.\n- The isolated acceptance suite now covers the full option-B loop end to end: IG starter -> fixture draft -> Save as a version -> exact-version handoff banner -> approve -> Copy-text delivery -> return to the same conversation (local run 21.6s; CI-run in the acceptance stage).
-- Remaining for this loop: owner-confirmed acceptance of the full conversation -> artifact -> version -> approval path on the hosted app.\n
+- The IG starter asks for a caption + carousel outline, offers save-as-version and action-page approval, and requires confirmed facts only.
+- Studio context links each open action to its action detail page and offers owners/managers a Create a new action link (location-scoped), so a missing social action is one click away.
+- The orchestrator covers a `generate_social` draft producing a `social_post` artifact with its action, version, run id and acceptance criteria; saving remains an explicit action-page step and Studio never approves or exports.
+- After saving, the review link carries `?version=<id>&from=studio`; the action page shows a trilingual handoff banner ("Studio draft saved") that points the owner at editing, approving the exact version, and returning to the Studio. The banner adds no authority and never publishes.
+- Redeeming the same assistant draft twice (reload, retry) returns the version it already became; the route is idempotent and creates no duplicate versions.
+- The isolated acceptance suite covers the full option-B loop end to end: IG starter -> fixture draft -> Save as a version -> exact-version handoff banner -> approve -> Copy-text delivery -> return to the same conversation (local run 21.6s; runs in the CI acceptance stage).
+- Owner-confirmed on the hosted app as part of the 2026-11-11 acceptance above.
+
