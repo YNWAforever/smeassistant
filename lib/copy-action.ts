@@ -73,7 +73,7 @@ export type ActionCopy = {
   roles: { owner: string; manager: string; viewer: string }
   /** The same roles as the preview menu lists them. */
   roleOptions: { owner: string; manager: string; viewer: string }
-  toolbar: { back: string; previewRole: string; offline: string; online: string }
+  toolbar: { back: string; continueInStudio: string; previewRole: string; offline: string; online: string }
   header: {
     unsaved: string
     unassigned: string
@@ -250,7 +250,7 @@ export const actionEn: ActionCopy = {
   },
   roles: { owner: "Owner", manager: "Manager", viewer: "Viewer" },
   roleOptions: { owner: "Owner", manager: "Manager", viewer: "Viewer" },
-  toolbar: { back: "Back to To do", previewRole: "Preview role", offline: "Offline", online: "Online" },
+  toolbar: { back: "Back to To do", continueInStudio: "Continue in Studio", previewRole: "Preview role", offline: "Offline", online: "Online" },
   header: {
     unsaved: "Unsaved changes",
     unassigned: "Unassigned",
@@ -453,7 +453,7 @@ export const actionZhHK: ActionCopy = {
   },
   roles: { owner: "店主", manager: "經理", viewer: "檢視者" },
   roleOptions: { owner: "店主", manager: "經理", viewer: "檢視者" },
-  toolbar: { back: "返回待辦", previewRole: "預覽角色", offline: "離線", online: "在線" },
+  toolbar: { back: "返回待辦", continueInStudio: "在 Studio 繼續", previewRole: "預覽角色", offline: "離線", online: "在線" },
   header: {
     unsaved: "未儲存修改",
     unassigned: "未指派",
@@ -656,7 +656,7 @@ export const actionZhTW: ActionCopy = {
   },
   roles: { owner: "店主", manager: "經理", viewer: "檢視者" },
   roleOptions: { owner: "店家", manager: "經理", viewer: "檢視者" },
-  toolbar: { back: "返回待辦", previewRole: "預覽角色", offline: "離線", online: "在線" },
+  toolbar: { back: "返回待辦", continueInStudio: "在 Studio 繼續", previewRole: "預覽角色", offline: "離線", online: "在線" },
   header: {
     unsaved: "未儲存修改",
     unassigned: "未指派",

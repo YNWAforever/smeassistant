@@ -2,7 +2,10 @@ import { loadPublishPanel } from "@/lib/publishing/page-state";
 import { offerRepository } from "@/lib/repositories/offers";
 import { assetLocationScope, assetUsableByAction, listAssets } from "@/lib/workspace/assets";
 import { formatOfferPrice } from "@/lib/workspace/offer-format";
+import { OPEN_ACTION_STATES } from "@/lib/domain";
 import { offerPromotionsEnabled } from "@/lib/workspace/offers-flag";
+import { conversationStudioEnabled } from "@/lib/studio/flag";
+import { conversationHomeEnabled } from "@/lib/workspace/conversation-flag";
 import { inScopeFor, type OwnerPageContext } from "@/lib/workspace/page-context";
 import { getAction, getActivity } from "@/lib/workspace/queries-pages";
 import { auditBelongsToAction } from "@/lib/workspace/audit-scope";
@@ -68,6 +71,13 @@ export async function loadActionDetailProps(page: OwnerPageContext, actionId: st
     .filter((asset) => assetUsableByAction(asset, detail.action.location.id, scope))
     .map((asset) => ({ id: asset.id, filename: asset.filename }));
 
+  // A header link into the Studio, scoped to this action and its location. Only
+  // editors in scope see it; the Studio page re-validates the action id and
+  // falls back to the normal rail when the id is stale or outside the scope.
+  const studioHref = conversationStudioEnabled() && conversationHomeEnabled() && inScope && OPEN_ACTION_STATES.includes(detail.action.actionState) && (page.membership.role === "owner" || page.membership.role === "manager")
+    ? `/${page.locale}/owner/${page.workspaceSlug}/conversation/studio?location=${encodeURIComponent(detail.action.location.slug)}&action=${encodeURIComponent(actionId)}`
+    : null;
+
   return {
     locale: page.locale,
     workspaceSlug: page.workspaceSlug,
@@ -94,6 +104,7 @@ export async function loadActionDetailProps(page: OwnerPageContext, actionId: st
     initialVersionId,
     publishPanel,
     ownerCheck,
+    studioHref,
     ownerCheckIdentity: [page.ctx.workspace.name, page.ctx.locations.find(l => l.id === detail.action.location.id)?.name,
       page.ctx.locations.find(l => l.id === detail.action.location.id)?.address].filter(Boolean).join(" · "),
   };

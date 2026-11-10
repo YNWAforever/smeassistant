@@ -78,4 +78,5 @@ Unset `CONVERSATION_STUDIO_ENABLED` and redeploy; the workbench reverts to local
 - Redeeming the same assistant draft twice (reload, retry) returns the version it already became; the route is idempotent and creates no duplicate versions.
 - The isolated acceptance suite covers the full option-B loop end to end: IG starter -> fixture draft -> Save as a version -> exact-version handoff banner -> approve -> Copy-text delivery -> return to the same conversation (local run 21.6s; runs in the CI acceptance stage).
 - Owner-confirmed on the hosted app as part of the 2026-11-11 acceptance above.
+- The action detail header now links in-scope owners/managers to `conversation/studio?location=…&action=…` while the action is open; the Studio re-validates the id against its authorised briefing and starts a fresh context-scoped conversation.
 
