@@ -32,6 +32,8 @@ export interface ActionDetailClientProps {
   publishPanel?: PublishPanel | null
   ownerCheck?: OwnerCheckContext
   ownerCheckIdentity?: string
+  /** Arrived from a saved Studio draft: show the edit/approve handoff banner. */
+  studioHandoff?: boolean
   /** Shown in the Actions side panel, under the queue's own h1: the title becomes an h2. */
   embedded?: boolean
 }

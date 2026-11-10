@@ -52,7 +52,7 @@ export function StudioArtifactCard({
   }
   const actionHref = withLocation(`${base}/actions/${encodeURIComponent(part.actionId)}`)
   const reviewHref = state.kind === "saved"
-    ? withLocation(`${base}/actions/${encodeURIComponent(part.actionId)}`, [`version=${encodeURIComponent(state.versionId)}`])
+    ? withLocation(`${base}/actions/${encodeURIComponent(part.actionId)}`, [`version=${encodeURIComponent(state.versionId)}`, "from=studio"])
     : null
 
   async function saveVersion() {

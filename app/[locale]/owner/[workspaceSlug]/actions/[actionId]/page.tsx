@@ -24,6 +24,9 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
   // P4.3: an assistant "Continue here" link carries ?version=<id>; the client ignores an id it cannot find.
   const rawVersion = (await props.searchParams)?.version;
   const detail = await loadActionDetailProps(page, actionId, (Array.isArray(rawVersion) ? rawVersion[0] : rawVersion) ?? null);
+  // B: a saved Studio draft arrives with ?from=studio; show the edit/approve handoff banner.
+  const rawFrom = (await props.searchParams)?.from;
+  const studioHandoff = (Array.isArray(rawFrom) ? rawFrom[0] : rawFrom) === "studio";
   if (!detail) notFound();
-  return <ActionDetailView {...detail} />;
+  return <ActionDetailView {...detail} studioHandoff={studioHandoff} />;
 }

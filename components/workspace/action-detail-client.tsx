@@ -72,6 +72,13 @@ function ActionDetailEditor(props: ActionDetailClientProps) {
 
 
       {offline && <div className="offline-banner" role="status"><CloudOff /><div><strong>{ac.offline.title}</strong><span>{ac.offline.body}</span></div><Button variant="outline" onClick={() => { if (navigator.onLine) router.refresh(); else toast.message(ac.toasts.stillOffline) }}>{ac.offline.reconnect}</Button></div>}
+      {props.studioHandoff && (
+        <div className="permission-banner" role="status" data-testid="studio-handoff-banner">
+          <Check />
+          <div><strong>{ac.studioHandoff.title}</strong><span>{ac.studioHandoff.body}</span></div>
+          <Link href={withLocation(`${base}/conversation/studio`, location)}>{ac.studioHandoff.back}</Link>
+        </div>
+      )}
       {effectiveRole === "viewer" && <RoleNotice kind="viewerAction" locale={locale} />}
       {role === "manager" && !inScope && <RoleNotice kind="outOfScope" locale={locale} />}
 
