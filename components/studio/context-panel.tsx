@@ -1,6 +1,7 @@
 "use client"
 
-import { PanelRightClose } from "lucide-react"
+import { PanelRightClose, ArrowRight } from "lucide-react"
+import Link from "next/link"
 import { useEffect, useRef } from "react"
 
 import type { PrototypeLocale } from "@/lib/copy"
@@ -23,12 +24,15 @@ export function StudioContextPanel({
   open,
   onClose,
   focusOnOpen = false,
+  newActionHref,
 }: {
   locale: PrototypeLocale
   summary: StudioContextSummary
   open: boolean
   onClose: () => void
   focusOnOpen?: boolean
+  /** Safe navigation to the existing action-creation page; omitted for viewers. */
+  newActionHref?: string
 }) {
   const t = studioText(locale)
   const closeButton = useRef<HTMLButtonElement>(null)
@@ -80,6 +84,7 @@ export function StudioContextPanel({
           ) : (
             <p className="studio-context-muted">{t.context.none}</p>
           )}
+          {newActionHref && <Link className="studio-context-new-action" href={newActionHref}>{t.context.newAction}<ArrowRight aria-hidden="true" /></Link>}
         </section>
 
         <dl className="studio-context-facts">

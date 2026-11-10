@@ -90,6 +90,7 @@ export type StudioCopy = {
     observed: string
     noScan: string
     openActions: string
+    newAction: string
     waitingReview: string
     google: string
     pendingInputs: string
@@ -258,6 +259,7 @@ const en: StudioCopy = {
     observed: "Observed",
     noScan: "No scan for this location yet",
     openActions: "Open actions",
+    newAction: "Create a new action",
     waitingReview: "Waiting for review",
     google: "Google connection",
     pendingInputs: "Need details",
@@ -402,6 +404,7 @@ const zhHK: StudioCopy = {
     observed: "觀察於",
     noScan: "此分店還沒有掃描",
     openActions: "未完成行動",
+    newAction: "建立新行動",
     waitingReview: "等待審閱",
     google: "Google 連接",
     pendingInputs: "需要補充",
@@ -546,6 +549,7 @@ const zhTW: StudioCopy = {
     observed: "觀察於",
     noScan: "此分店還沒有掃描",
     openActions: "未完成行動",
+    newAction: "建立新行動",
     waitingReview: "等待審閱",
     google: "Google 連結",
     pendingInputs: "需要補充",
