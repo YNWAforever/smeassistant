@@ -34,6 +34,8 @@ export interface ActionDetailClientProps {
   ownerCheckIdentity?: string
   /** Arrived from a saved Studio draft: show the edit/approve handoff banner. */
   studioHandoff?: boolean
+  /** When set, the header links to the Studio focused on this action. */
+  studioHref?: string | null
   /** Shown in the Actions side panel, under the queue's own h1: the title becomes an h2. */
   embedded?: boolean
 }

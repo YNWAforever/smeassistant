@@ -21,7 +21,7 @@ import type { ActionDetailClientProps, Busy } from "@/components/workspace/actio
  * Versions arrive from the server; the editor re-points itself after a refresh
  * without losing unsaved local text (see the render-phase adjustments below).
  */
-function useEditorState({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null, ownerCheck = EMPTY_OWNER_CHECK, ownerCheckIdentity, embedded = false }: ActionDetailClientProps) {
+function useEditorState({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null, ownerCheck = EMPTY_OWNER_CHECK, ownerCheckIdentity, embedded = false, studioHref = null }: ActionDetailClientProps) {
   const ac = copy[locale].action
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -244,7 +244,7 @@ function useEditorState({ locale, workspaceSlug, workspaceId, timezone, role, in
     setComparing, setConflict, setContent, setFactsNeeded, setInputValues, setLastRunError, setNeedsRunReconciliation,
     setOfferRefusal, setPendingSelect, setSaveFailed, setSelectedReviews, setVersionId, showInputForm,
     showVerification, social, timezone, verification, verificationCopy, verificationNext, verified, verifiedOn, versionId,
-    versionLabel, versionName, versions, workflowLabel, workflowState, workspaceId, workspaceSlug
+    studioHref, versionLabel, versionName, versions, workflowLabel, workflowState, workspaceId, workspaceSlug
   }
 }
 

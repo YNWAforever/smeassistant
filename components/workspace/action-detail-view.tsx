@@ -30,6 +30,8 @@ export interface ActionDetailViewProps {
   embedded?: boolean
   /** Arrived from a saved Studio draft. */
   studioHandoff?: boolean
+  /** When set, the header links to the Studio focused on this action. */
+  studioHref?: string | null
 }
 
 /**

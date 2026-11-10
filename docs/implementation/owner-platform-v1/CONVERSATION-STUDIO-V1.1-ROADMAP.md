@@ -68,7 +68,7 @@ The last schema-changing phase; additive migration `0022`.
 ## Phase 3 — Product polish (backlog, prioritized after Phase 1)
 
 - Composer attachments/voice; artifact edit-in-place; inline “request changes” flow (design-gated).
-- Workbench actions deep-link into a fresh Studio conversation (`?action=`) with a contextual starter; unknown/stale ids fall back to the normal rail. Conversation search and rename/archive UX remain follow-ups. Transcript export is implemented: `GET /api/studio/conversations/[id]/transcript` returns a read-only Markdown attachment (owner or shared member), audited with counts only, with an Export button in the Studio header.
+- Workbench actions deep-link into a fresh Studio conversation (`?action=`) with a contextual starter; unknown/stale ids fall back to the normal rail. The action detail header now offers **Continue in Studio** for in-scope editors and only while the action is open (same `?action=` route). Conversation search and rename/archive UX are implemented. Transcript export is implemented: `GET /api/studio/conversations/[id]/transcript` returns a read-only Markdown attachment (owner or shared member), audited with counts only, with an Export button in the Studio header.
 - Today/Insights expose **Continue in Studio** when both flags are enabled; it opens the location-scoped workbench Studio. Implemented in the Today brief and Insights intro with trilingual copy, and asserted in component tests.
 - Optional provider routing through Neon AI Gateway/cost-aware model selection.
 

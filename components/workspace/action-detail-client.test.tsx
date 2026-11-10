@@ -129,7 +129,7 @@ function versionRow(overrides: Partial<ActionDetail["versions"][number]> & { id:
   };
 }
 
-function render(templateKey: TemplateKey, measurements: ActionDetail["measurements"] = [], embedded = false, studioHandoff = false) {
+function render(templateKey: TemplateKey, measurements: ActionDetail["measurements"] = [], embedded = false, studioHandoff = false, studioHref: string | null = null) {
   const root = document.createElement("div");
   root.innerHTML = renderToStaticMarkup(
     <ActionDetailClient
@@ -146,6 +146,7 @@ function render(templateKey: TemplateKey, measurements: ActionDetail["measuremen
       approvedAssets={[]}
       embedded={embedded}
       studioHandoff={studioHandoff}
+      studioHref={studioHref}
     />,
   );
   return root;
@@ -157,6 +158,16 @@ it("shows the Studio edit/approve handoff banner only when arriving from a saved
   expect(withBanner.textContent).toContain("Studio draft saved");
   expect(withBanner.textContent).toContain("Back to Conversation Studio");
   expect(render("review-response").querySelector('[data-testid="studio-handoff-banner"]')).toBeNull();
+});
+
+it("links editors to the Studio focused on this action, but not from the side panel", () => {
+  const studioHref = "/en/owner/kam-man-house/conversation/studio?location=yik-yam&action=act-1";
+  const linked = render("review-response", [], false, false, studioHref);
+  const link = linked.querySelector<HTMLAnchorElement>('a[href*="/conversation/studio"]');
+  expect(link?.getAttribute("href")).toBe(studioHref);
+  expect(link?.textContent).toContain("Continue in Studio");
+  expect(render("review-response").textContent).not.toContain("Continue in Studio");
+  expect(render("review-response", [], true, false, studioHref).textContent).not.toContain("Continue in Studio");
 });
 
 it("drops the Back to actions link in the side panel, where Close keeps the queue's filters", () => {
