@@ -221,7 +221,7 @@ describe("StudioView ??empty state and first conversation", () => {
   const starter = t.empty.starters.find((chip) => chip.id === "starter_ig")
   expect(starter).toBeDefined()
   expect(screen.getByRole("button", { name: starter!.label })).toBeInTheDocument()
-  expect(starter!.message).toContain("do not invent")
+  expect(starter!.message).toContain("instead of inventing")
 })
 
 it("creates a conversation lazily on the first starter and streams the answer", async () => {
