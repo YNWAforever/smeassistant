@@ -216,7 +216,15 @@ describe("StudioView ??empty state and first conversation", () => {
     }
   })
 
-  it("offers an IG planning starter that asks for missing facts instead of inventing them", () => {
+  it("links owners to the existing action creation page from the context panel", () => {
+  render(<StudioView {...baseProps({ locationSlug: "primary" })} />)
+  expect(screen.getByRole("link", { name: t.context.newAction })).toHaveAttribute(
+    "href",
+    "/en/owner/kam-man-house/actions/new?location=primary",
+  )
+})
+
+it("offers an IG planning starter that asks for missing facts instead of inventing them", () => {
   render(<StudioView {...baseProps({ chips: t.empty.starters })} />)
   const starter = t.empty.starters.find((chip) => chip.id === "starter_ig")
   expect(starter).toBeDefined()

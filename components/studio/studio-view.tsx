@@ -609,7 +609,7 @@ export function StudioView({
           />
         </section>
 
-        <StudioContextPanel locale={locale} summary={contextSummary} open={contextOpen} onClose={closeContext} focusOnOpen={!isWide && contextDrawerOpen} />
+        <StudioContextPanel locale={locale} summary={contextSummary} open={contextOpen} onClose={closeContext} focusOnOpen={!isWide && contextDrawerOpen} newActionHref={canSaveVersions && locationSlug !== "all" ? `/${locale}/owner/${workspaceSlug}/actions/new?location=${encodeURIComponent(locationSlug)}` : undefined} />
       </div>
       {shareOpen && activeConversation && (
         <StudioShareDialog locale={locale} workspaceId={workspaceId} conversationId={activeConversation.id} onClose={() => setShareOpen(false)} />
