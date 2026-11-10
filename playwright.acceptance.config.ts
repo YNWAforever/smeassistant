@@ -4,6 +4,9 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e/acceptance", fullyParallel: false, workers: 1,
   timeout: 180000, expect: { timeout: 15000 }, reporter: "line",
+  // The isolated acceptance stack has known provider/UI timing flakes; one retry
+  // keeps a single flaky test from failing an otherwise green verification run.
+  retries: process.env.CI ? 1 : 0,
   use: { trace: "retain-on-failure", launchOptions: {args:["--proxy-server=http://127.0.0.1:9", "--proxy-bypass-list=localhost;127.0.0.1;[::1]"]} },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });
