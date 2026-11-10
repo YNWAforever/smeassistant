@@ -43,7 +43,7 @@ Without the correct bearer token the route answers **404** before any gateway ca
     "streamTextNonEmpty": true,
     "deltasMatchText": true
   },
-  "classifier": { "ok": true, "text": "{\"intent\":\"answer\"}" },
+  "classifier": { "ok": true, "text": "{\"intent\":\"answer\"}", "attempts": 1 },
   "stream": { "ok": true, "streamed": true, "characters": 27 }
 }
 ```
@@ -52,6 +52,10 @@ Without the correct bearer token the route answers **404** before any gateway ca
 - `502` — one shape failed; `classifier.code` / `stream.code` identify the shape, and `model` shows the configured model. Check the production function log for the safe `[llm] API error` diagnostic (`providerCode` / `providerType`), then fix the model/gateway configuration.
 - `503` — the deployment has no configured gateway (`LLM_*`).
 - `404` — missing/wrong token or `STUDIO_HEALTH_TOKEN` unset.
+
+## Intermittent classifier corruption
+
+The provider occasionally corrupts the small JSON completion (observed as `{"int##ent##": "##"}`). The probe retries the classifier once, matching the Studio orchestrator, and reports `classifier.attempts`. A result that still fails after two attempts is a real release blocker.
 
 ## Guardrails
 
