@@ -277,6 +277,15 @@ export function artifactRepository(client?: Executor) {
    });
   },
   /**
+   * The version a saved assistant draft was already redeemed into, if any.
+   * Saving the same draft again (a reloaded conversation, a retry) returns that
+   * version instead of creating a duplicate.
+   */
+  assistantDraftVersion(runId: string, actionId: string, workspaceId: string) {
+   return operation(async ()=>(await db().query<{id:string;version_no:number}>(`SELECT v.id,v.version_no FROM output_versions v JOIN action_runs r ON r.id=v.action_run_id
+    WHERE v.action_run_id=$1 AND r.action_id=$2 AND r.workspace_id=$3 ORDER BY v.version_no DESC LIMIT 1`,[runId,actionId,workspaceId])).rows[0] ?? null);
+  },
+  /**
    * The server's own copy of an assistant draft, for redeeming into a version.
    * `input->>'source'` keeps this to assistant drafts: an ordinary agent run
    * already produced its version through `finish()` and must not be redeemable

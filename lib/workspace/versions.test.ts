@@ -201,6 +201,13 @@ describe("assistant saved-version source binding", () => {
     await expect(createAssistantVersion(db, { ...input, baseVersionId })).rejects.toEqual(new VersionError("version_conflict"));
     expect(createOutputVersion).not.toHaveBeenCalled();
   });
+  it("returns the version a draft already became instead of creating a duplicate", async () => {
+    const { db, createOutputVersion } = draft(source);
+    db.assistantDraftVersion = async () => ({ id: "saved-version", version_no: 4 });
+    const result = await createAssistantVersion(db, input);
+    expect(result).toEqual({ versionId: "saved-version", versionNo: 4 });
+    expect(createOutputVersion).not.toHaveBeenCalled();
+  });
   it("refuses attaching a first draft to a client-supplied saved version", async () => {
     const { db, createOutputVersion } = draft();
     await expect(createAssistantVersion(db, { ...input, baseVersionId: other })).rejects.toEqual(new VersionError("version_conflict"));

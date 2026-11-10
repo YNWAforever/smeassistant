@@ -124,6 +124,11 @@ export async function createAssistantVersion(
   // there is nothing to supersede, so the route answers 404.
   if (!draft || !body.trim()) throw new VersionError("assistant_draft_not_found");
 
+  // Idempotent redemption: a retry or a reloaded conversation returns the
+  // version this draft already became rather than creating a duplicate.
+  const existing = await db.assistantDraftVersion?.(input.runId, input.actionId, input.workspaceId);
+  if (existing) return { versionId: existing.id, versionNo: existing.version_no };
+
   const runInput = draft.input && typeof draft.input === "object" && !Array.isArray(draft.input)
     ? draft.input as Record<string, unknown>
     : {};
