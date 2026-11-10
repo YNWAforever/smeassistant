@@ -224,6 +224,14 @@ describe("StudioView ??empty state and first conversation", () => {
   )
 })
 
+it("links each open action in the context panel to its detail page", () => {
+  render(<StudioView {...baseProps({ locationSlug: "primary" })} />)
+  expect(screen.getByRole("link", { name: "Reply to the waiting review" })).toHaveAttribute(
+    "href",
+    `/en/owner/kam-man-house/actions/${ACTION_ID}?location=primary`,
+  )
+})
+
 it("offers an IG planning starter that asks for missing facts instead of inventing them", () => {
   render(<StudioView {...baseProps({ chips: t.empty.starters })} />)
   const starter = t.empty.starters.find((chip) => chip.id === "starter_ig")
