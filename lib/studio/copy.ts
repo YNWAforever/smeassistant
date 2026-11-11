@@ -51,6 +51,11 @@ export type StudioCopy = {
     stop: string
     hint: string
     tooLong: string
+    voiceStart: string
+    voiceStop: string
+    listening: string
+    voiceDenied: string
+    voiceFailed: string
   }
   evidence: {
     title: string
@@ -226,6 +231,11 @@ const en: StudioCopy = {
     stop: "Stop",
     hint: "Enter to send · Shift+Enter for a new line",
     tooLong: "That message is too long. Keep it under {max} characters.",
+    voiceStart: "Dictate",
+    voiceStop: "Stop dictation",
+    listening: "Listening…",
+    voiceDenied: "Microphone access is blocked. Allow it in your browser, or type instead.",
+    voiceFailed: "Voice input stopped. Try again, or type instead.",
   },
   status: {
     reading: "Reading the latest evidence…",
@@ -371,6 +381,11 @@ const zhHK: StudioCopy = {
     stop: "停止",
     hint: "Enter 傳送 · Shift+Enter 換行",
     tooLong: "訊息太長，請保持在 {max} 字以內。",
+    voiceStart: "語音輸入",
+    voiceStop: "停止語音輸入",
+    listening: "正在聆聽…",
+    voiceDenied: "麥克風權限被封鎖。請在瀏覽器允許使用，或直接輸入。",
+    voiceFailed: "語音輸入已停止。請再試一次，或直接輸入。",
   },
   status: {
     reading: "正在讀取最新證據…",
@@ -516,6 +531,11 @@ const zhTW: StudioCopy = {
     stop: "停止",
     hint: "Enter 傳送 · Shift+Enter 換行",
     tooLong: "訊息太長，請維持在 {max} 字以內。",
+    voiceStart: "語音輸入",
+    voiceStop: "停止語音輸入",
+    listening: "正在聆聽…",
+    voiceDenied: "麥克風權限被封鎖。請在瀏覽器允許使用，或直接輸入。",
+    voiceFailed: "語音輸入已停止。請再試一次，或直接輸入。",
   },
   status: {
     reading: "正在讀取最新證據…",
