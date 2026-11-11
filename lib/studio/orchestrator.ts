@@ -473,6 +473,7 @@ function artifactPart(
     title: output.title,
     body: output.body,
     acceptanceCriteria: [...output.acceptanceCriteria],
+    ...(output.carousel?.length ? { carousel: output.carousel.map((slide) => ({ heading: slide.heading, detail: slide.detail })) } : {}),
     draftRunId: result.draftRunId ?? null,
     requiresApproval: true,
     revisedFromVersionId: classification.intent === "draft" ? classification.versionId : null,

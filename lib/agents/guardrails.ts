@@ -27,6 +27,7 @@ export const GUARDRAILS = [
 
 /** §3.7 item 5, verbatim keys. */
 export const OUTPUT_KEYS = '{ "title", "body", "alt_text"?, "acceptance_criteria": string[], "warnings": string[], "facts_used": string[], "facts_needed": string[] }';
+const OUTPUT_KEYS_WITH_CAROUSEL = '{ "title", "body", "alt_text"?, "carousel"?: Array<{ "heading": string, "detail": string }>, "acceptance_criteria": string[], "warnings": string[], "facts_used": string[], "facts_needed": string[] }';
 
 export function roleBlock(role: string, ctx: AgentContext): string {
   return [
@@ -59,10 +60,10 @@ export function guardrailBlock(): string {
   return ["GUARDRAILS:", ...GUARDRAILS.map((rule) => `- ${rule}`), "- If a required fact is missing, do not guess: name it in facts_needed and leave body empty."].join("\n");
 }
 
-export function outputBlock(): string {
+export function outputBlock(options: { carousel?: boolean } = {}): string {
   return [
     "OUTPUT: respond with JSON only, no prose, no markdown fences, exactly these keys:",
-    OUTPUT_KEYS,
+    options.carousel ? OUTPUT_KEYS_WITH_CAROUSEL : OUTPUT_KEYS,
     "facts_used lists the brand facts or evidence you relied on; facts_needed lists inputs the owner must supply before this can be finished.",
   ].join("\n");
 }

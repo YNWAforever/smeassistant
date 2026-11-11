@@ -79,6 +79,23 @@ export function StudioArtifactCard({
       </header>
       <h3>{part.title}</h3>
       <div className="studio-artifact-body" dir="auto">{part.body}</div>
+      {part.carousel?.length ? (
+        <section className="studio-artifact-carousel" aria-label={t.message.carousel}>
+          <h4 className="studio-artifact-carousel-title">{t.message.carousel}</h4>
+          <ol className="studio-artifact-carousel-list">
+            {part.carousel.map((slide, index) => (
+              <li key={`${index}-${slide.heading}`}>
+                <span className="studio-artifact-carousel-index" aria-hidden="true">{index + 1}</span>
+                <div>
+                  {slide.heading && <p className="studio-artifact-carousel-heading">{slide.heading}</p>}
+                  {slide.detail && <p className="studio-artifact-carousel-detail">{slide.detail}</p>}
+                </div>
+              </li>
+            ))}
+          </ol>
+          <p className="studio-artifact-carousel-note">{t.message.carouselPlanOnly}</p>
+        </section>
+      ) : null}
       {part.acceptanceCriteria.length > 0 && (
         <ul className="studio-artifact-acceptance">
           {part.acceptanceCriteria.map((criterion) => (

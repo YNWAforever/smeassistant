@@ -28,7 +28,7 @@ const definition = defineAgent({
   task: (ctx) => `Write one Instagram caption (under 220 words, or 300 Chinese characters) that fills the content gap in the evidence. Use only brand facts and the approved claims; do not invent dishes, prices, opening dates, offers or events. Hashtags: at most five, relevant to the district and category.
 This task saves a draft; it does not publish or connect an Instagram account. An Instagram handle is optional for drafting. If it is not confirmed, omit handles and profile links from the caption and mention the missing handle in warnings, never facts_needed. Keep facts_needed for required facts that prevent a factual caption.
 ${ctx.providedInputs.text_only === true ? "This is a text-only post: do not describe a photo." : `An approved photo is attached (alt text: ${inputLine(ctx, "alt_text")}). Describe only what the alt text says is in it and return alt_text — a plain, factual description under 125 characters.`}
-Body: the caption. acceptance_criteria: what the owner must confirm (asset rights, facts) before posting.`,
+${ctx.surface === "studio" ? "Also return carousel: a 3-5 slide planning outline for the same post, each slide {heading, detail}, grounded only in the same confirmed facts; return an empty array when one image is enough. The carousel is planning material, not part of the caption.\n" : ""}Body: the caption. acceptance_criteria: what the owner must confirm (asset rights, facts) before posting.`,
   acceptance: (ctx, output) => {
     const warnings = [...bodyLength(output, 2500)];
     if (ctx.providedInputs.text_only !== true && !output.alt_text) warnings.push("alt_text_missing");

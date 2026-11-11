@@ -657,6 +657,12 @@ describe("wire mappers", () => {
           title: "Draft",
           body: "Thanks",
           acceptanceCriteria: ["Tone"],
+          carousel: [
+            { heading: "Slide one", detail: "Confirmed fact" },
+            { heading: "  ", detail: "  " },
+            { heading: "H".repeat(130), detail: "Detail" },
+            null,
+          ],
           draftRunId: null,
           requiresApproval: true,
         },
@@ -675,7 +681,13 @@ describe("wire mappers", () => {
         { evidenceId: "ev:1", scanId: "scan-1", factType: "Observed", label: "Score", value: "78", observedAt: "2026-11-01", source: "scan" },
       ],
     });
-    expect(message.parts[2]).toMatchObject({ requiresApproval: true });
+    expect(message.parts[2]).toMatchObject({
+      requiresApproval: true,
+      carousel: [
+        { heading: "Slide one", detail: "Confirmed fact" },
+        { heading: "H".repeat(120), detail: "Detail" },
+      ],
+    });
   });
 
   it("parses a JSON-string parts value and tolerates malformed stored json", () => {

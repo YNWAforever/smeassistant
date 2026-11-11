@@ -329,6 +329,7 @@ async function agentContext(db: LiveAssistantRepository, input: LiveRunInput, ct
   const agentCtx: AgentContext = {
     locale: input.locale,
     market: ctx.workspace?.market?.toLowerCase() === "tw" ? "tw" : "hk",
+    surface: input.surface,
     brand: {
       revisionId:brand?.current_revision_id ?? null,
       voice: brand?.voice ?? "warm",
@@ -492,6 +493,7 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
       title: output.title || title,
       body: output.body,
       acceptanceCriteria: output.acceptance_criteria,
+      ...(output.carousel?.length ? { carousel: output.carousel } : {}),
     },
     warnings,
     requiresApproval: true,
