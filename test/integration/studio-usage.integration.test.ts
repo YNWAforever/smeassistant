@@ -96,8 +96,16 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("Studio usage report", () =
     expect(report.byIntent).toEqual(expect.arrayContaining([{ intent: "chat", count: 1 }, { intent: "answer", count: 1 }]));
     expect(report.byModel).toEqual(expect.arrayContaining([{ model: "model-a", count: 2 }]));
     expect(report.byDay).toEqual([{ day: "2026-11-09", userMessages: 2, assistantMessages: 2, costUsd: 0.003 }]);
+    expect(report.budgets).toEqual({ maxCostUsd: null, maxP95LatencyMs: null, breaches: [] });
     expect(JSON.stringify(report)).not.toContain("ignored content");
     expect(JSON.stringify(report)).not.toContain("nope");
+
+    const budgeted = await buildStudioUsageReport(
+      pool,
+      { since, workspaceId: first.workspaceId, maxCostUsd: 0.002, maxP95LatencyMs: 1000 },
+      now,
+    );
+    expect(budgeted.budgets).toEqual({ maxCostUsd: 0.002, maxP95LatencyMs: 1000, breaches: ["cost"] });
   });
 
   it("reports a null latency when there are no adjacent pairs and keeps unreported costs visible", async () => {

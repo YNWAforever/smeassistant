@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { buildStudioUsageReport, parseStudioUsageArgs } from "../../lib/operations/studio-usage";
 
 /**
- * `pnpm ops:studio-usage [--days N] [--workspace-id UUID]`
+ * `pnpm ops:studio-usage [--days N] [--workspace-id UUID] [--max-cost-usd N] [--max-p95-ms N]`
  *
  * Read-only operational report over persisted Studio rows. It requires the
  * runtime/operator DATABASE_URL in the environment, opens a READ ONLY
@@ -11,17 +11,29 @@ import { buildStudioUsageReport, parseStudioUsageArgs } from "../../lib/operatio
  */
 const HELP = `Studio usage (read-only)
 
-Usage: pnpm ops:studio-usage [--days N] [--workspace-id UUID]
+Usage: pnpm ops:studio-usage [--days N] [--workspace-id UUID] [--max-cost-usd N] [--max-p95-ms N]
 
   --days N             window length in days (1-${365}, default 30)
   --workspace-id UUID  scope to one workspace (default: all)
+  --max-cost-usd N     alert and exit 3 when cost exceeds N USD
+  --max-p95-ms N       alert and exit 3 when p95 turn latency exceeds N ms
   -h, --help           show this text
 
 The report counts conversations, user/assistant turns, failed turns, tokens,
-cost, adjacent-turn latency and daily activity. Message text is never read.`;
+cost, adjacent-turn latency and daily activity. Message text is never read.
+
+Exit codes: 0 ok, 1 query failure, 2 missing DATABASE_URL or invalid arguments, 3 budget breached.`;
 
 async function main(): Promise<void> {
-  const { options, help } = parseStudioUsageArgs(process.argv.slice(2));
+  let parsed: ReturnType<typeof parseStudioUsageArgs>;
+  try {
+    parsed = parseStudioUsageArgs(process.argv.slice(2));
+  } catch (error) {
+    console.error(`studio usage: ${error instanceof Error ? error.message : "invalid arguments"}`);
+    process.exitCode = 2;
+    return;
+  }
+  const { options, help } = parsed;
   if (help) {
     console.log(HELP);
     return;
