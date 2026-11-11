@@ -16,9 +16,32 @@ pnpm ops:studio-usage
 
 # One workspace, last 7 days
 pnpm ops:studio-usage --days 7 --workspace-id <workspace-uuid>
+
+# Fail a scheduled check when spend or p95 latency crosses a budget
+pnpm ops:studio-usage --days 30 --max-cost-usd 25 --max-p95-ms 5000
 ```
 
-Options: `--days` (1–365, default 30), `--workspace-id` (UUID), `--help`.
+Options: `--days` (1–365, default 30), `--workspace-id` (UUID), `--max-cost-usd`, `--max-p95-ms`, `--help`.
+
+Exit codes: `0` report printed and no budget breached; `1` query failed; `2` `DATABASE_URL` missing or invalid arguments; `3` report printed but a budget was breached.
+
+## Budget alerts
+
+`--max-cost-usd` and `--max-p95-ms` add a `budgets` block to the report and make the command exit `3` when a threshold is crossed:
+
+```json
+"budgets": {
+  "maxCostUsd": 25,
+  "maxP95LatencyMs": 5000,
+  "breaches": ["cost"]
+}
+```
+
+- Cost breaches when `totals.costUsd` is strictly greater than the threshold.
+- Latency breaches when `latencyMs.p95` exists and is strictly greater than the threshold. A window with no adjacent assistant turns has no p95 and cannot breach.
+- Thresholds are optional and independent; with neither set the block is `{ "maxCostUsd": null, "maxP95LatencyMs": null, "breaches": [] }`.
+- Intended use is a scheduled operator job (not the web runtime): run the command, keep the JSON for the record, and alert on exit code `3`.
+
 
 ## Metrics
 
@@ -44,5 +67,5 @@ Options: `--days` (1–365, default 30), `--workspace-id` (UUID), `--help`.
 
 ## Verification
 
-- `lib/operations/studio-usage.test.ts` covers argument parsing/bounds.
+- `lib/operations/studio-usage.test.ts` covers argument parsing/bounds and budget evaluation (absent, equal, breached, no-p95 and both-breach cases).
 - `test/integration/studio-usage.integration.test.ts` (owned PostgreSQL fixture, `NEON_INTEGRATION=1`) seeds two workspaces with adjacent turns, a warning part, tokens/costs and asserts scope, totals, latency, intents/models, daily series, the null-latency case and that no message text appears in the report.

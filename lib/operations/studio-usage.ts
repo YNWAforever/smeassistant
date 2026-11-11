@@ -16,6 +16,16 @@ import type { Pool } from "pg";
 export type StudioUsageOptions = {
   since: Date;
   workspaceId?: string;
+  /** Alert when reported cost exceeds this amount. */
+  maxCostUsd?: number;
+  /** Alert when the p95 adjacent-turn latency exceeds this many milliseconds. */
+  maxP95LatencyMs?: number;
+};
+
+export type StudioUsageBudgetReport = {
+  maxCostUsd: number | null;
+  maxP95LatencyMs: number | null;
+  breaches: Array<"cost" | "p95_latency">;
 };
 
 export type StudioUsageReport = {
@@ -35,6 +45,7 @@ export type StudioUsageReport = {
   byIntent: Array<{ intent: string; count: number }>;
   byModel: Array<{ model: string; count: number }>;
   byDay: Array<{ day: string; userMessages: number; assistantMessages: number; costUsd: number }>;
+  budgets: StudioUsageBudgetReport;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -45,6 +56,8 @@ export const STUDIO_USAGE_MAX_DAYS = 365;
 export function parseStudioUsageArgs(argv: string[], now: Date = new Date()): { options: StudioUsageOptions; help: boolean } {
   let days = 30;
   let workspaceId: string | undefined;
+  let maxCostUsd: number | undefined;
+  let maxP95LatencyMs: number | undefined;
   let help = false;
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -59,6 +72,22 @@ export function parseStudioUsageArgs(argv: string[], now: Date = new Date()): { 
       index += 1;
       continue;
     }
+    if (arg === "--max-cost-usd") {
+      const raw = argv[index + 1];
+      const parsed = Number(raw);
+      if (!raw || !Number.isFinite(parsed) || parsed < 0) throw new Error("--max-cost-usd must be a non-negative number");
+      maxCostUsd = parsed;
+      index += 1;
+      continue;
+    }
+    if (arg === "--max-p95-ms") {
+      const raw = argv[index + 1];
+      const parsed = Number(raw);
+      if (!raw || !Number.isFinite(parsed) || parsed < 0) throw new Error("--max-p95-ms must be a non-negative number");
+      maxP95LatencyMs = parsed;
+      index += 1;
+      continue;
+    }
     if (arg === "--workspace-id") {
       const raw = argv[index + 1];
       if (!raw || !UUID.test(raw)) throw new Error("--workspace-id must be a UUID");
@@ -69,7 +98,15 @@ export function parseStudioUsageArgs(argv: string[], now: Date = new Date()): { 
     throw new Error(`unknown argument: ${arg}`);
   }
   const since = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-  return { options: { since, ...(workspaceId ? { workspaceId } : {}) }, help };
+  return {
+    options: {
+      since,
+      ...(workspaceId ? { workspaceId } : {}),
+      ...(maxCostUsd !== undefined ? { maxCostUsd } : {}),
+      ...(maxP95LatencyMs !== undefined ? { maxP95LatencyMs } : {}),
+    },
+    help,
+  };
 }
 
 function numberValue(value: unknown): number {
@@ -79,6 +116,19 @@ function numberValue(value: unknown): number {
 function nullableNumber(value: unknown): number | null {
   const parsed = typeof value === "string" ? Number(value) : value;
   return typeof parsed === "number" && Number.isFinite(parsed) ? Math.round(parsed) : null;
+}
+
+/** Pure threshold evaluation shared by the CLI and unit tests. */
+export function evaluateStudioUsageBudgets(
+  usage: { costUsd: number; p95: number | null },
+  options: Pick<StudioUsageOptions, "maxCostUsd" | "maxP95LatencyMs">,
+): StudioUsageBudgetReport {
+  const maxCostUsd = options.maxCostUsd ?? null;
+  const maxP95LatencyMs = options.maxP95LatencyMs ?? null;
+  const breaches: StudioUsageBudgetReport["breaches"] = [];
+  if (maxCostUsd !== null && usage.costUsd > maxCostUsd) breaches.push("cost");
+  if (maxP95LatencyMs !== null && usage.p95 !== null && usage.p95 > maxP95LatencyMs) breaches.push("p95_latency");
+  return { maxCostUsd, maxP95LatencyMs, breaches };
 }
 
 export async function buildStudioUsageReport(
@@ -176,6 +226,11 @@ export async function buildStudioUsageReport(
     )
   ).rows;
 
+  const budgets = evaluateStudioUsageBudgets(
+    { costUsd: numberValue(totals?.cost_usd), p95: nullableNumber(latency?.p95) },
+    options,
+  );
+
   return {
     window: {
       since: since.toISOString(),
@@ -207,5 +262,6 @@ export async function buildStudioUsageReport(
       assistantMessages: numberValue(row.assistant_messages),
       costUsd: numberValue(row.cost_usd),
     })),
+    budgets,
   };
 }
