@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import {
   isAssistantIntentId,
   nextStepKinds,
+  type AssistantCarouselSlide,
   type AssistantIntentId,
   type AssistantNextStep,
   type EvidenceReference,
@@ -382,6 +383,21 @@ function stringArray(value: unknown): string[] | null {
   return value as string[];
 }
 
+function parseCarousel(value: unknown): AssistantCarouselSlide[] {
+  if (!Array.isArray(value)) return [];
+  const slides: AssistantCarouselSlide[] = [];
+  for (const entry of value) {
+    const record = asRecord(entry);
+    if (!record) continue;
+    const heading = typeof record.heading === "string" ? record.heading.trim().slice(0, 120) : "";
+    const detail = typeof record.detail === "string" ? record.detail.trim().slice(0, 600) : "";
+    if (!heading && !detail) continue;
+    slides.push({ heading, detail });
+    if (slides.length === 6) break;
+  }
+  return slides;
+}
+
 function parseEvidenceRefs(value: unknown): EvidenceReference[] {
   if (!Array.isArray(value)) return [];
   const refs: EvidenceReference[] = [];
@@ -435,6 +451,7 @@ function parseArtifact(value: Record<string, unknown>): StudioArtifactPart | nul
   }
   const acceptanceCriteria = stringArray(value.acceptanceCriteria);
   if (!acceptanceCriteria) return null;
+  const carousel = parseCarousel(value.carousel);
   return {
     kind: "artifact",
     actionId: value.actionId,
@@ -443,6 +460,7 @@ function parseArtifact(value: Record<string, unknown>): StudioArtifactPart | nul
     title: value.title,
     body: value.body,
     acceptanceCriteria,
+    ...(carousel.length ? { carousel } : {}),
     draftRunId: typeof value.draftRunId === "string" ? value.draftRunId : null,
     // The Studio never approves, exports or publishes; the wire flag is fixed.
     requiresApproval: true,

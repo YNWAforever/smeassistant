@@ -491,6 +491,7 @@ describe("runStudioTurn", () => {
         title: "This week on Instagram",
         body: "Caption: a warm invitation to visit. Carousel: 4 slides with confirmed facts only.",
         acceptanceCriteria: ["Uses only confirmed facts", "No invented price or date"],
+        carousel: [{ heading: "This week", detail: "What is happening in the shop now." }],
       },
     });
     const result = await runStudioTurn(baseInput(log, { llm, liveAssistant }));
@@ -503,6 +504,7 @@ describe("runStudioTurn", () => {
       title: "This week on Instagram",
       requiresApproval: true,
       draftRunId: "run-ig",
+      carousel: [{ heading: "This week", detail: "What is happening in the shop now." }],
     });
     expect(artifact?.kind === "artifact" ? artifact.body : "").toContain("Carousel");
   });

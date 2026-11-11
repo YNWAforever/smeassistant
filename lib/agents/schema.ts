@@ -14,10 +14,17 @@ export interface AgentOutput {
   title: string;
   body: string;
   alt_text?: string;
+  /** Optional planning outline. Only the Studio asks for one; the saved version stays the body. */
+  carousel?: AgentCarouselSlide[];
   acceptance_criteria: string[];
   warnings: string[];
   facts_used: string[];
   facts_needed: string[];
+}
+
+export interface AgentCarouselSlide {
+  heading: string;
+  detail: string;
 }
 
 export interface SampledReview {
@@ -41,6 +48,8 @@ export interface AgentContext {
   action: ActionOverview;
   /** Snapshot metrics, module states, website checks and the action's own evidence, already bounded. */
   evidence: Record<string, unknown>;
+  /** Which surface asked for this draft. The Studio can request planning material. */
+  surface?: string;
   providedInputs: Record<string, unknown>;
   /** Reviews without an owner response, newest first, excerpts only (review_reply). */
   sampledReviews?: SampledReview[];
@@ -93,12 +102,34 @@ const stringList = z.preprocess(
   z.array(z.string().trim().max(500)).max(40),
 );
 
+/**
+ * Optional Studio-only planning slides. Truncated and filtered rather than
+ * rejected: a malformed slide must not fail an otherwise usable caption.
+ */
+const carouselSlides = z.preprocess(
+  (value) => {
+    if (!Array.isArray(value)) return [];
+    const slides: AgentCarouselSlide[] = [];
+    for (const item of value) {
+      if (!item || typeof item !== "object") continue;
+      const record = item as Record<string, unknown>;
+      const heading = typeof record.heading === "string" ? record.heading.trim().slice(0, 120) : "";
+      const detail = typeof record.detail === "string" ? record.detail.trim().slice(0, 600) : "";
+      if (heading || detail) slides.push({ heading, detail });
+      if (slides.length === 6) break;
+    }
+    return slides;
+  },
+  z.array(z.object({ heading: z.string(), detail: z.string() })),
+);
+
 /** The exact keys of §3.7 item 5. Missing list keys read as empty; extra keys are dropped. */
 export const agentOutputSchema: z.ZodType<AgentOutput, z.ZodTypeDef, unknown> = z
   .object({
     title: z.string().trim().max(200).default(""),
     body: z.string().max(20_000).default(""),
     alt_text: z.string().trim().max(500).optional().nullable().transform((v) => (v ? v : undefined)),
+    carousel: carouselSlides,
     acceptance_criteria: stringList,
     warnings: stringList,
     facts_used: stringList,

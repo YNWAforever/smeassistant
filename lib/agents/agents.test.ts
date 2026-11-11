@@ -282,12 +282,40 @@ describe("social post optional Instagram handle", () => {
   it("does not change another agent's missing facts", () => {
     expect(parseAgentOutput(output(["ig_handle_not_provided"]), AGENTS.ig_bio.outputSchema)?.facts_needed).toEqual(["ig_handle_not_provided"]);
   });
+
+  it("asks the Studio for a carousel outline but not another surface", () => {
+    expect(AGENTS.social_post.buildPrompt(fixedCtx)).not.toContain("Also return carousel");
+    expect(AGENTS.social_post.buildPrompt({ ...fixedCtx, surface: "studio" })).toContain("Also return carousel");
+  });
+});
+
+describe("Studio carousel slides", () => {
+  const parse = (carousel: unknown) => parseAgentOutput(
+    JSON.stringify({ body: "Caption", carousel, acceptance_criteria: [] }),
+    AGENTS.social_post.outputSchema,
+  );
+
+  it("trims and bounds slides, dropping empty and malformed entries", () => {
+    expect(parse([
+      { heading: " Slide one ", detail: " Detail one " },
+      { heading: "  ", detail: "  " },
+      null,
+      { heading: "H".repeat(200), detail: "D".repeat(700) },
+    ])?.carousel).toEqual([
+      { heading: "Slide one", detail: "Detail one" },
+      { heading: "H".repeat(120), detail: "D".repeat(600) },
+    ]);
+  });
+
+  it("defaults to an empty outline when the model omits it", () => {
+    expect(parseAgentOutput(JSON.stringify({ body: "Caption" }), AGENTS.social_post.outputSchema)?.carousel).toEqual([]);
+  });
 });
 
 describe("parseAgentOutput", () => {
   it("accepts fenced JSON and fills missing lists", () => {
     const out = parseAgentOutput('```json\n{"title":"Hi","body":"Thanks","facts_used":["voice"]}\n```');
-    expect(out).toEqual({ title: "Hi", body: "Thanks", alt_text: undefined, acceptance_criteria: [], warnings: [], facts_used: ["voice"], facts_needed: [] });
+    expect(out).toEqual({ title: "Hi", body: "Thanks", alt_text: undefined, carousel: [], acceptance_criteria: [], warnings: [], facts_used: ["voice"], facts_needed: [] });
   });
   it("accepts prose around the object and facts_needed without a body", () => {
     expect(parseAgentOutput('Sure: {"title":"","body":"","facts_needed":["menu_items"]} done')?.facts_needed).toEqual(["menu_items"]);

@@ -1,6 +1,7 @@
 import type { PrototypeLocale } from "@/lib/copy"
 import type {
   AssistantArtifact,
+  AssistantCarouselSlide,
   AssistantIntentId,
   AssistantNextStep,
   EvidenceReference,
@@ -102,6 +103,8 @@ export type StudioArtifactPart = {
   title: string
   body: string
   acceptanceCriteria: string[]
+  /** Studio planning outline. It is shown next to the caption and is not saved into the version. */
+  carousel?: AssistantCarouselSlide[]
   draftRunId: string | null
   /** Always true: the Studio never approves, exports or publishes. */
   requiresApproval: true

@@ -361,6 +361,25 @@ describe("StudioView ??inline work", () => {
     expect(screen.getByRole("button", { name: t.transcript.export })).toBeInTheDocument()
   })
 
+  it("renders the Studio carousel outline next to the caption with the planning note", () => {
+    const carouselPart = {
+      ...artifactPart,
+      carousel: [{ heading: "Slide one", detail: "Confirmed fact" }],
+    } as StudioMessage["parts"][number]
+    const carouselMessage = assistantMessage(1, "Draft ready.", [carouselPart])
+    installFetch(() => jsonResponse({ error: "unavailable" }, 500))
+    render(<StudioView {...baseProps({
+      conversations: [conversationA],
+      activeConversationId: conversationA.id,
+      initialMessages: [carouselMessage],
+    })} />)
+    expect(screen.getByText(t.message.carousel)).toBeInTheDocument()
+    expect(screen.getByText("Slide one")).toBeInTheDocument()
+    expect(screen.getByText("Confirmed fact")).toBeInTheDocument()
+    expect(screen.getByText(t.message.carouselPlanOnly)).toBeInTheDocument()
+    expect(screen.getByText(artifactPart.kind === "artifact" ? artifactPart.body : "")).toBeInTheDocument()
+  })
+
   it("gives a viewer the answer and the role boundary without a save control", () => {
     const artifactMessage = assistantMessage(1, "Here is a draft reply.", [artifactPart])
     installFetch(() => jsonResponse({ error: "unavailable" }, 500))

@@ -89,6 +89,8 @@ export type StudioCopy = {
     evidence: string
     documents: string
     artifactReady: string
+    carousel: string
+    carouselPlanOnly: string
     warnings: string
     retry: string
   }
@@ -268,6 +270,8 @@ const en: StudioCopy = {
     openAction: "Open action",
     evidence: "Evidence used",
     artifactReady: "Draft ready for review",
+    carousel: "Carousel outline",
+    carouselPlanOnly: "Planning aid only: the saved version is the caption above.",
     documents: "Attached documents",
     warnings: "Before you use this",
     retry: "Try again",
@@ -424,6 +428,8 @@ const zhHK: StudioCopy = {
     openAction: "開啟行動",
     evidence: "引用的證據",
     artifactReady: "草稿已準備好審閱",
+    carousel: "輪播圖大綱",
+    carouselPlanOnly: "僅供規劃用途：儲存版本只包含上方文案。",
     documents: "已附加文件",
     warnings: "使用前請注意",
     retry: "再試一次",
@@ -580,6 +586,8 @@ const zhTW: StudioCopy = {
     openAction: "開啟行動",
     evidence: "引用的證據",
     artifactReady: "草稿已準備好審閱",
+    carousel: "輪播圖大綱",
+    carouselPlanOnly: "僅供規劃用途：儲存版本只包含上方文案。",
     documents: "已附加文件",
     warnings: "使用前請注意",
     retry: "再試一次",

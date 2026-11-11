@@ -62,7 +62,7 @@ export function composePrompt(spec: AgentSpec, ctx: AgentContext): string {
     ...(ctx.draftGrounding ? [DRAFT_GROUNDING_POLICY] : []),
     evidenceBlock(spec, ctx),
     `TASK:\n${spec.task(ctx).trim()}`,
-    outputBlock(),
+    outputBlock({ carousel: ctx.surface === "studio" && spec.key === "social_post" }),
     `(prompt ${spec.key}@${spec.promptVersion})`,
   ].join("\n\n");
 }

@@ -42,6 +42,11 @@ export type EvidenceReference = {
   source: string
 }
 
+export type AssistantCarouselSlide = {
+  heading: string
+  detail: string
+}
+
 export type AssistantArtifact = {
   type: "review_reply" | "social_post" | "faq" | "menu_translation" | "validation_plan"
   artifactId: string
@@ -49,6 +54,8 @@ export type AssistantArtifact = {
   title: string
   body: string
   acceptanceCriteria: string[]
+  /** Studio-only planning outline. It is never part of the saved version body. */
+  carousel?: AssistantCarouselSlide[]
 }
 
 /** Where a deterministic answer can send the owner next. Navigation only; nothing here writes. */
