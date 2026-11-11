@@ -36,6 +36,15 @@ export function studioTranscriptMarkdown(input: {
       }
       if (part.kind === "artifact") {
         lines.push(`### ${part.title}`, "", part.body.trim(), "");
+        if (part.carousel?.length) {
+          lines.push(`#### ${t.message.carousel}`, "");
+          for (const [index, slide] of part.carousel.entries()) {
+            const heading = slide.heading.replace(/\s+/g, " ").trim();
+            const detail = slide.detail.replace(/\s+/g, " ").trim();
+            lines.push(`${index + 1}. ${[heading, detail].filter(Boolean).join(" — ")}`, "");
+          }
+          lines.push(`> ${t.message.carouselPlanOnly}`, "");
+        }
         lines.push(`> ${t.notices.boundary}`, "");
       }
       if (part.kind === "warning") {

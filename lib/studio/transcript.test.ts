@@ -23,7 +23,7 @@ describe("studioTranscriptMarkdown", () => {
           content: "Start with the unanswered reviews.",
           parts: [
             { kind: "citation", refs: [{ source: "document", documentVersionId: "d1", title: "Shop facts.pdf", truncated: false }] },
-            { kind: "artifact", actionId: "a1", actionTitle: "Reply", artifactType: "review_reply", title: "Draft reply", body: "Thanks for visiting.", acceptanceCriteria: [], draftRunId: null, requiresApproval: true },
+            { kind: "artifact", actionId: "a1", actionTitle: "Reply", artifactType: "social_post", title: "Draft reply", body: "Thanks for visiting.", acceptanceCriteria: [], draftRunId: null, requiresApproval: true, carousel: [{ heading: "Slide one", detail: "Confirmed fact" }, { heading: "Slide two", detail: "" }] },
             { kind: "warning", code: "ai_unavailable", text: "Provider failed for one attempt." },
           ],
         }),
@@ -38,6 +38,11 @@ describe("studioTranscriptMarkdown", () => {
     expect(markdown).toContain("Shop facts.pdf");
     expect(markdown).toContain("Draft reply");
     expect(markdown).toContain("Thanks for visiting.");
+    expect(markdown).toContain("#### Carousel outline");
+    expect(markdown).toContain("1. Slide one — Confirmed fact");
+    expect(markdown).toContain("2. Slide two");
+    expect(markdown).toContain("Planning aid only: the saved version is the caption above.");
+    expect(markdown.indexOf("Carousel outline")).toBeGreaterThan(markdown.indexOf("Thanks for visiting."));
     expect(markdown).toContain("Provider failed for one attempt.");
     expect(markdown).not.toContain('"kind"');
     expect(markdown).not.toContain('"intent"');
