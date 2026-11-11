@@ -594,6 +594,7 @@ export function StudioView({
             selected={evidence}
             onChange={setEvidence}
             disabled={composerDisabled}
+            canUpload={role === "owner"}
           />
           <StudioComposer
             locale={locale}

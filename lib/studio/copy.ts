@@ -67,6 +67,12 @@ export type StudioCopy = {
     limit: string
     documents: string
     briefs: string
+    upload: string
+    uploading: string
+    uploadHint: string
+    uploadNotText: string
+    uploadTooLarge: string
+    uploadFailed: string
   }
   status: { reading: string; thinking: string; drafting: string; finishing: string }
   message: {
@@ -183,6 +189,12 @@ const en: StudioCopy = {
     limit: "Up to 5 items",
     documents: "Documents",
     briefs: "Search briefs",
+    upload: "Upload document",
+    uploading: "Uploading…",
+    uploadHint: "TXT, MD or CSV · up to 128 KB",
+    uploadNotText: "Choose a TXT, MD or CSV file.",
+    uploadTooLarge: "That document is larger than 128 KB.",
+    uploadFailed: "Could not upload that document.",
   },
 
   nav: { label: "Studio", aria: "Conversation studio" },
@@ -333,6 +345,12 @@ const zhHK: StudioCopy = {
     limit: "最多 5 項",
     documents: "文件",
     briefs: "搜尋簡報",
+    upload: "上載文件",
+    uploading: "上載中…",
+    uploadHint: "TXT、MD 或 CSV · 最多 128 KB",
+    uploadNotText: "請選擇 TXT、MD 或 CSV 檔案。",
+    uploadTooLarge: "文件超過 128 KB。",
+    uploadFailed: "未能上載文件。",
   },
 
   nav: { label: "對話工作台", aria: "對話工作台" },
@@ -483,6 +501,12 @@ const zhTW: StudioCopy = {
     limit: "最多 5 項",
     documents: "文件",
     briefs: "搜尋簡報",
+    upload: "上傳文件",
+    uploading: "上傳中…",
+    uploadHint: "TXT、MD 或 CSV · 最多 128 KB",
+    uploadNotText: "請選擇 TXT、MD 或 CSV 檔案。",
+    uploadTooLarge: "檔案超過 128 KB。",
+    uploadFailed: "未能上傳檔案。",
   },
 
   nav: { label: "對話工作台", aria: "對話工作台" },

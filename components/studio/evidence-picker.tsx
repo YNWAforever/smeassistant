@@ -1,7 +1,7 @@
 "use client"
 
-import { FileText, Paperclip, Search, X } from "lucide-react"
-import { useEffect, useId, useState } from "react"
+import { FileText, Paperclip, Search, Upload, X } from "lucide-react"
+import { useEffect, useId, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import type { PrototypeLocale } from "@/lib/copy"
@@ -17,6 +17,9 @@ type BriefWire = {
 
 const DOCUMENTS_URL = (workspaceId: string, locationId: string) =>
   `/api/workspaces/${encodeURIComponent(workspaceId)}/conversation/documents?location_id=${encodeURIComponent(locationId)}`
+const UPLOAD_BYTES = 128 * 1024
+const UPLOAD_EXTENSIONS = ["txt", "md", "csv"]
+const UPLOAD_ACCEPT = ".txt,.md,.csv,text/plain,text/markdown,text/csv"
 const BRIEFS_URL = (workspaceId: string, locationId: string) =>
   `/api/workspaces/${encodeURIComponent(workspaceId)}/conversation/search?location_id=${encodeURIComponent(locationId)}`
 
@@ -36,6 +39,7 @@ export function StudioEvidencePicker({
   selected,
   onChange,
   disabled = false,
+  canUpload = false,
 }: {
   locale: PrototypeLocale
   workspaceId: string
@@ -43,6 +47,8 @@ export function StudioEvidencePicker({
   selected: StudioCitationRef[]
   onChange: (refs: StudioCitationRef[]) => void
   disabled?: boolean
+  /** Document upload is owner-only server-side; managers and viewers can attach existing documents. */
+  canUpload?: boolean
 }) {
   const t = studioText(locale)
   const [open, setOpen] = useState(false)
@@ -50,6 +56,9 @@ export function StudioEvidencePicker({
   const [failedLocation, setFailedLocation] = useState<string | null>(null)
   const [documents, setDocuments] = useState<DocumentWire[]>([])
   const [briefs, setBriefs] = useState<Array<{ id: string; title: string }>>([])
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
   const panelId = useId()
   const atLimit = selected.length >= 5
 
@@ -107,6 +116,53 @@ export function StudioEvidencePicker({
     return selected.some((item) => refKey(item) === key)
   }
 
+  async function upload(file: File) {
+    if (!locationId || uploading) return
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? ""
+    if (!UPLOAD_EXTENSIONS.includes(extension)) {
+      setUploadError(t.evidence.uploadNotText)
+      return
+    }
+    if (file.size > UPLOAD_BYTES) {
+      setUploadError(t.evidence.uploadTooLarge)
+      return
+    }
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const form = new FormData()
+      form.set("file", file)
+      form.set("location_id", locationId)
+      form.set("locale", locale)
+      // The route takes the location from the multipart body; the URL keeps the
+      // same shape as the GET so both calls are easy to audit together.
+      const response = await fetch(DOCUMENTS_URL(workspaceId, locationId), {
+        method: "POST",
+        body: form,
+        credentials: "same-origin",
+      })
+      if (!response.ok) {
+        setUploadError(response.status === 413 ? t.evidence.uploadTooLarge : response.status === 415 ? t.evidence.uploadNotText : t.evidence.uploadFailed)
+        return
+      }
+      const data = (await response.json()) as { version?: { id?: unknown; title?: unknown; truncated?: unknown } }
+      if (typeof data.version?.id !== "string" || typeof data.version.title !== "string") {
+        setUploadError(t.evidence.uploadFailed)
+        return
+      }
+      const wire: DocumentWire = { id: data.version.id, title: data.version.title, truncated: data.version.truncated === true }
+      setDocuments((current) => [wire, ...current.filter((document) => document.id !== wire.id)])
+      setLoadedLocation(locationId)
+      if (selected.length < 5) {
+        onChange([...selected, { source: "document", documentVersionId: wire.id, title: wire.title, truncated: wire.truncated }])
+      }
+    } catch {
+      setUploadError(t.evidence.uploadFailed)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   return (
     <div className="studio-evidence">
       <div className="studio-evidence-head">
@@ -138,6 +194,35 @@ export function StudioEvidencePicker({
           {!locationId ? <p>{t.evidence.hint}</p> : null}
           {locationId && loading ? <p>{t.evidence.loading}</p> : null}
           {locationId && failed ? <p role="alert">{t.evidence.failed}</p> : null}
+          {ready && canUpload && (
+            <div className="studio-evidence-upload">
+              <input
+                ref={fileInput}
+                className="sr-only"
+                type="file"
+                accept={UPLOAD_ACCEPT}
+                aria-label={t.evidence.upload}
+                disabled={disabled || uploading}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  event.target.value = ""
+                  if (file) void upload(file)
+                }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => fileInput.current?.click()}
+                disabled={disabled || uploading}
+              >
+                <Upload aria-hidden="true" />
+                {uploading ? t.evidence.uploading : t.evidence.upload}
+              </Button>
+              <span className="studio-evidence-upload-hint">{t.evidence.uploadHint}</span>
+            </div>
+          )}
+          {uploadError && <p role="alert">{uploadError}</p>}
           {ready && documents.length === 0 && briefs.length === 0 ? <p>{t.evidence.empty}</p> : null}
           {ready && documents.length > 0 && (
             <section aria-label={t.evidence.documents}>
