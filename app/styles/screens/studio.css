@@ -1193,6 +1193,26 @@
   border-radius: 10px;
 }
 
+.studio-composer-voice {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  flex: 0 0 auto;
+  border-radius: 10px;
+}
+
+.studio-composer-voice svg {
+  width: 17px;
+  height: 17px;
+}
+
+.studio-composer-voice[data-listening="true"] {
+  border-color: var(--teal);
+  background: color-mix(in srgb, var(--teal) 10%, var(--paper));
+  color: var(--teal-dark);
+}
+
 .studio-composer-meta {
   display: flex;
   margin-top: 6px;
@@ -1214,6 +1234,16 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  border-radius: 8px;
+  background: var(--amber-soft);
+  color: #684115;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.studio-composer-voice-note {
+  margin: 8px 0 0;
+  padding: 8px 10px;
   border-radius: 8px;
   background: var(--amber-soft);
   color: #684115;
