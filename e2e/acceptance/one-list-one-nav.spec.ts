@@ -13,11 +13,11 @@ test("switching branches from an action leaves the old branch's editor and clear
 });
 
 for (const item of [
-  { locale: "en", labels: ["Today", "Tasks", "Results", "Business"], more: "Due dates and Fimmick drafts", due: "Due", drafts: "Fimmick drafts", other: "Other ways to write", waiting: "Something is waiting for you", noScan: "No scan yet", settings: "Settings" },
-  { locale: "zh-HK", labels: ["今日", "待辦", "成效", "店舖"], more: "到期日同 Fimmick 嘅稿", due: "到期", drafts: "Fimmick 嘅稿", other: "其他寫法", waiting: "有一件等你", noScan: "未掃過", settings: "設定" },
-  { locale: "zh-TW", labels: ["今天", "待辦", "成效", "店裡"], more: "到期日與 Fimmick 準備的稿", due: "到期", drafts: "Fimmick 準備的稿", other: "其他寫法", waiting: "有件事等你", noScan: "還沒掃過", settings: "設定" },
+  { locale: "en", labels: ["Today", "Tasks", "Results", "Business"], settings: "Settings", more: "Due dates and Fimmick drafts", due: "Due", drafts: "Fimmick drafts", other: "Other ways to write", waiting: "Something is waiting for you", noScan: "No scan yet", why: "Why this?" },
+  { locale: "zh-HK", labels: ["今日", "待辦", "成效", "店舖"], settings: "設定", more: "到期日同 Fimmick 嘅稿", due: "到期", drafts: "Fimmick 嘅稿", other: "其他寫法", waiting: "有一件等你", noScan: "未掃過", why: "點解係呢件？" },
+  { locale: "zh-TW", labels: ["今天", "待辦", "成效", "店裡"], settings: "設定", more: "到期日與 Fimmick 準備的稿", due: "到期", drafts: "Fimmick 準備的稿", other: "其他寫法", waiting: "有件事等你", noScan: "還沒掃過", why: "為什麼是這件？" },
 ] as const) {
-  test(`four mobile destinations, reachable settings and branch switching (${item.locale})`, async ({ page, merchant, environment }) => {
+  test(`four primary destinations plus Settings in the account menu (${item.locale})`, async ({ page, merchant, environment }) => {
     await signIn(page, environment, merchant);
     await page.setViewportSize({ width: 375, height: 812 });
     const base = `/${item.locale}/owner/${merchant.slug}`;
@@ -33,15 +33,17 @@ for (const item of [
     await nav.getByRole("link", { name: item.labels[3], exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/business\\?location=other$`));
     const rows = page.locator(".destination-list");
+    await expect(rows.locator("a strong")).toHaveCount(4);
+    // Settings lives in the account menu, not in a sixth destination.
+    await page.locator(".account-button:visible").click();
+    await page.getByRole("link", { name: item.settings, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/settings$`));
+    const settingsRows = page.locator(".destination-list");
     for (const suffix of ["team", "plan", "notifications", "activity"]) {
-      await expect(rows.locator(`a[href="${base}/settings/${suffix}?location=other"]`)).toHaveCount(0);
+      await expect(settingsRows.locator(`a[href="${base}/settings/${suffix}"]`)).toHaveCount(1);
     }
-    await expect(rows.locator(`a[href="/${item.locale}/owner/select-workspace"]`)).toHaveCount(0);
-    const menu = page.locator(".mobile-account .account-menu");
-    await menu.locator("summary.account-button").click();
-    await menu.getByRole("link", { name: item.settings, exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`${base}/settings`));
-    await expect(nav.getByRole("link", { name: item.labels[3], exact: true })).not.toHaveAttribute("aria-current", "page");
+    await expect(settingsRows.locator(`a[href="/${item.locale}/owner/select-workspace"]`)).toHaveCount(1);
+    await settingsRows.locator(`a[href="${base}/settings/team"]`).click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     // A one-branch shop has its name, with no redundant location control in the top bar.
     sql(environment.db, `delete from locations where id='${merchant.otherLocationId}';`);
@@ -93,7 +95,6 @@ for (const item of [
     await card.locator(".ws-card-head").click();
     await expect(page).toHaveURL(/location=primary/);
     await expect(page.locator(".home-v2-next")).toBeVisible();
-    await expect(page.locator("details.trust-disclosure")).toHaveCount(0);
-    await expect(page.locator(".brief-score-card")).toHaveCount(0);
+    await expect(page.locator("details.home-v2-why > summary")).toHaveText(item.why);
   });
 }

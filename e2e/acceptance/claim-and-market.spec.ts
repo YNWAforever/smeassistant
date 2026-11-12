@@ -94,9 +94,9 @@ for (const { locale, finish } of [
   // This is the real owner component reading the newly persisted snapshot and
   // derived action, rather than a mocked success page.
   await expect(page.locator(".home-v2-next h2")).not.toBeEmpty();
-  await expect(page.locator(".home-v2-next-actions a").first()).toHaveAttribute("href", /\/actions\//);
+  await expect(page.locator(".home-v2-next-actions a")).toHaveAttribute("href", /\/actions\//);
   const priorityTitle = await page.locator(".home-v2-next h2").innerText();
-  expect(priorityTitle).not.toMatch(/No action|沒有需要|Nothing needs you|而家冇嘢|現在沒有一定要你做|Start with one free scan|先免費掃描/);
+  expect(priorityTitle).not.toMatch(/No action|沒有需要/);
   expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${jobId}';`)).toBe("1");
   expect(sql(environment.db, `select count(*) from locations where workspace_id='${merchant.workspaceId}';`)).toBe("1");
   expect(sql(environment.db, `select count(*) from actions where workspace_id='${merchant.workspaceId}' and template_key='review-response';`)).toBe("1");

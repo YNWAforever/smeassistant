@@ -51,7 +51,10 @@ for (const answer of ["貼咗", "未貼", "遲啲"] as const) {
         sql(environment.db, `update audit_events set created_at=now()-interval '25 hours' where entity_id='${merchant.actionId}' and event='action.copy_follow_up_recorded';`);
         await page.reload();
         await expect(card).toBeVisible();
+        const recorded = page.waitForResponse(r => r.url().endsWith(`/api/actions/${merchant.actionId}/copy-follow-up`) && r.request().method() === "POST");
         await card.getByRole("button", { name: "未貼", exact: true }).click();
+        expect((await recorded).status()).toBe(200);
+        await expect.poll(() => sql(environment.db, `select payload->>'decision' from audit_events where entity_id='${merchant.actionId}' and event='action.copy_follow_up_recorded' order by id desc limit 1;`)).toBe("not_yet");
         await expect(card).toHaveCount(0);
       }
     }
@@ -95,7 +98,7 @@ test("inline facts stay on Edit for a saved draft and persist before generation"
   await expect(page).toHaveURL(new RegExp(`/actions/${merchant.actionId}`));
 });
 
-test("viewer keeps the four destination pages and sees Ask owner primaries; generation stays out of shared assistant", async ({ page, merchant, environment }) => {
+test("viewer keeps the four-tab pages and sees Ask owner primaries; generation stays out of shared assistant", async ({ page, merchant, environment }) => {
   await signIn(page, environment, merchant, "viewer");
   const base = `/zh-HK/owner/${merchant.slug}`;
   await page.goto(`${base}/actions/${merchant.actionId}`);
@@ -120,23 +123,23 @@ test("viewer keeps the four destination pages and sees Ask owner primaries; gene
 test("rescan controls only appear beside their copy for a paid permitted branch", async ({ page, merchant, environment }) => {
   await signIn(page, environment, merchant);
   const base = `/zh-HK/owner/${merchant.slug}`;
-  await page.goto(`${base}?location=primary`);
-  await expect(page.getByRole("button", { name: "重新掃描", exact: true })).toHaveCount(0);
-  await page.goto(`${base}/insights?location=primary`);
-  await expect(page.getByRole("button", { name: "重新掃描", exact: true })).toHaveCount(0);
+  for (const route of ["", "/insights"]) {
+    await page.goto(`${base}${route}?location=primary`);
+    await expect(page.getByRole("button", { name: "重新掃描", exact: true })).toHaveCount(0);
+  }
   const scanId = randomUUID();
   sql(environment.db, `insert into audit_jobs(id,share_slug,business_name,region,status,workspace_id,location_id,completed_at) values('${scanId}','phase3-${scanId}','Synthetic shop','hk','done','${merchant.workspaceId}','${merchant.locationId}',now());
     insert into scan_snapshots(job_id,workspace_id,location_id,market,observed_at,coverage,module_states,metrics) values('${scanId}','${merchant.workspaceId}','${merchant.locationId}','hk',now(),0,'{}','{}');
     update workspaces set tier='paid' where id='${merchant.workspaceId}';`);
-  await page.goto(`${base}?location=primary`);
-  await expect(page.getByRole("button", { name: "重新掃描", exact: true })).toHaveCount(0);
-  await expect(page.locator(".owner-results-tools")).toHaveCount(0);
-  await page.goto(`${base}/insights?location=primary`);
-  const tools = page.locator(".owner-results-tools");
-  await expect(tools).toContainText("想再睇一次舖頭？");
-  await expect(tools.getByRole("button", { name: "重新掃描", exact: true })).toBeVisible();
-  await page.goto(`${base}/insights?location=all`);
-  await expect(page.getByRole("button", { name: "重新掃描", exact: true })).toHaveCount(0);
+  // Rescan belongs to Results now; Today stays one next step with no second control.
+  for (const route of ["/insights"]) {
+    await page.goto(`${base}${route}?location=primary`);
+    const tools = page.locator(".owner-results-tools");
+    await expect(tools).toContainText("想再睇一次舖頭？");
+    await expect(tools.getByRole("button", { name: "重新掃描", exact: true })).toBeVisible();
+    await page.goto(`${base}${route}?location=all`);
+    await expect(page.getByRole("button", { name: "重新掃描", exact: true })).toHaveCount(0);
+  }
 });
 
 test("Today offers one draft recovery, while reference and error details stay under Why", async ({ page, merchant, environment }) => {

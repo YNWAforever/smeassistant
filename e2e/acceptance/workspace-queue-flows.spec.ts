@@ -18,8 +18,8 @@ test("owner reads and bulk-approves a review reply, and Today advances the first
   await signIn(page, environment, merchant, "owner");
 
   const faces = [
-    { locale: "en", review: "Review draft", copy: "Open task" },
-    { locale: "zh-HK", review: "睇稿", copy: "開始做" },
+    { locale: "en", review: "Review draft", open: "Open task" },
+    { locale: "zh-HK", review: "睇稿", open: "開始做" },
   ] as const;
   expect(sql(environment.db, `select count(*) from output_versions where workspace_id='${merchant.workspaceId}' and approval_state='approved';`)).toBe("0");
   for (const face of faces) {
@@ -51,7 +51,7 @@ test("owner reads and bulk-approves a review reply, and Today advances the first
   for (const face of faces) {
     await page.goto(`/${face.locale}/owner/${merchant.slug}?location=primary`);
     const coach = page.locator(".home-v2-next");
-    const copy = coach.getByRole("link", { name: face.copy, exact: true });
+    const copy = coach.getByRole("link", { name: face.open, exact: true });
     await expect(copy).toBeVisible();
     await expect(copy).toHaveAttribute("href", `/${face.locale}/owner/${merchant.slug}/actions/${merchant.actionId}?version=${version}&location=primary`);
     await expect(coach.getByRole("link", { name: face.review, exact: true })).toHaveCount(0);

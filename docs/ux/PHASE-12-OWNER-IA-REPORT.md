@@ -62,4 +62,12 @@ the task page; Kinnso only prepares a draft.
   `/conversation` and the redirecting `/conversation/studio`.
 - `node scripts/check-route-js.mjs` — every route under budget; Kinnso
   `/conversation` 251/300 KB, Today 231/300 KB.
+- Isolated browser acceptance
+  (`playwright.acceptance.config.ts`, owned Docker Postgres/Auth/mail/LLM):
+  **124 passed, 8 skipped** (the Studio specs require
+  `CONVERSATION_STUDIO_ENABLED=true`; the harness leaves it off), no failures.
+  The specs now assert the redesigned surface: Today's one next step and
+  `Why this?`, Business as the supporting-tools destination, Settings in the
+  account menu, the `Tasks` heading, and Kinnso links instead of the removed
+  owner assistant sheet.
 - Hosted browser acceptance is still to be run after deployment.
