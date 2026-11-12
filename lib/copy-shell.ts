@@ -1,7 +1,7 @@
 /**
  * Workspace shell and owner navigation strings, reached as copy[locale].shell.
- * Four destinations: Today, To do, Better?, Shop. Settings URLs remain under Shop.
- * The assistant is "Ask Kinnso"; Chinese locales use shop language.
+ * Five destinations: Today, Tasks, Kinnso, Results, Business. Settings is
+ * reached from the account menu, never a primary destination.
  */
 
 type Item = { title: string; body: string }
@@ -9,7 +9,8 @@ type Item = { title: string; body: string }
 export type ShellCopy = {
   brand: { name: string; tagline: string }
   skip: string
-  nav: { label: string; today: string; actions: string; insights: string; business: string; settings: string; urgent: string }
+  nav: { label: string; today: string; actions: string; kinnso: string; insights: string; business: string; settings: string; urgent: string }
+  accountMenu: { label: string }
   context: { owner: string; review: string; newAction: string }
   switcher: string
   allLocations: string
@@ -118,7 +119,8 @@ export type ShellCopy = {
 export const shellEn: ShellCopy = {
   brand: { name: "Kinnso OS", tagline: "by Fimmick" },
   skip: "Skip to content",
-  nav: { label: "Workspace", today: "Today", actions: "To do", insights: "Better?", business: "Shop", settings: "Settings", urgent: "{count} urgent" },
+  nav: { label: "Workspace", today: "Today", actions: "Tasks", kinnso: "Kinnso", insights: "Results", business: "Business", settings: "Settings", urgent: "{count} urgent" },
+  accountMenu: { label: "Account menu" },
   context: { owner: "Owner workspace", review: "Task", newAction: "New task" },
   switcher: "Switch workspace or location",
   allLocations: "All locations",
@@ -126,8 +128,8 @@ export const shellEn: ShellCopy = {
   notifications: { label: "Notifications", unread: "Notifications, {count} unread" },
   assistant: { name: "Ask Kinnso" },
   business: {
-    title: "Shop",
-    lead: "Your shop’s details, people and settings.",
+    title: "Business",
+    lead: "Your shop’s facts, locations, photos and connections.",
     profile: { title: "What we can say", body: "Your shop’s voice and confirmed facts" },
     locations: { title: "Locations", body: "Each location and its Google listing" },
     assets: { title: "Photos and menus", body: "Photos and menus, with usage rights" },
@@ -252,7 +254,8 @@ export const shellEn: ShellCopy = {
 export const shellZhHK: ShellCopy = {
   brand: { name: "Kinnso OS", tagline: "由 Fimmick 提供" },
   skip: "跳到主要內容",
-  nav: { label: "工作台", today: "今日", actions: "待辦", insights: "好啲？", business: "舖", settings: "設定", urgent: "{count} 項緊急" },
+  nav: { label: "工作台", today: "今日", actions: "待辦", kinnso: "Kinnso", insights: "成效", business: "店舖", settings: "設定", urgent: "{count} 項緊急" },
+  accountMenu: { label: "帳戶選單" },
   context: { owner: "店主工作台", review: "待辦", newAction: "新待辦" },
   switcher: "切換工作台或地點",
   allLocations: "所有地點",
@@ -260,8 +263,8 @@ export const shellZhHK: ShellCopy = {
   notifications: { label: "通知", unread: "通知，{count} 則未讀" },
   assistant: { name: "問 Kinnso" },
   business: {
-    title: "舖",
-    lead: "舖頭資料、同事同設定，都喺呢度。",
+    title: "店舖",
+    lead: "舖頭資料、地點、相片同連接，都喺呢度。",
     profile: { title: "可以講咩", body: "舖頭語氣同你確認過嘅資料" },
     locations: { title: "地點", body: "每個地點及其 Google 商家檔案" },
     assets: { title: "相片同餐牌", body: "上載相片同餐牌，揀邊啲可以用" },
@@ -386,7 +389,8 @@ export const shellZhHK: ShellCopy = {
 export const shellZhTW: ShellCopy = {
   brand: { name: "Kinnso OS", tagline: "由 Fimmick 提供" },
   skip: "跳到主要內容",
-  nav: { label: "工作台", today: "今天", actions: "待辦", insights: "有好一點？", business: "店裡", settings: "設定", urgent: "{count} 項緊急" },
+  nav: { label: "工作台", today: "今天", actions: "待辦", kinnso: "Kinnso", insights: "成效", business: "店裡", settings: "設定", urgent: "{count} 項緊急" },
+  accountMenu: { label: "帳戶選單" },
   context: { owner: "店家工作台", review: "待辦", newAction: "新待辦" },
   switcher: "切換工作台或據點",
   allLocations: "所有據點",

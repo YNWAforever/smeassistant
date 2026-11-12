@@ -67,11 +67,11 @@ export function visualStates(stack: VisualStack): VisualState[] {
     { name: "today", role: "owner", path: "~" },
     { name: "today-open", role: "owner", path: "~", setup: openAll },
     { name: "today-viewer", role: "viewer", path: "~" },
-    { name: "assistant", role: "owner", path: "~", setup: async (page) => {
-      await page.locator(".workspace-topbar .assistant-launcher").first().click();
-      // The sheet loads its suggested question groups in more than one request.
-      await page.waitForLoadState("networkidle");
-      await settle(page);
+    // Kinnso is a primary destination now; its context panel is on demand.
+    { name: "kinnso", role: "owner", path: "~/conversation?location=primary" },
+    { name: "kinnso-context", role: "owner", path: "~/conversation?location=primary", setup: async (page) => {
+      await page.locator(".studio-context-toggle").click();
+      await page.waitForTimeout(300);
     } },
     // Actions queue
     { name: "actions", role: "owner", path: "~/actions" },

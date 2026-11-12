@@ -77,7 +77,7 @@ export type WorkspaceHomeCopy = {
 
 export const workspaceHomeEn: WorkspaceHomeCopy = {
   home: {
-    continueInStudio: "Continue in Studio",
+    continueInStudio: "Ask Kinnso",
     growthWorkspace: "Growth plan",
     freePlan: "Free plan",
     comparable: "Comparable",
@@ -273,7 +273,7 @@ export const workspaceHomeEn: WorkspaceHomeCopy = {
 
 export const workspaceHomeZhHK: WorkspaceHomeCopy = {
   home: {
-    continueInStudio: "喺 Studio 繼續",
+    continueInStudio: "問 Kinnso",
     growthWorkspace: "增長方案",
     freePlan: "免費方案",
     comparable: "可以同上次比",
@@ -469,7 +469,7 @@ export const workspaceHomeZhHK: WorkspaceHomeCopy = {
 
 export const workspaceHomeZhTW: WorkspaceHomeCopy = {
   home: {
-    continueInStudio: "在 Studio 繼續",
+    continueInStudio: "問 Kinnso",
     growthWorkspace: "成長方案",
     freePlan: "免費方案",
     comparable: "可比較",

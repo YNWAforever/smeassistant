@@ -693,3 +693,129 @@ html:has(.mobile-bottom-nav) { scroll-padding-top: 72px; scroll-padding-bottom: 
   color: var(--ed-ink-3);
 }
 }
+
+/* ------------------------------------------------------------------------ */
+/* Owner IA v2: account menu, immersive Kinnso chat frame, five-item mobile  */
+/* ------------------------------------------------------------------------ */
+
+@layer screens {
+  .account-menu {
+    position: relative;
+  }
+  .account-menu > summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  .account-menu > summary::-webkit-details-marker {
+    display: none;
+  }
+  .account-menu[open] > summary {
+    background: var(--ed-peach-50);
+    border-radius: 12px;
+  }
+  .account-menu-popover {
+    position: absolute;
+    z-index: 80;
+    right: 0;
+    bottom: calc(100% + 8px);
+    left: 0;
+    display: grid;
+    min-width: 210px;
+    padding: 6px;
+    border: 1px solid var(--ed-line);
+    border-radius: 14px;
+    background: var(--paper);
+    box-shadow: var(--shadow-md);
+  }
+  .account-menu-popover a {
+    display: flex;
+    min-height: 40px;
+    padding: 9px 10px;
+    align-items: center;
+    gap: 9px;
+    border-radius: 9px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 620;
+  }
+  .account-menu-popover a:hover {
+    background: var(--ed-peach-50);
+  }
+  .account-menu-popover a svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+  .account-menu-popover small {
+    padding: 7px 10px 4px;
+    color: var(--soft);
+    font-size: 11px;
+  }
+
+  .workspace-topbar--chat {
+    justify-content: flex-end;
+    border-bottom-color: transparent;
+    background: var(--paper);
+  }
+  .workspace-topbar--chat .account-menu {
+    margin-left: 4px;
+  }
+  .workspace-topbar--chat .account-button {
+    min-height: 46px;
+    grid-template-columns: 30px 18px;
+    padding: 6px 8px;
+  }
+  .workspace-topbar--chat .account-button > span:nth-child(2) {
+    display: none;
+  }
+  .workspace-topbar--chat .account-menu-popover,
+  .workspace-topbar .account-menu-popover {
+    top: calc(100% + 8px);
+    right: 0;
+    bottom: auto;
+    left: auto;
+    width: 220px;
+  }
+  .workspace-topbar .account-button {
+    min-height: 40px;
+    padding: 4px;
+    grid-template-columns: 30px;
+    border-radius: 50%;
+  }
+  .workspace-topbar .account-button > span:nth-child(2),
+  .workspace-topbar .account-button > svg {
+    display: none;
+  }
+
+  .workspace-shell--chat {
+    display: block;
+    min-height: 100svh;
+    background: var(--paper);
+  }
+  .workspace-shell--chat .workspace-main {
+    min-height: 100svh;
+  }
+  .workspace-shell--chat .workspace-content--chat {
+    max-width: none;
+    padding: 0;
+  }
+
+  @media (max-width: 767px) {
+    .mobile-bottom-nav {
+      display: flex;
+    }
+    .mobile-bottom-nav a {
+      min-width: 0;
+      flex: 1;
+    }
+    .mobile-bottom-nav a[href$="/conversation"] {
+      color: var(--ed-orange-800);
+    }
+    .workspace-shell--chat .workspace-main {
+      padding-bottom: 0;
+    }
+    .workspace-shell--chat .workspace-content--chat {
+      padding-bottom: 0;
+    }
+  }
+}

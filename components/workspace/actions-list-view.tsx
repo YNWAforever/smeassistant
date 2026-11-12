@@ -3,7 +3,7 @@ import type { ReactNode } from "react"
 import { ArrowRight, Clock3, MapPin, ShieldCheck } from "lucide-react"
 
 import { EmptyState } from "@/components/kinnso/states"
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
+import { AskKinnsoLink } from "@/components/kinnso/ask-kinnso-link"
 import { FactType } from "@/components/product-ui"
 import { ActionsQueueFrame, type QueueView } from "@/components/workspace/actions-queue-frame"
 import { Badge } from "@/components/ui/badge"
@@ -125,7 +125,7 @@ export function ActionsListView({ locale, workspaceSlug, workspaceId, timezone, 
       location={location}
       counts={result.counts as Partial<Record<QueueView, number>>}
       tabHref={(key) => tabHref(base, filters, key)}
-      tools={<><ContextualAssistant locale={locale} surface="actions" triggerLabel={pc.comparePriorities} autoAsk="compare_priorities" mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} basePath={base} locationParam={location} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /></>}
+      tools={<><AskKinnsoLink locale={locale} workspaceSlug={workspaceSlug} location={location} label={pc.comparePriorities} ask="compare_priorities" /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /></>}
     >
       <div className={panel ? "actions-split" : undefined}>
         <div className="actions-split-list">

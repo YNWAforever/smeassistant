@@ -9,13 +9,10 @@ import {
   ChevronDown,
   FileClock,
   Home,
-  FileText,
-  LayoutTemplate,
   MessagesSquare,
   MoreHorizontal,
-  Plus,
-  Plug,
   Search,
+  Settings,
 } from "lucide-react"
 import { useEffect, type ReactNode } from "react"
 
@@ -38,14 +35,10 @@ import {
 import { copy, normaliseLocale, type PrototypeLocale } from "@/lib/copy"
 import { interpolate } from "@/lib/share"
 import { accountInitials, resolveLocationSlug, usagePercent } from "@/lib/workspace/shell"
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
 import { ThemeMenu, WorkspaceTheme } from "@/components/theme/workspace-theme"
-import { ConversationSwitch } from "@/components/workspace/conversation-switch"
-import { conversationDesignCopy } from "@/lib/copy-conversation-design"
-import { ConversationNavigationProvider, openConversationTool, useConversationNavigation } from "@/components/workspace/conversation-navigation"
+import { ConversationNavigationProvider } from "@/components/workspace/conversation-navigation"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { useFocusClearOfBars } from "@/hooks/use-focus-clear-of-bars"
-import type { AssistantSurface } from "@/lib/pocket-assistant/contracts"
 import { DemoBadge, EnvironmentBar, LocaleSelect, type ShellWorkspace } from "@/components/product-ui"
 
 /**
@@ -53,16 +46,19 @@ import { DemoBadge, EnvironmentBar, LocaleSelect, type ShellWorkspace } from "@/
  * of components/product-ui.tsx so public pages, which import that module for
  * their own chrome, do not download the sidebar and tooltip code.
  *
- * Four destinations: Today, To do, Better?, Shop. Shop owns existing Business
- * and Settings routes, so bookmarked settings pages keep the same highlight.
+ * Five owner destinations: Today, Tasks, Kinnso, Results, Business. Settings is
+ * reached from the account menu and is deliberately not a primary destination.
+ * The Kinnso chat route is immersive: the global sidebar and mobile nav step
+ * aside so the Studio owns its own history rail and header.
  */
-type DestinationKey = "today" | "actions" | "insights" | "business"
+type DestinationKey = "today" | "actions" | "kinnso" | "insights" | "business"
 
 const DESTINATIONS: ReadonlyArray<{ key: DestinationKey; icon: typeof Home; suffix: string; owns: string[] }> = [
   { key: "today", icon: Home, suffix: "", owns: [] },
   { key: "actions", icon: FileClock, suffix: "/actions", owns: ["/actions", "/packs"] },
+  { key: "kinnso", icon: MessagesSquare, suffix: "/conversation", owns: ["/conversation"] },
   { key: "insights", icon: BarChart3, suffix: "/insights", owns: ["/insights"] },
-  { key: "business", icon: Building2, suffix: "/business", owns: ["/business", "/settings"] },
+  { key: "business", icon: Building2, suffix: "/business", owns: ["/business"] },
 ]
 
 /** Which destination a workspace path belongs to; Today owns the workspace root. */
@@ -74,12 +70,28 @@ export function destinationFor(pathname: string, base: string): DestinationKey |
   return null
 }
 
+function AccountMenu({ locale, workspace, base }: { locale: PrototypeLocale; workspace: ShellWorkspace; base: string }) {
+  const t = copy[locale].shell
+  return (
+    <details className="account-menu">
+      <summary className="account-button" aria-label={t.accountMenu.label} title={workspace.account.email}>
+        <span className="account-avatar">{accountInitials(workspace.account.name)}</span>
+        <span><strong>{workspace.account.name}</strong><small>{workspace.account.roleLabel}</small></span>
+        <MoreHorizontal aria-hidden="true" />
+      </summary>
+      <div className="account-menu-popover" role="group" aria-label={t.accountMenu.label}>
+        <Link href={`${base}/settings`}><Settings aria-hidden="true" /><span>{t.nav.settings}</span></Link>
+        <Link href={`/${locale}/owner/select-workspace`}><ChevronDown aria-hidden="true" /><span>{t.settings.account.title}</span></Link>
+        <small>{workspace.account.roleLabel}</small>
+      </div>
+    </details>
+  )
+}
+
 export function WorkspaceShell({ locale, workspace, children }: { locale: PrototypeLocale; workspace: ShellWorkspace; children: ReactNode }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const t = copy[locale].shell
-  const d = conversationDesignCopy[locale]
-  const conversationNavigation = useConversationNavigation()
   useFocusClearOfBars(".workspace-topbar", ".mobile-bottom-nav")
   const base = `/${locale}/owner/${workspace.slug}`
   const location = resolveLocationSlug(searchParams.get("location"), workspace.locations, workspace.defaultLocationSlug)
@@ -90,27 +102,29 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
   const current = destinationFor(pathname, base)
   const isNewAction = pathname === `${base}/actions/new`
   const isActionDetail = !isNewAction && pathname.startsWith(`${base}/actions/`)
-  const isConversation = workspace.conversationEnabled && (pathname === `${base}/conversation` || pathname.startsWith(`${base}/conversation/`))
-  const workspaceSection = isConversation ? d.discussion : isNewAction ? t.context.newAction : isActionDetail ? t.context.review : t.nav[current ?? "today"]
-  const assistantSurface: AssistantSurface = isNewAction
-    ? "create"
-    : isActionDetail
-      ? "action"
-      : current === "actions"
-        ? "actions"
-        : current === "insights"
-          ? "insights"
-          : pathname.startsWith(`${base}/business/assets`)
-            ? "assets"
-            : "home"
+  // The Studio owns a full-height, chrome-light surface. Only the exact chat
+  // route is immersive; /conversation/notes stays inside the normal shell.
+  const isChat = workspace.conversationEnabled && pathname === `${base}/conversation`
+  const isConversation = workspace.conversationEnabled && pathname.startsWith(`${base}/conversation`)
+  const isSettings = pathname.startsWith(`${base}/settings`)
+  const destinations = DESTINATIONS.filter((destination) => destination.key !== "kinnso" || workspace.conversationEnabled)
+  const workspaceSection = isConversation
+    ? t.nav.kinnso
+    : isSettings
+      ? t.nav.settings
+      : isNewAction
+        ? t.context.newAction
+        : isActionDetail
+          ? t.context.review
+          : t.nav[current ?? "today"]
   const notificationsLabel = workspace.unreadNotifications > 0
     ? interpolate(t.notifications.unread, { count: workspace.unreadNotifications })
     : t.notifications.label
 
   return (
-    <SidebarProvider className={`workspace-shell${isConversation ? " workspace-shell--conversation" : ""}`}>
+    <SidebarProvider className={`workspace-shell${isChat ? " workspace-shell--chat" : ""}${isConversation && !isChat ? " workspace-shell--conversation" : ""}`}>
       <a className="skip-link" href="#main-content">{t.skip}</a>
-      <Sidebar collapsible="none" className="workspace-sidebar hidden md:flex">
+      {!isChat && <Sidebar collapsible="none" className="workspace-sidebar hidden md:flex">
         <SidebarHeader className="workspace-sidebar-header">
           {/* The plain workspace URL (no ?location=): the home link signed-in tests and bookmarks rely on. */}
           <Link className="brand-lockup brand-lockup-inverse" href={base}>
@@ -122,17 +136,13 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
             <span><strong>{workspace.name}</strong><small>{locationName}</small></span>
             <ChevronDown aria-hidden="true" />
           </Link>
-          {isConversation && <>
-            <Link className="conversation-sidebar-new" href={scopedHref(`${base}/conversation`)}><Plus aria-hidden="true" />{d.newDiscussion}</Link>
-            <Link className="conversation-sidebar-active" href={scopedHref(`${base}/conversation`)} aria-current="page"><MessagesSquare aria-hidden="true" />{d.discussion}</Link>
-          </>}
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
             <SidebarGroupLabel>{t.nav.label}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {DESTINATIONS.map(({ key, icon: Icon, suffix }) => {
+                {destinations.map(({ key, icon: Icon, suffix }) => {
                   const active = current === key
                   const badge = key === "actions" ? actionsBadge : undefined
                   return (
@@ -147,74 +157,43 @@ export function WorkspaceShell({ locale, workspace, children }: { locale: Protot
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-          {isConversation && <>
-            <SidebarGroup><SidebarGroupLabel>{d.together}</SidebarGroupLabel><SidebarGroupContent><SidebarMenu>
-              {([
-                { label: d.documents, icon: FileText, target: "conversation-documents" },
-                { label: d.templateNav, icon: LayoutTemplate, target: "conversation-templates" },
-                { label: d.sources, icon: Plug, target: "conversation-sources" },
-              ]).map(({ label, icon: Icon, target }) => <SidebarMenuItem key={target}>
-                <SidebarMenuButton asChild>{target === "conversation-templates"
-                  ? <Link href={`${scopedHref(`${base}/conversation`)}#${target}`}><Icon /><span>{label}</span></Link>
-                  : <a href={`#${target}`} onClick={() => openConversationTool(target)}><Icon /><span>{label}</span></a>}
-                </SidebarMenuButton>
-              </SidebarMenuItem>)}
-            </SidebarMenu></SidebarGroupContent></SidebarGroup>
-            <SidebarGroup><SidebarGroupLabel>{d.recent}</SidebarGroupLabel><SidebarGroupContent><ul className="conversation-sidebar-recent">
-              {conversationNavigation?.threads.map(thread => <li key={thread.id}><Link href={`${base}/conversation?location=${encodeURIComponent(location)}&thread=${encodeURIComponent(thread.id)}`}><span>{thread.title}</span><small>{d.local}</small></Link></li>)}
-            </ul><a className="conversation-sidebar-all" href="#conversation-recent">{d.recent}</a></SidebarGroupContent></SidebarGroup>
-          </>}
         </SidebarContent>
         <SidebarFooter className="workspace-sidebar-footer">
-          {isConversation ? <details className="usage-mini conversation-usage">
-            <summary><span>{t.usage.label}</span><strong>{workspace.usage.approvedDeliveries} / {workspace.usage.allowance === null ? "∞" : workspace.usage.allowance}</strong></summary>
-            <small>{t.usage.note}</small>
-          </details> : <div className="usage-mini">
+          <div className="usage-mini">
             <div><span>{t.usage.label}</span><strong>{workspace.usage.approvedDeliveries} / {workspace.usage.allowance === null ? "∞" : workspace.usage.allowance}</strong></div>
             {usageShare !== null && <div className="usage-track"><span style={{ width: `${usageShare}%` }} /></div>}
             <small>{t.usage.note}</small>
-          </div>}
-          <Link className="account-button" href={`/${locale}/owner/select-workspace`} title={workspace.account.email}>
-            <span className="account-avatar">{accountInitials(workspace.account.name)}</span>
-            <span><strong>{workspace.account.name}</strong><small>{workspace.account.roleLabel}</small></span>
-            <MoreHorizontal aria-hidden="true" />
-          </Link>
+          </div>
+          <AccountMenu locale={locale} workspace={workspace} base={base} />
         </SidebarFooter>
-      </Sidebar>
+      </Sidebar>}
       <SidebarInset className="workspace-main">
-        <header className="workspace-topbar">
-          <div className="workspace-mobile-brand md:hidden">
+        <header className={`workspace-topbar${isChat ? " workspace-topbar--chat" : ""}`}>
+          {!isChat && <div className="workspace-mobile-brand md:hidden">
             <span className="brand-mark" aria-hidden="true"><Search /></span>
             <span><strong>{workspace.name}</strong>{workspace.locations.length > 1 ? <LocationSelect locale={locale} value={location} locations={workspace.locations} className="mobile-location-select" /> : <small>{locationName}</small>}</span>
-          </div>
-          <div className="workspace-topbar-context hidden md:flex" aria-label={`${t.context.owner}: ${workspaceSection}`}>
+          </div>}
+          {!isChat && <div className="workspace-topbar-context hidden md:flex" aria-label={`${t.context.owner}: ${workspaceSection}`}>
             <span>{t.context.owner}</span>
             <strong>{workspaceSection}</strong>
-          </div>
+          </div>}
           <div className="workspace-topbar-spacer" />
-          {workspace.conversationEnabled && (
-            <Button asChild variant="ghost" size="sm" className="conversation-topbar-link">
-              <Link href={`${base}/conversation?location=${encodeURIComponent(location)}`}>
-                <MessagesSquare aria-hidden="true" />
-                <span>{d.discussion}</span>
-              </Link>
-            </Button>
-          )}
-          <ContextualAssistant locale={locale} surface={assistantSurface} triggerLabel={t.assistant.name} mode={workspace.assistant ? "live" : "demo"} context={workspace.assistant} basePath={workspace.assistant ? base : undefined} locationParam={location} />
           <Button asChild variant="ghost" size="icon" className="notification-button">
             <Link href={scopedHref(`${base}/settings/notifications`)} aria-label={notificationsLabel}><Bell />{workspace.unreadNotifications > 0 && <span className="notification-dot" />}</Link>
           </Button>
           <ThemeMenu locale={locale} />
           <LocaleSelect locale={locale} />
           {workspace.demo && <DemoBadge locale={locale} />}
+          {!isChat && <div className="mobile-account md:hidden"><AccountMenu locale={locale} workspace={workspace} base={base} /></div>}
+          {isChat && <AccountMenu locale={locale} workspace={workspace} base={base} />}
         </header>
-        <main className="workspace-content" id="main-content" tabIndex={-1}>{workspace.conversationEnabled && (pathname === base || isConversation) && <ConversationSwitch locale={locale} base={base} location={location} active={!!isConversation} />}{children}</main>
-        <nav className="mobile-bottom-nav md:hidden" aria-label={t.nav.label}>
-          {DESTINATIONS.map(({ key, icon: Icon, suffix }) => {
+        <main className={`workspace-content${isChat ? " workspace-content--chat" : ""}`} id="main-content" tabIndex={-1}>{children}</main>
+        {!isChat && <nav className="mobile-bottom-nav md:hidden" aria-label={t.nav.label}>
+          {destinations.map(({ key, icon: Icon, suffix }) => {
             const active = current === key
             return <Link key={key} href={scopedHref(`${base}${suffix}`)} aria-current={active ? "page" : undefined} className={active ? "is-active" : ""}><Icon /><span>{t.nav[key]}</span></Link>
           })}
-        </nav>
+        </nav>}
       </SidebarInset>
     </SidebarProvider>
   )

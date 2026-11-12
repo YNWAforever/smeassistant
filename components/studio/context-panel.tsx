@@ -48,7 +48,7 @@ export function StudioContextPanel({
 
   const scan = summary.latestScan
   return (
-    <aside className="studio-context" data-open={open ? "true" : "false"} aria-label={t.context.title}>
+    <aside className="studio-context" data-open={open ? "true" : "false"} aria-label={t.context.title} role={open ? "dialog" : undefined} aria-modal={open ? true : undefined}>
       <header className="studio-context-head">
         <h2>{t.context.title}</h2>
         <button ref={closeButton} type="button" className="studio-icon-button" onClick={onClose} aria-label={t.header.hideContext} title={t.header.hideContext}>

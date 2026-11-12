@@ -1,26 +1,21 @@
 import type { Metadata } from "next";
 
 import { RoleNotice } from "@/components/states/role-notice";
-import { HomeBriefView } from "@/components/workspace/home-brief";
+import { GettingStarted } from "@/components/workspace/getting-started";
+import { HomeFollowUps } from "@/components/workspace/home/home-follow-ups";
+import { HomeView } from "@/components/workspace/home/home-view";
 import { NeedsAttentionCard } from "@/components/workspace/needs-attention-card";
 import { filterToLocation } from "@/lib/ops/owner-actions";
 import { currentScanConsentPolicyVersion } from "@/lib/scan/consent";
-import { inScopeFor, loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
+import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 import { loadWorkspaceProblems } from "@/lib/workspace/problems";
 import { getHomeBrief } from "@/lib/workspace/queries-pages";
 import { loadGettingStarted } from "@/lib/workspace/getting-started";
-import { GettingStarted } from "@/components/workspace/getting-started";
-import { ShopPhotoStrip, TodayProgress } from "@/components/workspace/today-progress";
-import { loadTodayProgress } from "@/lib/workspace/progress-loader";
-import { stockPhotosEnabled } from "@/lib/stock-photos";
-import { conversationStudioEnabled } from "@/lib/studio/flag";
-import { conversationHomeEnabled } from "@/lib/workspace/conversation-flag";
-import { withLocation } from "@/lib/workspace/format";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(props: OwnerPageProps): Promise<Metadata> {
-  return ownerPageMetadata(props, { en: "Today", zh: "今日焦點" });
+  return ownerPageMetadata(props, { en: "Today", zh: "今日" });
 }
 
 /**
@@ -41,36 +36,18 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
     loadGettingStarted(page.ctx, page.membership, page.locale),
   ]);
   const locationId = page.locationSlug === "all" ? "all" : page.ctx.locations.find((l) => l.slug === page.locationSlug)?.id ?? "all";
-  // Effort only: tasks done this month against what is still open, in this scope.
-  const today = await loadTodayProgress(page.ctx, { monthDone: brief.month.completed, open: brief.openActionCount ?? brief.openActions.length, locationId });
-  const base = `/${page.locale}/owner/${page.workspaceSlug}`;
-  const studioHref = conversationStudioEnabled() && conversationHomeEnabled()
-    ? withLocation(`${base}/conversation/studio`, page.locationSlug)
-    : undefined;
   const forbidden = page.query.forbidden === "1";
   return (
     <>
       {forbidden && <RoleNotice kind="forbidden" locale={page.locale} />}
-      <HomeBriefView
+      <HomeView
         locale={page.locale}
         workspaceSlug={page.workspaceSlug}
-        workspaceId={page.ctx.workspace.id}
-        workspaceName={page.ctx.workspace.name}
-        tier={page.ctx.workspace.tier}
-        // Resolved on the server: REPORT_CONSENT_POLICY_VERSION is not
-        // NEXT_PUBLIC_, so a client-side call silently returns the default and
-        // any deployment carrying an override would 409 on every rescan.
-        consentPolicyVersion={currentScanConsentPolicyVersion()}
         timezone={page.ctx.workspace.timezone}
         locations={page.locations}
         brief={brief}
-        demo={page.ctx.workspace.isDemo}
         role={page.membership.role}
-        rescanInScope={inScopeFor(page.membership, brief.location?.id ?? null)}
-        studioHref={studioHref}
-        gettingStarted={gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
-        progressPanel={today.progress && <TodayProgress locale={page.locale} progress={today.progress} moduleStates={brief.snapshot?.moduleStates ?? null} base={base} location={page.locationSlug} canAct={page.membership.role !== "viewer"} />}
-        photoStrip={today.progress && <ShopPhotoStrip locale={page.locale} workspaceId={page.ctx.workspace.id} photos={today.photos} base={base} location={page.locationSlug} canUpload={page.membership.role !== "viewer"} showStock={stockPhotosEnabled()} />}
+        followUps={<HomeFollowUps locale={page.locale} workspaceSlug={page.workspaceSlug} workspaceId={page.ctx.workspace.id} location={page.locationSlug} brief={brief} role={page.membership.role} />}
         problems={problems && (
           <NeedsAttentionCard
             locale={page.locale}
@@ -82,6 +59,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
             problems={filterToLocation(problems, locationId)}
           />
         )}
+        gettingStarted={gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
       />
     </>
   );

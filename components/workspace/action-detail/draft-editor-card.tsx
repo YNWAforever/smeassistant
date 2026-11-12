@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
+import { AskKinnsoLink } from "@/components/kinnso/ask-kinnso-link"
 import { FactType, SectionCard } from "@/components/product-ui"
 import { copy } from "@/lib/copy"
 import { resolveText } from "@/lib/domain"
@@ -24,11 +24,11 @@ import type { ActionEditor } from "@/components/workspace/action-detail/use-acti
 export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
   const {
     ac, action, altText, approvedAssets, base, businessContext, busy, canEdit, canGenerate,
-    checklistCopy, checklistSteps, comparing, conflict, content, createAssistantVersion, dirty, generate, guardrailBadge,
+    checklistCopy, checklistSteps, comparing, conflict, content, dirty, generate, guardrailBadge,
     guardrailFlags, lastRunError, loadLatest, locale, location, needsRunReconciliation, offer, offersCopy,
     pendingSelect, resolveConflict, router, saveBeforeGenerationMessage, saveDraft, saveFailed,
     selectedVersion, setAltText, setContent, showInputForm, social, timezone, verified, verifiedOn, versionId, versionName,
-    versions, workspaceId
+    versions, workspaceSlug
   } = ed
   const step = editorStep(ed)
   // Once there is a draft, the text comes first and the background folds below it;
@@ -103,7 +103,7 @@ export function DraftEditorCard({ ed }: { ed: ActionEditor }) {
       {needsRunReconciliation && <div className="conflict-state" role="alert"><CircleAlert /><div><strong>{ac.editor.reconcileTitle}</strong><p>{ac.editor.reconcileBody}</p><Button variant="outline" onClick={() => window.location.reload()}>{ac.editor.reconcileReload}</Button></div></div>}
       {lastRunError && <p className="limitation-note" role="alert"><CircleAlert /> {ac.editor.lastRunFailed}{runErrorLabel(locale, lastRunError)}</p>}
       {pendingSelect && <div className="draft-editor-actions" role="status"><span>{t(locale, "editor.waitingForVersion")}</span><Button variant="outline" onClick={() => router.refresh()}>{t(locale, "editor.retryVersion")}</Button></div>}
-      {step === 0 && <>{ed.effectiveRole === "viewer" ? <Button disabled>{copy[locale].shell.access.askOwnerAction}</Button> : <div className="draft-editor-actions"><ContextualAssistant locale={locale} surface="action" allowGeneration triggerLabel={ac.editor.reviseWithOperator} mode="live" context={{ workspaceId, locationId: action.location.id ?? undefined, actionId: action.id, versionId: selectedVersion?.id }} basePath={base} locationParam={location} reviewDraft={action.templateKey === "review-response"} onCreateVersion={dirty ? undefined : createAssistantVersion} disabled={!canEdit || dirty} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? ac.editor.regenerate : ac.editor.generate}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {ac.editor.saveManual}</Button></div>}
+      {step === 0 && <>{ed.effectiveRole === "viewer" ? <Button disabled>{copy[locale].shell.access.askOwnerAction}</Button> : <div className="draft-editor-actions"><AskKinnsoLink locale={locale} workspaceSlug={workspaceSlug} location={location} actionId={action.id} versionId={selectedVersion?.id} ask="revise_action" label={ac.editor.reviseWithOperator} disabled={!canEdit || dirty} /><Button variant="outline" onClick={() => void generate()} disabled={!canGenerate || showInputForm}>{busy === "run" ? <LoaderCircle className="animate-spin" /> : <WandSparkles />} {selectedVersion ? ac.editor.regenerate : ac.editor.generate}</Button><Button onClick={() => void saveDraft()} disabled={!canEdit || !dirty}>{busy === "save" ? <LoaderCircle className="animate-spin" /> : <Save />} {ac.editor.saveManual}</Button></div>}
       {selectedVersion && ed.editingVersionId === selectedVersion.id && <Button variant="ghost" disabled={dirty || !canEdit} onClick={() => ed.setEditingVersionId(null)}>{locale === "zh-HK" ? "睇返儲存嗰版" : "Review saved text"}</Button>}
       <p role="status" aria-live="polite">{busy === "save" ? ac.editor.saving : pendingSelect ? t(locale, "editor.waitingForVersion") : saveFailed ? ac.editor.saveFailed : dirty ? ac.editor.unsaved : selectedVersion ? fill(ac.editor.saved, { version: versionName }) : ac.editor.noSavedDraft}</p>
       {comparing && <section className="field-stack" aria-label={ac.editor.compareAria}>

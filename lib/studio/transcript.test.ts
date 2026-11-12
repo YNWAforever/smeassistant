@@ -32,7 +32,7 @@ describe("studioTranscriptMarkdown", () => {
     expect(markdown).toContain("# Review replies first");
     expect(markdown).toContain("Drafts stay drafts");
     expect(markdown).toContain("## You");
-    expect(markdown).toContain("## Studio");
+    expect(markdown).toContain("## Kinnso");
     expect(markdown).toContain("What should I do first?");
     expect(markdown).toContain("Start with the unanswered reviews.");
     expect(markdown).toContain("Shop facts.pdf");

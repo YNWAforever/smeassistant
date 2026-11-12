@@ -126,14 +126,14 @@ it("shows persistent Studio discussions and the continue bridge when the Studio 
   expect(await screen.findByLabelText("Your note")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: /Persistent idea/ })).toHaveAttribute(
     "href",
-    "/en/owner/shop/conversation/studio?chat=c1&location=branch",
+    "/en/owner/shop/conversation?chat=c1&location=branch",
   );
-  expect(screen.getByRole("link", { name: "Discuss this action" })).toHaveAttribute(
+  expect(screen.getByRole("link", { name: "Discuss with Kinnso" })).toHaveAttribute(
     "href",
-    "/en/owner/shop/conversation/studio?action=a1&location=branch",
+    "/en/owner/shop/conversation?action=a1&location=branch",
   );
   await addNote("Bridge this note");
-  expect(screen.getByRole("button", { name: "Continue in Studio" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Continue with Kinnso" })).toBeInTheDocument();
 });
 
 it("imports all local threads and links each one to its persistent copy", async () => {
@@ -154,13 +154,13 @@ it("imports all local threads and links each one to its persistent copy", async 
   fireEvent.click(screen.getByRole("button", { name: "New thread" }));
   await addNote("Second note");
 
-  fireEvent.click(screen.getByRole("button", { name: /Import all to Studio/ }));
-  expect(await screen.findByText("Local threads are now in Studio.")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /Import all to Kinnso/ }));
+  expect(await screen.findByText("Local threads are now in Kinnso.")).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledWith("/api/studio/conversations/import-bulk", expect.objectContaining({ method: "POST" }));
   expect(screen.getByRole("button", { name: "Second note" })).toHaveTextContent("Second note");
   expect(screen.getByRole("link", { name: /Open persistent copy/ })).toHaveAttribute(
     "href",
-    "/en/owner/shop/conversation/studio?chat=c1&location=branch",
+    "/en/owner/shop/conversation?chat=c1&location=branch",
   );
 });
 
