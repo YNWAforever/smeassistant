@@ -18,13 +18,13 @@ test("owner reads and bulk-approves a review reply, and Today advances the first
   await signIn(page, environment, merchant, "owner");
 
   const faces = [
-    { locale: "en", review: "Check the draft", copy: "Open and copy" },
-    { locale: "zh-HK", review: "睇草稿再確認", copy: "打開再複製" },
+    { locale: "en", review: "Review draft", copy: "Open task" },
+    { locale: "zh-HK", review: "睇稿", copy: "開始做" },
   ] as const;
   expect(sql(environment.db, `select count(*) from output_versions where workspace_id='${merchant.workspaceId}' and approval_state='approved';`)).toBe("0");
   for (const face of faces) {
     await page.goto(`/${face.locale}/owner/${merchant.slug}?location=primary`);
-    const review = page.locator(".brief-priority-card").getByRole("link", { name: face.review, exact: true });
+    const review = page.locator(".home-v2-next").getByRole("link", { name: face.review, exact: true });
     await expect(review).toBeVisible();
     await expect(review).toHaveAttribute("href", `/${face.locale}/owner/${merchant.slug}/actions/${merchant.actionId}?version=${version}&location=primary`);
     await expect(page.locator(".getting-started")).toHaveCount(0);
@@ -50,7 +50,7 @@ test("owner reads and bulk-approves a review reply, and Today advances the first
   // completed setup tick that Phase 1 deliberately removed from task-bearing homes.
   for (const face of faces) {
     await page.goto(`/${face.locale}/owner/${merchant.slug}?location=primary`);
-    const coach = page.locator(".brief-priority-card");
+    const coach = page.locator(".home-v2-next");
     const copy = coach.getByRole("link", { name: face.copy, exact: true });
     await expect(copy).toBeVisible();
     await expect(copy).toHaveAttribute("href", `/${face.locale}/owner/${merchant.slug}/actions/${merchant.actionId}?version=${version}&location=primary`);
@@ -63,7 +63,7 @@ test("a viewer is offered no bulk approval and the approve route refuses them", 
   const version = seedDraft(environment.db, merchant.workspaceId, merchant.actionId);
   await signIn(page, environment, merchant, "viewer");
   await page.goto(`/en/owner/${merchant.slug}/actions`);
-  await expect(page.getByRole("heading", { level: 1, name: "To do" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Tasks" })).toBeVisible();
   await expect(page.locator(".bulk-approve")).toHaveCount(0);
   expect((await page.request.post(`/api/versions/${version}/approve`, { data: {} })).status()).toBe(403);
   expect(sql(environment.db, `select approval_state from output_versions where id='${version}';`)).toBe("draft");

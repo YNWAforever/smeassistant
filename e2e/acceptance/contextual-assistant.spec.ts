@@ -1,19 +1,10 @@
-import type { Locator } from "@playwright/test";
 import { test, expect, signIn } from "../../test/e2e/fixtures";
 import { sql } from "../../test/e2e/environment";
-
-/** A click made before the page hydrates is dropped, so repeat it until the thing it should open is there. Only for controls that open things. */
-async function clickUntil(target: Locator, opened: Locator) {
-  await expect(async () => {
-    await target.click({ timeout: 3000 });
-    await expect(opened).toBeVisible({ timeout: 3000 });
-  }).toPass({ timeout: 60000 });
-}
 
 // The assistant never approves, exports or publishes; none of these routes may be called while the owner asks and follows the link.
 const AUTHORITY_ROUTE = /\/api\/versions\/[^/]+\/(approve|request-changes|reject|export)|\/api\/(.*\/)?publish/;
 
-test("an owner with a waiting draft continues from the assistant to the exact version", async ({ page, merchant, environment }) => {
+test("an owner with a waiting draft gets a Kinnso deep-link to the exact version", async ({ page, merchant, environment }) => {
   const db = environment.db;
   const ws = merchant.workspaceId;
   const usage = () => sql(db, `select coalesce(sum(approved_deliveries),0) from workspace_usage where workspace_id='${ws}';`);
@@ -38,49 +29,31 @@ test("an owner with a waiting draft continues from the assistant to the exact ve
   };
   expect(usage()).toBe("0");
 
-  // Record every request from here on: the sheet steps must never reach an approve, export or publish route.
+  // Record every request from here on: the Kinnso handoff must never reach an approve, export or publish route.
   const requested: string[] = [];
   page.on("request", (request) => { requested.push(`${request.method()} ${new URL(request.url()).pathname}`); });
 
-  // 2. Home: open the sheet from "Ask why this comes first". The trigger is the
-  // question, so opening asks it (explain_priority, a fixed question) by itself.
+  // 2. Today no longer opens an assistant sheet. The ask entry is a Kinnso
+  // deep-link (href only: CI acceptance does not enable the conversation surface).
   await page.goto(`/en/owner/${merchant.slug}`);
-  const evidence = page.locator("details.owner-priority-evidence");
-  await expect(evidence).not.toHaveAttribute("open");
-  await evidence.locator("summary").click();
-  const isAssistantRun = (response: { url(): string; request(): { method(): string; postDataJSON(): unknown } }, origin: string) =>
-    response.url().includes("/api/assistant/run") && response.request().method() === "POST"
-    && (response.request().postDataJSON() as { origin?: string } | null)?.origin === origin;
-  const suggestionsResponse = page.waitForResponse((response) => response.url().includes("/api/assistant/suggestions") && response.status() === 200);
-  const autoAsk = page.waitForResponse((response) => isAssistantRun(response, "fixed"));
-  await clickUntil(page.getByRole("button", { name: "Ask why this comes first" }), page.getByRole("dialog"));
-  await suggestionsResponse;
-  const autoAskResponse = await autoAsk;
-  expect(autoAskResponse.status()).toBe(200);
-  expect(autoAskResponse.request().postDataJSON()).toMatchObject({ intentId: "explain_priority", origin: "fixed" });
+  await expect(page.locator("details.owner-priority-evidence")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Ask why this comes first" })).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const ask = page.locator(".home-v2-ask");
+  await expect(ask).toBeVisible();
+  await expect(ask.getByRole("link").first()).toHaveAttribute("href", new RegExp(`/en/owner/${merchant.slug}/conversation`));
 
-  // 3. "Needs you now" and "Where do I continue?" are offered; ask it.
-  const sheet = page.getByRole("dialog");
-  await expect(sheet.getByText("Needs you now", { exact: true })).toBeVisible();
-  const askButton = sheet.getByRole("button", { name: "Where do I continue?" });
-  await expect(askButton).toBeVisible();
-  const run = page.waitForResponse((response) => isAssistantRun(response, "suggested"));
-  await askButton.click();
-  const runResponse = await run;
-  expect(runResponse.status()).toBe(200);
-  expect(runResponse.request().postDataJSON()).toMatchObject({ origin: "suggested" });
-
-  // 4. The answer names v1, and the next step links to that exact version.
-  await expect(sheet.locator(".assistant-answer-card")).toContainText("v1");
-  const link = sheet.getByRole("link", { name: "Continue here" });
+  // 3–4. On the action, the revise control is an Ask Kinnso link that carries
+  // the exact waiting version (ask=revise_action). Do not follow it here.
+  await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}?version=${versionId}`);
+  await expect(page.locator(".action-detail-page")).toBeVisible();
+  const link = page.getByRole("link", { name: "Revise with operator as a new version" });
   await expect(link).toBeVisible();
   const href = await link.getAttribute("href");
-  expect(href).toContain(`/actions/${merchant.actionId}?version=${versionId}`);
-  await link.click();
-
-  // 5. The action page opens with that version selected.
-  await expect(page).toHaveURL(new RegExp(`/actions/${merchant.actionId}\\?version=${versionId}(&|$)`));
-  await expect(page.locator(".action-detail-page")).toBeVisible();
+  expect(href).toContain(`/conversation?`);
+  expect(href).toContain(`action=${merchant.actionId}`);
+  expect(href).toContain(`version=${versionId}`);
+  expect(href).toContain("ask=revise_action");
   await page.getByRole("tab", { name: "History" }).click();
   // A waiting version is always its action's newest (create_output_version supersedes earlier draft/changes_requested rows), so this does not isolate ?version=; components/workspace/action-detail-version-param.test.tsx does.
   await expect(page.locator(".version-list button[aria-pressed='true']")).toContainText("Version 1");
@@ -95,9 +68,9 @@ test("an owner with a waiting draft continues from the assistant to the exact ve
   await expect(regenerate).toHaveCount(1);
   await expect(regenerate).toBeEnabled();
 
-  // The assistant and the link changed nothing and called no authority route.
+  // Visiting Today and reading the Kinnso link changed nothing and called no authority route.
   expect(requested.filter((entry) => AUTHORITY_ROUTE.test(entry))).toEqual([]);
-  expect(requested.some((entry) => entry === "POST /api/assistant/run")).toBe(true);
+  expect(requested.filter((entry) => entry === "POST /api/assistant/run")).toEqual([]);
   expect(sql(db, `select count(*) from output_versions where workspace_id='${ws}';`)).toBe(before.versions);
   expect(sql(db, `select count(*) from deliveries where workspace_id='${ws}';`)).toBe(before.deliveries);
   expect(sql(db, `select count(*) from action_runs where workspace_id='${ws}';`)).toBe(before.runs);

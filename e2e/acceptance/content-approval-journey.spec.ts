@@ -101,16 +101,18 @@ test.beforeEach(async ({ environment, merchant, page }) => {
 });
 test.afterEach(async ({ page }) => { expect(deliveriesByTest.get(page)).toEqual([]); });
 
-test("assistant preview remains retryable when saving fails", async ({ page, merchant, environment }) => {
+test("new version save remains retryable when saving fails", async ({ page, merchant, environment }) => {
   await signIn(page, environment, merchant);
   await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}`);
   await page.locator(".draft-editor-card").getByRole("button", { name: "Generate a draft", exact: true }).click();
   await expect(page.locator("#draft-content")).toHaveValue(/Thank you/, { timeout: 90_000 });
+  const versionId = sql(environment.db, `select id from output_versions where action_id='${merchant.actionId}' and version_no=1;`);
+  const revise = page.getByRole("link", { name: "Revise with operator as a new version" });
+  await expect(revise).toBeVisible();
+  await expect(revise).toHaveAttribute("href", new RegExp(`/conversation\\?.*action=${merchant.actionId}.*version=${versionId}.*ask=revise_action`));
   await editSaved(page);
-  await page.getByRole("button", { name: "Revise with operator as a new version" }).click();
-  await page.getByRole("button", { name: "Make it warmer without overpromising" }).click();
-  const save = page.getByRole("button", { name: "Create a new version without overwriting" });
-  await expect(save).toBeVisible({ timeout: 90_000 });
+  await page.locator("#draft-content").fill("Thank you for your review. We appreciate your feedback and hope to see you again.");
+  const save = page.locator(".draft-editor-card").getByRole("button", { name: "Save manual edits as a new version" });
   await page.route(`**/api/actions/${merchant.actionId}/versions`, route => route.fulfill({
     status: 503, contentType: "application/json", body: JSON.stringify({ error: "temporarily_unavailable" }),
   }));
@@ -137,14 +139,14 @@ test("S1 existing brand: recommendation, source/time/limits, first saved draft a
   const brand = await saveBrand(page, merchant);
   const started = performance.now();
   await page.goto(`/en/owner/${merchant.slug}?location=primary`);
-  const reason = page.locator("details.owner-priority-evidence");
+  const reason = page.locator("details.home-v2-why");
   await reason.locator(":scope > summary").focus();
   await page.keyboard.press("Enter");
   await expect(reason).toContainText("One synthetic review is waiting for a reply.");
   await expect(reason).toContainText("Observed");
   await expect(reason).toContainText("Google Business Profile");
   await page.screenshot({ path: `${evidenceDir}/desktop-recommendation.png`, fullPage: true });
-  await page.locator(".brief-priority-actions a").click();
+  await page.locator(".home-v2-next-actions a").first().click();
   await expect(page).toHaveURL(new RegExp(`/actions/${merchant.actionId}`));
   await page.locator("details.owner-workflow-disclosure").evaluate(element => { (element as HTMLDetailsElement).open = true; });
   await expect(page.locator(".evidence-detail-grid")).toContainText("Revenue, reservations and customer intent are not measured by this action.");
@@ -238,27 +240,24 @@ test("S4 Hong Kong mobile: shorten, tone and CTA revisions save, fresh login rea
   sql(environment.db, `update actions set provided_inputs='{"brand_voice":"warm","language":"zh-HK","reviews_without_response":"服務細心，多謝。"}' where id='${merchant.actionId}';`);
   await page.goto(actionPath(merchant, "zh-HK"));
   await generate(page, merchant, "多謝你分享意見。我哋重視你嘅回饋，亦感謝你花時間留下評論。", environment, true);
+  const revise = page.getByRole("link", { name: "用助理修改並建立新版本" });
+  await expect(revise).toBeVisible();
+  await expect(revise).toHaveAttribute("href", /\/conversation\?/);
+  await expect(revise).toHaveAttribute("href", /ask=revise_action/);
   const revised = [
-    { label: "縮短呢則回覆", body: "多謝你嘅評論，我哋好重視你嘅意見。", instruction: "Revision: Make the selected saved reply shorter" },
-    { label: "改得更親切，但不要過度承諾", body: "多謝你用心分享！你嘅意見對我哋嚟講好重要。", instruction: "Tone: Rewrite in a warmer, friendlier tone" },
-    { label: "改用聯絡方式作下一步", body: "多謝你用心分享！如有其他意見，歡迎留言同我哋講。", instruction: "Revision: Use a contact-only CTA in the selected saved reply" },
+    { body: "多謝你嘅評論，我哋好重視你嘅意見。" },
+    { body: "多謝你用心分享！你嘅意見對我哋嚟講好重要。" },
+    { body: "多謝你用心分享！如有其他意見，歡迎留言同我哋講。" },
   ];
   await saveBrand(page, merchant, { location_id: merchant.locationId }, "direct", "zh-HK");
+  // The in-page assistant sheet is gone; conversation is off in CI acceptance,
+  // so these revisions are saved as explicit manual new versions.
   for (const [index, revision] of revised.entries()) {
-    const previousBody = await page.locator("#draft-content").inputValue();
-    await modelOutput(environment, revision.body);
     await editSaved(page, true);
-    await page.getByRole("button", { name: "用助理修改並建立新版本" }).click();
-    await page.getByRole("button", { name: revision.label, exact: true }).click();
-    await expect(page.getByRole("button", { name: "建立新版本（不覆蓋現有內容）" })).toBeVisible({ timeout: 90000 });
-    const prompt = (await prompts(environment)).at(-1)!;
-    expect(prompt).toContain(revision.instruction);
-    expect(prompt).toContain(previousBody);
-    expect(prompt).toContain("Voice: direct");
+    await page.locator("#draft-content").fill(revision.body);
     const saved = page.waitForResponse(r => r.url().endsWith(`/api/actions/${merchant.actionId}/versions`));
-    await page.getByRole("button", { name: "建立新版本（不覆蓋現有內容）" }).click();
+    await page.locator(".draft-editor-card").getByRole("button", { name: "儲存手動修改為新版本", exact: true }).click();
     expect((await saved).status()).toBe(201);
-    await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
     await expect(page.locator("#draft-content")).toHaveValue(revision.body);
     expect(versionCount(environment, merchant)).toBe(String(index + 2));
   }
@@ -282,7 +281,7 @@ test("S4 Hong Kong mobile: shorten, tone and CTA revisions save, fresh login rea
     await other.screenshot({ path: `${evidenceDir}/mobile-approved-fresh-session.png`, fullPage: true });
     expect(sql(environment.db, `select count(*) from output_versions where action_id='${merchant.actionId}' and approval_state='approved';`)).toBe("1");
   } finally { await fresh.close(); }
-  record("scenario-4", { result: "PASS", browser: `${browser.browserType().name()} ${browser.version()} at 390x844 viewport; not a physical device or Safari acceptance`, targetedRevisions: ["shorten", "warmer", "contact-only CTA"], freshFixtureLoginReadback: true, savedBody: finalBody, versions: 5 });
+  record("scenario-4", { result: "PASS", browser: `${browser.browserType().name()} ${browser.version()} at 390x844 viewport; not a physical device or Safari acceptance`, targetedRevisions: ["shorten", "warmer", "contact-only CTA"], revisionPath: "manual new versions; Kinnso revise link asserted, not followed", freshFixtureLoginReadback: true, savedBody: finalBody, versions: 5 });
 });
 
 test("S5 old tab compares before saving; invalid provider output preserves drafts and an explicit retry succeeds", async ({ page, context, merchant, environment }) => {

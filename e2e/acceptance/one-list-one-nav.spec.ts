@@ -13,9 +13,9 @@ test("switching branches from an action leaves the old branch's editor and clear
 });
 
 for (const item of [
-  { locale: "en", labels: ["Today", "To do", "Better?", "Shop"], more: "Due dates and Fimmick drafts", due: "Due", drafts: "Fimmick drafts", other: "Other ways to write", waiting: "Something is waiting for you", noScan: "No scan yet", trust: "Why you can trust this" },
-  { locale: "zh-HK", labels: ["今日", "待辦", "好啲？", "舖"], more: "到期日同 Fimmick 嘅稿", due: "到期", drafts: "Fimmick 嘅稿", other: "其他寫法", waiting: "有一件等你", noScan: "未掃過", trust: "點解咁講" },
-  { locale: "zh-TW", labels: ["今天", "待辦", "有好一點？", "店裡"], more: "到期日與 Fimmick 準備的稿", due: "到期", drafts: "Fimmick 準備的稿", other: "其他寫法", waiting: "有件事等你", noScan: "還沒掃過", trust: "為何可信" },
+  { locale: "en", labels: ["Today", "Tasks", "Results", "Business"], more: "Due dates and Fimmick drafts", due: "Due", drafts: "Fimmick drafts", other: "Other ways to write", waiting: "Something is waiting for you", noScan: "No scan yet", settings: "Settings" },
+  { locale: "zh-HK", labels: ["今日", "待辦", "成效", "店舖"], more: "到期日同 Fimmick 嘅稿", due: "到期", drafts: "Fimmick 嘅稿", other: "其他寫法", waiting: "有一件等你", noScan: "未掃過", settings: "設定" },
+  { locale: "zh-TW", labels: ["今天", "待辦", "成效", "店裡"], more: "到期日與 Fimmick 準備的稿", due: "到期", drafts: "Fimmick 準備的稿", other: "其他寫法", waiting: "有件事等你", noScan: "還沒掃過", settings: "設定" },
 ] as const) {
   test(`four mobile destinations, reachable settings and branch switching (${item.locale})`, async ({ page, merchant, environment }) => {
     await signIn(page, environment, merchant);
@@ -34,11 +34,14 @@ for (const item of [
     await expect(page).toHaveURL(new RegExp(`/business\\?location=other$`));
     const rows = page.locator(".destination-list");
     for (const suffix of ["team", "plan", "notifications", "activity"]) {
-      await expect(rows.locator(`a[href="${base}/settings/${suffix}?location=other"]`)).toHaveCount(1);
+      await expect(rows.locator(`a[href="${base}/settings/${suffix}?location=other"]`)).toHaveCount(0);
     }
-    await expect(rows.locator(`a[href="/${item.locale}/owner/select-workspace"]`)).toHaveCount(1);
-    await rows.locator(`a[href="${base}/settings/team?location=other"]`).click();
-    await expect(nav.getByRole("link", { name: item.labels[3], exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(rows.locator(`a[href="/${item.locale}/owner/select-workspace"]`)).toHaveCount(0);
+    const menu = page.locator(".mobile-account .account-menu");
+    await menu.locator("summary.account-button").click();
+    await menu.getByRole("link", { name: item.settings, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${base}/settings`));
+    await expect(nav.getByRole("link", { name: item.labels[3], exact: true })).not.toHaveAttribute("aria-current", "page");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     // A one-branch shop has its name, with no redundant location control in the top bar.
     sql(environment.db, `delete from locations where id='${merchant.otherLocationId}';`);
@@ -89,7 +92,8 @@ for (const item of [
     await expect(card.locator(".ws-card-head")).toHaveAttribute("href", `/${item.locale}/owner/${merchant.slug}?location=primary`);
     await card.locator(".ws-card-head").click();
     await expect(page).toHaveURL(/location=primary/);
-    await expect(page.locator(".brief-priority-card")).toBeVisible();
-    await expect(page.locator("details.trust-disclosure > summary")).toHaveText(item.trust);
+    await expect(page.locator(".home-v2-next")).toBeVisible();
+    await expect(page.locator("details.trust-disclosure")).toHaveCount(0);
+    await expect(page.locator(".brief-score-card")).toHaveCount(0);
   });
 }
