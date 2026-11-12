@@ -165,17 +165,17 @@ it("shows the Studio edit/approve handoff banner only when arriving from a saved
 it("links editors to the Studio focused on this action, but not from the side panel", () => {
   const studioHref = "/en/owner/kam-man-house/conversation?location=yik-yam&action=act-1";
   const linked = render("review-response", [], false, false, studioHref);
-  const link = linked.querySelector<HTMLAnchorElement>('a[href*="/conversation"]');
+  const link = linked.querySelector<HTMLAnchorElement>('a[href*="/conversation"]:not([href*="ask="])');
   expect(link?.getAttribute("href")).toBe(studioHref);
-  expect(link?.textContent).toContain("Ask Kinnso");
-  expect(render("review-response").textContent).not.toContain("Ask Kinnso");
-  expect(render("review-response", [], true, false, studioHref).textContent).not.toContain("Ask Kinnso");
+  expect(link?.textContent?.trim()).toBe("Ask Kinnso");
+  expect(render("review-response").querySelector('a[href*="/conversation"]:not([href*="ask="])')).toBeNull();
+  expect(render("review-response", [], true, false, studioHref).querySelector('a[href*="/conversation"]:not([href*="ask="])')).toBeNull();
 });
 
 it("drops the Back to actions link in the side panel, where Close keeps the queue's filters", () => {
-  expect(render("review-response").textContent).toContain("Back to To do");
+  expect(render("review-response").textContent).toContain("Back to Tasks");
   const panel = render("review-response", [], true);
-  expect(panel.textContent).not.toContain("Back to To do");
+  expect(panel.textContent).not.toContain("Back to Tasks");
   expect(panel.querySelector("h1")).toBeNull();
 });
 
@@ -632,7 +632,7 @@ describe("assistant revisions preserve unsaved edits", () => {
       />,
     );
     editSavedDraft();
-    const triggerName = chinese ? "用助理修改並建立新版本" : "Revise with operator as a new version";
+    const triggerName = chinese ? "用 Kinnso 修改並建立新版本" : "Ask Kinnso to revise";
     const regenerate = pageButton(chinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version");
     const editor = screen.getByLabelText(field === "body" ? (chinese ? "草稿" : "Draft") : "Image alt text");
     const savedValue = field === "body" ? "Saved example reply" : "Saved example description";
@@ -897,17 +897,17 @@ describe("all generation paths preserve unsaved edits", () => {
     renderLive(element(draft()));
     editSavedDraft();
     const editor = screen.getByLabelText("Draft");
-    const handoff = pageButton("Revise with operator as a new version");
+    const handoff = pageButton("Ask Kinnso to revise");
     expect(handoff).toHaveAttribute("href", expect.stringContaining("/example-business/conversation?"));
     expect(handoff.getAttribute("href")).toContain("action=act-1");
     expect(handoff.getAttribute("href")).toContain("ask=revise_action");
     expect(handoff.getAttribute("href")).toContain("location=yik-yam");
     if (makeDirty) {
       fireEvent.change(editor, { target: { value: "Unsaved reply" } });
-      const blocked = pageButton("Revise with operator as a new version");
+      const blocked = pageButton("Ask Kinnso to revise");
       expect(blocked.tagName).toBe("BUTTON");
       expect(blocked).toBeDisabled();
-      expect(screen.queryByRole("link", { name: "Revise with operator as a new version" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Ask Kinnso to revise" })).not.toBeInTheDocument();
       expect(editor).toHaveValue("Unsaved reply");
     } else {
       expect(handoff.tagName).toBe("A");

@@ -71,6 +71,18 @@ describe("owner home v2", () => {
     expect(html).not.toContain("aggregate")
   })
 
+  it("does not show a blank source or an empty evidence detail in the why disclosure", () => {
+    const withoutDetail = {
+      ...action,
+      evidence: { factType: "Observed", source: "", detail: { en: "", "zh-HK": "", "zh-TW": "" }, observedAt: "2026-11-10T02:00:00.000Z" },
+    } as unknown as ActionOverview
+    const html = renderToStaticMarkup(<HomeView locale="en" workspaceSlug="shop" timezone="Asia/Hong_Kong" locations={[]} brief={brief({ priority: withoutDetail })} role="owner" />)
+    expect(html).toContain("Why this?")
+    expect(html).toContain("Observed ·")
+    expect(html).not.toContain("Observed  ·")
+    expect(html).not.toContain("<p></p>")
+  })
+
   it("starts an unscanned shop with the free scan", () => {
     const html = renderToStaticMarkup(<HomeView locale="en" workspaceSlug="shop" timezone="Asia/Hong_Kong" locations={[{ slug: "a", name: "A" }]} brief={brief({ snapshot: null, priority: null, openActions: [], openActionCount: 0 })} role="owner" />)
     expect(html).toContain("Start with one free scan")
