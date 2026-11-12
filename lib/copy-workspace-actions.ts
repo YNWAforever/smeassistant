@@ -93,7 +93,7 @@ export const workspaceActionsEn: WorkspaceActionsCopy = {
     outcomeLedCreationCentre: "Write something for your shop",
     whatDoYouWant: "What do you want to get done?",
     chooseABusinessOutcome: "Choose what you want to write. Read and confirm the draft before using it.",
-    openActionQueue: "Open To do",
+    openActionQueue: "Open Tasks",
     recommendedFromEvidence: "Recommended from evidence",
     allOutcomes: "All outcomes",
     noEvidenceLedGoals: "No evidence-led goals for this location right now",

@@ -32,10 +32,14 @@ export function CopyFollowUpCard({ followUp, locale, viewer = false }: { followU
     toast.success(decision === "later" ? t.laterSaved : t.saved)
     router.refresh()
   }
-  return <article className="brief-priority-card" data-testid="home-copy-followup">
-    <h2>{t.title}</h2>
-    <p className="coach-sentence">{resolveText(followUp.title, locale)} · {t.body}</p>
-    <div className="brief-priority-actions">{viewer || !followUp.canRecord
+  return <article className="home-v2-followup" data-testid="home-copy-followup">
+    <div className="home-v2-section-head">
+      <div>
+        <h2>{t.title}</h2>
+        <p>{resolveText(followUp.title, locale)} · {t.body}</p>
+      </div>
+    </div>
+    <div className="home-v2-next-actions">{viewer || !followUp.canRecord
       ? <Button disabled>{copy[locale].shell.access.askOwnerAction}</Button>
       : <><Button disabled={busy} onClick={() => void answer("posted")}>{t.posted}</Button><Button variant="outline" disabled={busy} onClick={() => void answer("not_yet")}>{t.notYet}</Button><Button variant="ghost" disabled={busy} onClick={() => void answer("later")}>{t.later}</Button></>}</div>
   </article>

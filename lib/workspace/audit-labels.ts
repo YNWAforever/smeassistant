@@ -11,7 +11,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string; zhTW?:
   "scan.completed": { en: "Scan completed", zh: "掃描已完成" },
   "scan.failed": { en: "Scan failed", zh: "掃描失敗" },
   "snapshot.created": { en: "Scan results saved", zh: "掃描結果已儲存" },
-  "action.derived": { en: "To-do list sorted", zh: "待辦已排序" },
+  "action.derived": { en: "Task list sorted", zh: "待辦已排序" },
   "action.updated": { en: "Action updated", zh: "待辦已更新" },
   "action.dismissed": { en: "Action dismissed", zh: "待辦已略過" },
   "action.applied": { en: "Marked as done", zh: "標記為已完成" },
