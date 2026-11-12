@@ -38,10 +38,10 @@ function render(locale: "en" | "zh-HK" | "zh-TW", overrides: Partial<InsightsMod
 }
 
 it("offers a continue-in-Studio link only when the deployment configures it", () => {
-  const linked = render("en", {}, "/en/owner/kam-man-house/conversation/studio?location=yik-yam");
+  const linked = render("en", {}, "/en/owner/kam-man-house/conversation?location=yik-yam");
   const link = linked.querySelector(".owner-studio-link");
-  expect(link?.textContent).toContain("Continue in Studio");
-  expect(link?.getAttribute("href")).toBe("/en/owner/kam-man-house/conversation/studio?location=yik-yam");
+  expect(link?.textContent).toContain("Ask Kinnso");
+  expect(link?.getAttribute("href")).toBe("/en/owner/kam-man-house/conversation?location=yik-yam");
   expect(render("en").querySelector(".owner-studio-link")).toBeNull();
 });
 

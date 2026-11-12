@@ -1,7 +1,8 @@
 "use client"
 
-import { Download, Menu, PanelRight, Plus, Share2 } from "lucide-react"
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import Link from "next/link"
+import { ArrowLeft, Download, FileText, Menu, MoreHorizontal, PanelRight, Plus, Share2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import type { PrototypeLocale } from "@/lib/copy"
@@ -33,6 +34,7 @@ import { StudioContextPanel } from "./context-panel"
 import { StudioConversationRail } from "./conversation-rail"
 import { StudioEmptyState } from "./empty-state"
 import { StudioEvidencePicker } from "./evidence-picker"
+import { LegacyNotesBanner } from "./legacy-notes-banner"
 import { StudioMessageThread, type StudioThreadError } from "./message-thread"
 import { StudioShareDialog } from "./share-dialog"
 import { studioBlockedText, studioErrorText } from "./studio-errors"
@@ -42,6 +44,7 @@ export type StudioViewProps = {
   workspaceId: string
   workspaceName: string
   workspaceSlug: string
+  userId: string
   role: WorkspaceRole
   locationSlug: string
   locations: Array<{ id: string; slug: string; name: string }>
@@ -69,27 +72,6 @@ function mergeMessage(list: StudioMessage[], message: StudioMessage): StudioMess
 }
 
 /**
- * The breakpoint the CSS uses to turn the context pane into a drawer. Read
- * through `useSyncExternalStore` so the server renders the desktop-safe state
- * (pane pinned, drawer closed) and the browser corrects it after hydration
- * without a setState-inside-effect flash.
- */
-const WIDE_QUERY = "(min-width: 1200px)"
-
-function subscribeWide(onChange: () => void): () => void {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {}
-  const media = window.matchMedia(WIDE_QUERY)
-  media.addEventListener("change", onChange)
-  return () => media.removeEventListener("change", onChange)
-}
-
-function wideSnapshot(): boolean {
-  return typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia(WIDE_QUERY).matches : false
-}
-
-const wideServerSnapshot = () => false
-
-/**
  * The client orchestrator for the Conversation Studio (design §8, §9).
  *
  * It owns the rail, the active conversation, the thread, the composer and the
@@ -114,6 +96,7 @@ export function StudioView({
   workspaceId,
   workspaceName,
   workspaceSlug,
+  userId,
   role,
   locationSlug: initialLocationSlug,
   locations,
@@ -147,12 +130,9 @@ export function StudioView({
   const [exportError, setExportError] = useState(false)
   const [aiBlocked, setAiBlocked] = useState<AiBlocked | null>(null)
   const [railOpen, setRailOpen] = useState(false)
-  // Desktop: the context pane is a pinned third column (default open).
-  // Narrow: the same pane is a drawer (default closed, so nothing covers the thread).
-  const [contextPinned, setContextPinned] = useState(true)
-  const [contextDrawerOpen, setContextDrawerOpen] = useState(false)
-  const isWide = useSyncExternalStore(subscribeWide, wideSnapshot, wideServerSnapshot)
-  const contextOpen = isWide ? contextPinned : contextDrawerOpen
+  // Context is on-demand at every width: a sheet over the thread, never a
+  // permanent third column competing with the conversation.
+  const [contextOpen, setContextOpen] = useState(false)
   const [focusKey, setFocusKey] = useState(0)
 
   const abortRef = useRef<AbortController | null>(null)
@@ -172,20 +152,18 @@ export function StudioView({
   }
 
   function toggleContext() {
-    if (isWide) setContextPinned((open) => !open)
-    else setContextDrawerOpen((open) => !open)
+    setContextOpen((open) => !open)
   }
 
   function closeContext() {
-    setContextPinned(false)
-    setContextDrawerOpen(false)
+    setContextOpen(false)
   }
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return
       setRailOpen(false)
-      setContextDrawerOpen(false)
+      setContextOpen(false)
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
@@ -477,9 +455,11 @@ export function StudioView({
   const blockedNote = archived ? t.notices.archived : aiBlocked ? studioBlockedText(t, aiBlocked) : null
   const conversationReadOnly = activeConversation?.accessRole === "viewer"
   const composerDisabled = streaming || sending || loadingConversation || archived || conversationReadOnly
+  const homeHref = `/${locale}/owner/${workspaceSlug}?location=${encodeURIComponent(locationSlug)}`
+  const notesHref = `/${locale}/owner/${workspaceSlug}/conversation/notes?location=${encodeURIComponent(locationSlug)}`
 
   return (
-    <div className="studio-root" data-rail={railOpen ? "open" : "closed"} data-context-pinned={contextPinned ? "open" : "closed"} data-context-drawer={contextDrawerOpen ? "open" : "closed"}>
+    <div className="studio-root" data-rail={railOpen ? "open" : "closed"} data-context-drawer={contextOpen ? "open" : "closed"}>
       <div className="studio-layout">
         <StudioConversationRail
           locale={locale}
@@ -497,6 +477,9 @@ export function StudioView({
         <section className="studio-main" aria-label={t.nav.aria}>
           <header className="studio-header">
             <div className="studio-header-brand">
+              <Link className="studio-back" href={homeHref} aria-label={t.header.back} title={t.header.back}>
+                <ArrowLeft aria-hidden="true" />
+              </Link>
               <button type="button" className="studio-icon-button studio-rail-toggle" onClick={() => setRailOpen(true)} aria-label={t.rail.open} title={t.rail.open}>
                 <Menu aria-hidden="true" />
               </button>
@@ -517,25 +500,12 @@ export function StudioView({
                   </select>
                 </label>
               )}
-              {activeConversation && (
-                <Button type="button" size="sm" variant="outline" onClick={() => void exportTranscript()} disabled={exporting}>
-                  <Download aria-hidden="true" />
-                  <span>{exporting ? t.transcript.exporting : t.transcript.export}</span>
-                </Button>
-              )}
-              {activeConversation?.accessRole === "owner" && !archived && (
-                <Button type="button" size="sm" variant="outline" onClick={() => setShareOpen(true)}>
-                  <Share2 aria-hidden="true" />
-                  <span>{t.share.action}</span>
-                </Button>
-              )}
               <button
                 type="button"
                 className="studio-icon-button studio-context-toggle"
                 onClick={toggleContext}
                 aria-label={contextOpen ? t.header.hideContext : t.header.context}
                 aria-expanded={contextOpen}
-                suppressHydrationWarning
                 title={contextOpen ? t.header.hideContext : t.header.context}
               >
                 <PanelRight aria-hidden="true" />
@@ -544,10 +514,40 @@ export function StudioView({
                 <Plus aria-hidden="true" />
                 <span>{t.header.newChat}</span>
               </Button>
+              <details className="studio-more">
+                <summary className="studio-icon-button studio-more-toggle" aria-label={t.header.more} title={t.header.more}>
+                  <MoreHorizontal aria-hidden="true" />
+                </summary>
+                <div className="studio-more-menu">
+                  {activeConversation && (
+                    <button type="button" onClick={() => void exportTranscript()} disabled={exporting}>
+                      <Download aria-hidden="true" />
+                      <span>{exporting ? t.transcript.exporting : t.transcript.export}</span>
+                    </button>
+                  )}
+                  {activeConversation?.accessRole === "owner" && !archived && (
+                    <button type="button" onClick={() => setShareOpen(true)}>
+                      <Share2 aria-hidden="true" />
+                      <span>{t.share.action}</span>
+                    </button>
+                  )}
+                  <Link href={notesHref}>
+                    <FileText aria-hidden="true" />
+                    <span>{t.header.oldNotes}</span>
+                  </Link>
+                </div>
+              </details>
             </div>
           </header>
-          <p className="studio-header-subtitle">{t.header.subtitle}</p>
           {exportError && <p className="studio-role-note" role="alert">{t.transcript.failed}</p>}
+          <LegacyNotesBanner
+            locale={locale}
+            workspaceId={workspaceId}
+            workspaceSlug={workspaceSlug}
+            userId={userId}
+            locationId={locationId}
+            locationSlug={locationSlug}
+          />
 
           {loadingConversation ? (
             <div className="studio-thread-region">
@@ -610,7 +610,7 @@ export function StudioView({
           />
         </section>
 
-        <StudioContextPanel locale={locale} summary={contextSummary} open={contextOpen} onClose={closeContext} focusOnOpen={!isWide && contextDrawerOpen} newActionHref={canSaveVersions && locationSlug !== "all" ? `/${locale}/owner/${workspaceSlug}/actions/new?location=${encodeURIComponent(locationSlug)}` : undefined} actionHrefBase={`/${locale}/owner/${workspaceSlug}/actions`} actionLocation={locationSlug} />
+        <StudioContextPanel locale={locale} summary={contextSummary} open={contextOpen} onClose={closeContext} focusOnOpen={contextOpen} newActionHref={canSaveVersions && locationSlug !== "all" ? `/${locale}/owner/${workspaceSlug}/actions/new?location=${encodeURIComponent(locationSlug)}` : undefined} actionHrefBase={`/${locale}/owner/${workspaceSlug}/actions`} actionLocation={locationSlug} />
       </div>
       {shareOpen && activeConversation && (
         <StudioShareDialog locale={locale} workspaceId={workspaceId} conversationId={activeConversation.id} onClose={() => setShareOpen(false)} />

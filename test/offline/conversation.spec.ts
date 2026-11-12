@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test as base, expect, type Page } from "@playwright/test";
+import { copy } from "../../lib/copy";
 import { conversationDesignCopy } from "../../lib/copy-conversation-design";
 import { resourceCopy } from "../../lib/copy-conversation-resources";
 import { conversationCopy } from "../../lib/copy-conversation";
@@ -29,7 +30,7 @@ const path=new URL(url),q=path.searchParams,locale=path.pathname.split("/")[1],s
 const ws={slug,name:"Synthetic shop",avatarInitial:"S",locations:[{slug:"central",name:"Central"},{slug:"east",name:"East"}],defaultLocationSlug:"central",usage:{approvedDeliveries:2,allowance:3},account:{name:user,email:user+"@example.test",roleLabel:"Owner"},unreadNotifications:0,demo:false,assistant:{workspaceId:slug,locationId:branch},...(q.get("flag")!=="off"?{conversationEnabled:true}:{})};
 const actions=q.get("empty")==="1"?[]:[{id:"${ACTION}",title:"Existing synthetic task",versionId:"${VERSION}"}];
 return <><aside className="fixture-label">OFFLINE SYNTHETIC · real product components · no DB, Auth or model</aside><WorkspacePageFrame locale={locale} workspace={ws}>
-{path.pathname.endsWith("/conversation")?<ConversationView locale={locale} timezone="Asia/Singapore" workspaceSlug={slug} workspaceName={ws.name} location={branch} locationName={branch==="all"?"":branch==="central"?"Central":"East"} scope={{userId:user,workspaceId:slug,locationId:branch}} initialThreadId={q.get("thread")??undefined} actions={actions} today={{open:actions.length,drafts:actions.length,completed:2}} resources={{canManage:q.get("role")!=="manager"}}/>:path.pathname.includes("/actions/")?<section><h1>Existing task surface</h1><p>Version {q.get("version")}</p></section>:<h1>{copy[locale].shell.nav.today}</h1>}
+{path.pathname.endsWith("/conversation")?<section className="studio-root" data-testid="studio-marker"><h1>{copy[locale].shell.nav.kinnso}</h1></section>:path.pathname.endsWith("/conversation/notes")?<ConversationView locale={locale} timezone="Asia/Singapore" workspaceSlug={slug} workspaceName={ws.name} location={branch} locationName={branch==="all"?"":branch==="central"?"Central":"East"} scope={{userId:user,workspaceId:slug,locationId:branch}} initialThreadId={q.get("thread")??undefined} actions={actions} today={{open:actions.length,drafts:actions.length,completed:2}} resources={{canManage:q.get("role")!=="manager"}}/>:path.pathname.includes("/actions/")?<section><h1>Existing task surface</h1><p>Version {q.get("version")}</p></section>:<h1>{copy[locale].shell.nav.today}</h1>}
 </WorkspacePageFrame></>}
 createRoot(document.getElementById("root")).render(<App/>);`;
 let bundle = "", css = "";
@@ -167,7 +168,7 @@ for (const locale of ["zh-HK", "en", "zh-TW"] as const) {
         attempts.push(`${route.request().method()} ${new URL(route.request().url()).pathname.split("/").pop()}`);
         await route.fulfill({ status: 503, json: { error: "unavailable" } });
       });
-      await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation?location=central&role=${role}`);
+      await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation/notes?location=central&role=${role}`);
       const tools = page.getByRole("region", { name: conversationDesignCopy[locale].tools, exact: true });
       await expect(tools.getByRole("heading", { name: conversationDesignCopy[locale].tools, exact: true })).toBeVisible();
       for (const id of ["documents", "search", "sources"]) await openTool(page, id);
@@ -213,7 +214,7 @@ test.describe("Stage A Preview polish", () => {
   ] as const) {
     test(`${locale} localizes the eyebrow, labels local saves and uses workspace time`, async ({ page, app }) => {
       await page.clock.setFixedTime(new Date("2026-10-30T20:09:08.000Z"));
-      await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation?location=central`);
+      await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation/notes?location=central`);
       const t = conversationCopy[locale];
       await expect(page.locator(".conversation-eyebrow")).toHaveText(eyebrow);
       await expect(page.getByRole("heading", { name: t.title, exact: true })).toBeVisible();
@@ -243,7 +244,7 @@ test.describe("Stage A Preview polish", () => {
 });
 
 test("dark preference keeps cream-home controls and honesty copy readable", async ({ page, app }) => {
-  await page.goto(`${app.origin}/en/owner/test-shop/conversation?location=central`);
+  await page.goto(`${app.origin}/en/owner/test-shop/conversation/notes?location=central`);
   await page.locator(".theme-button").click();
   await page.getByRole("menuitemradio", { name: "Dark", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -256,7 +257,7 @@ test("dark preference keeps cream-home controls and honesty copy readable", asyn
   const targets = [
     ".conversation-composer [type=submit]",
     ".conversation-threads [data-slot=button]",
-    ".workspace-topbar .assistant-launcher",
+    ".workspace-topbar .account-button",
     ".workspace-topbar [data-slot=select-trigger]",
     ".conversation-boundaries .limitation-note",
     "#conversation-search .limitation-note",
@@ -267,7 +268,7 @@ test("dark preference keeps cream-home controls and honesty copy readable", asyn
   // Model a client navigation: the chosen global theme must survive the local palette.
   await page.evaluate(() => {
     const next = new URL(location.href);
-    next.pathname = next.pathname.replace(/\/conversation$/, "");
+    next.pathname = next.pathname.replace(/\/conversation\/notes$/, "");
     next.searchParams.set("flag", "off");
     history.pushState(null, "", next);
     dispatchEvent(new Event("fixture:refresh"));
@@ -280,7 +281,7 @@ test("dark preference keeps cream-home controls and honesty copy readable", asyn
 test("Stage B expanded work surfaces retain readable gates and form state in the boutique shell", async ({ page, app }) => {
   const locale = "zh-HK", t = conversationCopy[locale], rt = resourceCopy[locale], st = searchCopy[locale];
   await page.clock.setFixedTime(new Date("2026-10-31T04:00:00Z"));
-  await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation?location=central`);
+  await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation/notes?location=central`);
   await page.locator(".theme-button").click();
   await page.getByRole("menuitemradio", { name: "深色", exact: true }).click();
   await page.getByLabel(t.note, { exact: true }).fill("本機筆記：核對舖頭餐牌同網站資料（離線合成示例）");
@@ -336,24 +337,31 @@ test("Stage B expanded work surfaces retain readable gates and form state in the
   await expect(page.locator(".usage-mini strong")).toHaveText("2 / 3");
 });
 
-test("Today remains default and the optional switch works in every locale; existing Ask Kinnso opens", async ({ page, app }) => {
+test("Today stays default; Kinnso opens as the immersive chat and notes keep the normal shell", async ({ page, app }) => {
   for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
     const home = `${app.origin}/${locale}/owner/test-shop?location=east`;
-    await page.goto(`${home}&flag=off`); await expect(page.locator(".conversation-switch")).toHaveCount(0);
+    await page.goto(`${home}&flag=off`);
+    await expect(page.locator(".conversation-switch")).toHaveCount(0);
     await expect(page.locator(".mobile-bottom-nav a")).toHaveCount(4);
-    await page.goto(home); await page.locator('.conversation-switch a[href*="/conversation"]').click();
-    await expect(page.getByRole("heading", { name: conversationCopy[locale].title })).toBeVisible();
-    await expect(page).toHaveURL(/location=east/);
-    await expect(page.locator(".conversation-templates button")).toHaveCount(6);
-    await expect(page.getByText(conversationCopy[locale].privacy)).toBeVisible();
+    await page.goto(home);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.locator(".conversation-switch")).toHaveCount(0);
+    await expect(page.locator(".assistant-launcher")).toHaveCount(0);
+    await expect(page.locator(".mobile-bottom-nav a")).toHaveCount(5);
+    const kinnso = page.locator('.mobile-bottom-nav a[href*="/conversation"]');
+    await expect(kinnso).toContainText(copy[locale].shell.nav.kinnso);
+    await kinnso.click();
+    await expect(page).toHaveURL(/\/conversation\?location=east/);
+    await expect(page.locator(".workspace-shell--chat")).toBeVisible();
+    await expect(page.getByRole("heading", { name: copy[locale].shell.nav.kinnso, exact: true })).toBeVisible();
+    await expect(page.locator(".workspace-sidebar")).toHaveCount(0);
+    await expect(page.locator(".mobile-bottom-nav")).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    if (locale === "en") await page.screenshot({ path: test.info().outputPath("conversation.png"), fullPage: true });
-    await page.locator('.conversation-switch a').first().click();
-    await expect(page).toHaveURL(`${home}`);
+    if (locale === "en") await page.screenshot({ path: test.info().outputPath("kinnso-chat.png"), fullPage: true });
   }
-  await page.goto(`${app.origin}/en/owner/test-shop?location=central`);
-  await page.getByRole("button", { name: "Ask Kinnso", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.goto(`${app.origin}/en/owner/test-shop/conversation/notes?location=central`);
+  await expect(page.getByRole("heading", { name: conversationCopy.en.title, exact: true })).toBeVisible();
+  await expect(page.locator(".workspace-shell--conversation")).toBeVisible();
 });
 
 for (const [locale, privacy, limits] of [
@@ -362,7 +370,7 @@ for (const [locale, privacy, limits] of [
   ["zh-TW", ["只留在這台裝置的這個瀏覽器", "不會同步到其他裝置", "沒有雲端備份", "同一瀏覽器設定檔的人可以讀到", "清除網站資料會刪除筆記"], ["每個帳戶、工作空間和分店範圍", "50 個討論串", "每串最多 40 則筆記", "每則最多 4,000 字元"]],
 ] as const) {
   test(`Stage C Park ${locale} discloses device-only notes and limits before saving and after reload`, async ({ page, app }) => {
-    await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation?location=central`);
+    await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation/notes?location=central`);
     const t = conversationCopy[locale];
     const privacyNote = page.locator(".conversation-boundaries .limitation-note").first();
     const localNote = page.locator(".conversation-local-note");
@@ -387,7 +395,7 @@ for (const [locale, privacy, limits] of [
 }
 
 test("templates only prefill; local threads stay separate through reload and link real action/version routes", async ({ page, app }) => {
-  const url = `${app.origin}/en/owner/test-shop/conversation?location=central`;
+  const url = `${app.origin}/en/owner/test-shop/conversation/notes?location=central`;
   await page.goto(url);
   await page.locator(".conversation-templates button").first().click();
   await expect(page.getByLabel("Your note", { exact: true })).toHaveValue("Reply to unanswered Google reviews");
@@ -415,10 +423,10 @@ test("templates only prefill; local threads stay separate through reload and lin
 });
 
 test("scope transitions and stale thread IDs never show another account, workspace or location's notes", async ({ page, app }) => {
-  const url = `${app.origin}/en/owner/test-shop/conversation?location=central`;
+  const url = `${app.origin}/en/owner/test-shop/conversation/notes?location=central`;
   await page.goto(url); await save(page, "Scope isolated note");
   const thread = new URL(page.url()).searchParams.get("thread")!;
-  for (const target of [`${url}&user=another`, `${app.origin}/en/owner/another-shop/conversation?location=central`, `${app.origin}/en/owner/test-shop/conversation?location=east`]) {
+  for (const target of [`${url}&user=another`, `${app.origin}/en/owner/another-shop/conversation/notes?location=central`, `${app.origin}/en/owner/test-shop/conversation/notes?location=east`]) {
     await page.goto(`${target}&thread=${thread}`);
     await expect(page.getByText(conversationCopy.en.missing, { exact: true })).toBeVisible();
     await expect(page.locator(".conversation-note")).toHaveCount(0);
@@ -433,7 +441,7 @@ test("scope transitions and stale thread IDs never show another account, workspa
 
 test("blocked storage retains notes on screen, reports failure, and never claims refresh persistence", async ({ page, app }) => {
   await page.addInitScript(() => { Storage.prototype.setItem = () => { throw new DOMException("Blocked", "QuotaExceededError"); }; });
-  await page.goto(`${app.origin}/en/owner/test-shop/conversation?location=central`);
+  await page.goto(`${app.origin}/en/owner/test-shop/conversation/notes?location=central`);
   await save(page, "Unsaved local note");
   await expect(page.getByRole("alert")).toContainText("could not be saved");
   await expect(page.getByText("Saved in this browser", { exact: true })).toHaveCount(0);
@@ -443,7 +451,7 @@ test("blocked storage retains notes on screen, reports failure, and never claims
 });
 
 test("unreadable notes and missing linked actions show honest empty/error states", async ({ page, app }) => {
-  const url = `${app.origin}/en/owner/test-shop/conversation?location=central`;
+  const url = `${app.origin}/en/owner/test-shop/conversation/notes?location=central`;
   await page.goto(url); await save(page, "Local link note");
   await page.getByLabel("Link existing task", { exact: true }).selectOption(ACTION);
   const selected = page.url();
@@ -459,7 +467,7 @@ test("unreadable notes and missing linked actions show honest empty/error states
 
 test("a stale tab preserves a different thread saved by another tab", async ({ page, app }) => {
   const second = await page.context().newPage();
-  const url = `${app.origin}/en/owner/test-shop/conversation?location=central`;
+  const url = `${app.origin}/en/owner/test-shop/conversation/notes?location=central`;
   await page.goto(url); await second.goto(url);
   await expect(page.getByText(conversationCopy.en.empty, { exact: true })).toBeVisible();
   await expect(second.getByText(conversationCopy.en.empty, { exact: true })).toBeVisible();
@@ -473,14 +481,14 @@ test("a stale tab preserves a different thread saved by another tab", async ({ p
 });
 
 test("long unbroken note titles stay inside the viewport", async ({ page, app }) => {
-  await page.goto(`${app.origin}/en/owner/test-shop/conversation?location=central`);
+  await page.goto(`${app.origin}/en/owner/test-shop/conversation/notes?location=central`);
   await save(page, "x".repeat(200));
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 
 test("Stage 2 documents cite immutable versions across refresh; source context stays honest",async({page,app})=>{
-  const url=`${app.origin}/en/owner/test-shop/conversation?location=central`;
+  const url=`${app.origin}/en/owner/test-shop/conversation/notes?location=central`;
   await page.goto(url);await save(page,"Synthetic private thread with source");
   await openTool(page,"documents");
   await page.getByLabel("Shop document",{exact:true}).setInputFiles({name:"menu.txt",mimeType:"text/plain",buffer:Buffer.from("Synthetic confirmed menu v1")});
@@ -514,7 +522,7 @@ test("Stage 2 availability refresh releases a temporary account block without a 
     const blocked=methods.length===1;
     await route.fulfill({json:{connectors:[{source:"firecrawl",status:blocked?"blocked":"empty",reason:blocked?"account_reconciliation_pending":"research_available",scope:"https://synthetic.example.test/",items:[],observedAt:null}]}});
   });
-  const url=`${app.origin}/en/owner/test-shop/conversation?location=central`;
+  const url=`${app.origin}/en/owner/test-shop/conversation/notes?location=central`;
   await page.goto(url);
   await openTool(page,"sources");
   const connector=page.locator(".conversation-connector");
@@ -527,7 +535,7 @@ test("Stage 2 availability refresh releases a temporary account block without a 
 });
 
 test("Stage 3 synthetic gap → brief → explicit confirm → observe retains the approved snapshot and delivery count", async ({ page, app }) => {
-  const url = `${app.origin}/en/owner/test-shop/conversation?location=central`;
+  const url = `${app.origin}/en/owner/test-shop/conversation/notes?location=central`;
   await page.goto(url); await save(page, "Private note must not enter the search brief");
   await openTool(page,"search");
   const panel = page.getByRole("region", { name: searchCopy.en.title, exact: true });
@@ -569,7 +577,7 @@ test("Stage 3 synthetic gap → brief → explicit confirm → observe retains t
 test("Stage 3 English-only HK fixture remains partial in every locale and all never picks a shop", async ({ page, app }) => {
   for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
     const t = searchCopy[locale];
-    await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation?location=east`);
+    await page.goto(`${app.origin}/${locale}/owner/test-shop/conversation/notes?location=east`);
     await openTool(page,"search");
     const panel = page.getByRole("region", { name: t.title, exact: true });
     await panel.getByRole("button", { name: t.read, exact: true }).click();
@@ -577,7 +585,7 @@ test("Stage 3 English-only HK fixture remains partial in every locale and all ne
     await expect(panel.getByRole("button", { name: t.createBrief, exact: true })).toHaveCount(0);
     await expect(panel.getByRole("link", { name: t.openAction })).toHaveCount(0);
   }
-  await page.goto(`${app.origin}/en/owner/test-shop/conversation?location=all`);
+  await page.goto(`${app.origin}/en/owner/test-shop/conversation/notes?location=all`);
   await openTool(page,"search");
   await openTool(page,"search");
   const panel = page.getByRole("region", { name: searchCopy.en.title, exact: true });
@@ -591,7 +599,7 @@ test("Stage 3 English-only HK fixture remains partial in every locale and all ne
 test("boutique home keeps Today above the composer, filters seed-only cards and opens existing attachments", async ({ page, app }) => {
   const mutations: string[] = [];
   page.on("request", request => { if (request.method() !== "GET") mutations.push(request.url()); });
-  await page.goto(`${app.origin}/zh-HK/owner/test-shop/conversation?location=central`);
+  await page.goto(`${app.origin}/zh-HK/owner/test-shop/conversation/notes?location=central`);
   const d = conversationDesignCopy["zh-HK"];
   await expect(page.locator(".workspace-shell--conversation")).toBeVisible();
   await expect(page.getByRole("heading", { name: "想為間舖做啲咩？", exact: true })).toBeVisible();
@@ -627,13 +635,11 @@ test("boutique home keeps Today above the composer, filters seed-only cards and 
   await page.getByLabel(conversationCopy["zh-HK"].note, { exact: true }).fill("本機討論：舖頭網站常見問題");
   await page.getByRole("button", { name: conversationCopy["zh-HK"].save, exact: true }).click();
   await page.getByRole("button", { name: conversationCopy["zh-HK"].newThread, exact: true }).click();
-  await expect(page.locator("#conversation-recent").getByRole("button", { name: "本機討論：舖頭網站常見問題", exact: true })).toBeVisible();
-  await expect(page.locator(".conversation-sidebar-recent a")).toContainText(["本機討論：舖頭網站常見問題"]);
+  const recentThread = page.locator("#conversation-recent").getByRole("button", { name: "本機討論：舖頭網站常見問題", exact: true });
+  await expect(recentThread).toBeVisible();
   if (test.info().project.name === "desktop") {
-    await page.locator(".conversation-sidebar-recent a").click();
+    await recentThread.click();
     await expect(page.locator(".conversation-note")).toHaveText("本機討論：舖頭網站常見問題");
-    await page.locator('.workspace-sidebar a[href$="#conversation-templates"]').click();
-    await expect(page.locator(".conversation-templates button")).toHaveCount(6);
   }
   await page.goto(`${app.origin}/zh-HK/owner/test-shop?location=central&flag=off`);
   await expect(page.locator(".workspace-shell--conversation, .conversation-sidebar-new, .conversation-tools, .conversation-today")).toHaveCount(0);
@@ -647,7 +653,7 @@ test("Wave 1 post coach keeps draft → confirm → copy in-thread with no post 
     });
   });
   const t = postDraftCopy["zh-HK"], fixture = POST_DRAFT_FIXTURES["zh-HK"][0];
-  await page.goto(`${app.origin}/zh-HK/owner/test-shop/conversation?location=central`);
+  await page.goto(`${app.origin}/zh-HK/owner/test-shop/conversation/notes?location=central`);
   await page.getByRole("button", { name: t.examples.weeklyIg, exact: true }).click();
   await page.getByRole("button", { name: t.coach.startCta, exact: true }).click();
   const channels = page.getByRole("group", { name: t.clarify.channel.question });

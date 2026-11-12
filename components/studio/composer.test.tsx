@@ -81,10 +81,10 @@ describe("StudioComposer dictation", () => {
     expect(screen.getByText("Listening…")).toBeTruthy();
 
     emitFinal(instance, "Plan this week's Instagram post");
-    expect((screen.getByLabelText("Message the Studio") as HTMLTextAreaElement).value).toBe("Plan this week's Instagram post");
+    expect((screen.getByLabelText("Message Kinnso") as HTMLTextAreaElement).value).toBe("Plan this week's Instagram post");
 
     emitFinal(instance, "with a carousel outline");
-    expect((screen.getByLabelText("Message the Studio") as HTMLTextAreaElement).value).toBe(
+    expect((screen.getByLabelText("Message Kinnso") as HTMLTextAreaElement).value).toBe(
       "Plan this week's Instagram post with a carousel outline",
     );
 

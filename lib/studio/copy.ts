@@ -33,6 +33,14 @@ export type StudioCopy = {
     hideContext: string
     newChat: string
     openStudio: string
+    back: string
+    more: string
+    oldNotes: string
+  }
+  deepLink: {
+    explainPriority: { label: string; message: string }
+    comparePriorities: { label: string; message: string }
+    reviseAction: { label: string; message: string }
   }
   empty: {
     eyebrow: string
@@ -199,7 +207,7 @@ const en: StudioCopy = {
     uploadFailed: "Could not upload that document.",
   },
 
-  nav: { label: "Studio", aria: "Conversation studio" },
+  nav: { label: "Kinnso", aria: "Kinnso conversation" },
   rail: {
     title: "Conversations",
     newChat: "New conversation",
@@ -215,12 +223,29 @@ const en: StudioCopy = {
   },
   thread: { loadEarlier: "Load earlier messages" },
   header: {
-    title: "Studio",
+    title: "Ask Kinnso",
     subtitle: "One continuous conversation about this workspace",
     context: "Workspace context",
     hideContext: "Hide context",
     newChat: "New conversation",
-    openStudio: "Open Studio",
+    openStudio: "Open Kinnso",
+    back: "Back to Today",
+    more: "More actions",
+    oldNotes: "Old notes",
+  },
+  deepLink: {
+    explainPriority: {
+      label: "Why this comes first",
+      message: "Explain why this task is the next thing I should do, using only the workspace's confirmed evidence. Do not invent a score or a result.",
+    },
+    comparePriorities: {
+      label: "Compare what needs me",
+      message: "Compare the open tasks and tell me which one to do first, using only their recorded priority, effort and evidence. Do not invent an aggregate score.",
+    },
+    reviseAction: {
+      label: "Revise this task",
+      message: "Help me revise this task: {title}. Use only confirmed shop facts; ask for anything missing instead of inventing it.",
+    },
   },
   empty: {
     eyebrow: "Ask, decide, draft",
@@ -238,7 +263,7 @@ const en: StudioCopy = {
     ],
   },
   composer: {
-    label: "Message the Studio",
+    label: "Message Kinnso",
     placeholder: "Ask about this workspace, or say what you want done…",
     send: "Send",
     sending: "Sending",
@@ -259,7 +284,7 @@ const en: StudioCopy = {
   },
   message: {
     you: "You",
-    assistant: "Studio",
+    assistant: "Kinnso",
     copy: "Copy text",
     copied: "Copied",
     copyFailed: "Could not copy",
@@ -312,7 +337,7 @@ const en: StudioCopy = {
     boundary: "Drafts stay drafts until an authorised person approves one exact version. Nothing publishes automatically.",
     viewer: "You can ask questions here. Drafting needs an owner or manager in scope.",
     viewerShared: "This conversation is shared with you as read-only.",
-    aiUnavailable: "The Studio cannot answer right now because the AI provider is unavailable. No message was sent.",
+    aiUnavailable: "Kinnso cannot answer right now because the AI provider is unavailable. No message was sent.",
     archived: "This conversation is archived and read-only.",
     needsFacts: "I still need these confirmed details before drafting: {facts}.",
     noDraftTarget: "I could not match that request to an open action, so there is nothing safe to draft from yet.",
@@ -357,7 +382,7 @@ const zhHK: StudioCopy = {
     uploadFailed: "未能上載文件。",
   },
 
-  nav: { label: "對話工作台", aria: "對話工作台" },
+  nav: { label: "Kinnso", aria: "Kinnso 對話" },
   rail: {
     title: "對話",
     newChat: "新對話",
@@ -373,12 +398,29 @@ const zhHK: StudioCopy = {
   },
   thread: { loadEarlier: "載入更早訊息" },
   header: {
-    title: "對話工作台",
+    title: "問 Kinnso",
     subtitle: "就這個工作台，持續對話",
     context: "工作台資料",
     hideContext: "收起資料",
     newChat: "新對話",
-    openStudio: "開啟對話工作台",
+    openStudio: "開啟 Kinnso",
+    back: "返回今日",
+    more: "更多操作",
+    oldNotes: "舊筆記",
+  },
+  deepLink: {
+    explainPriority: {
+      label: "點解呢件排第一",
+      message: "解釋點解呢件待辦係我下一步要做嘅事，只用作業入面已確認嘅證據。唔好自己編分數或者結果。",
+    },
+    comparePriorities: {
+      label: "比較邊件要我先做",
+      message: "比較手上嘅待辦，話我知邊件應該做先，只根據記錄咗嘅優先次序、工作量同證據。唔好自己砌一個總分。",
+    },
+    reviseAction: {
+      label: "改呢件待辦",
+      message: "幫我改呢件待辦：{title}。只用已確認嘅舖頭資料；未有嘅嘢問我攞，唔好自己填。",
+    },
   },
   empty: {
     eyebrow: "提問、決定、起草",
@@ -396,7 +438,7 @@ const zhHK: StudioCopy = {
     ],
   },
   composer: {
-    label: "向工作台對話",
+    label: "向 Kinnso 講",
     placeholder: "問這個工作台的狀況，或直接說你想完成甚麼…",
     send: "傳送",
     sending: "傳送中",
@@ -417,7 +459,7 @@ const zhHK: StudioCopy = {
   },
   message: {
     you: "你",
-    assistant: "工作台",
+    assistant: "Kinnso",
     copy: "複製文字",
     copied: "已複製",
     copyFailed: "未能複製",
@@ -470,7 +512,7 @@ const zhHK: StudioCopy = {
     boundary: "草稿在獲授權人士核准指定版本之前仍屬草稿，不會自動發佈。",
     viewer: "你可以在這裡提問；起草需要店主或範圍內的經理。",
     viewerShared: "呢個討論以唯讀方式分享畀你。",
-    aiUnavailable: "AI 供應商暫時無法使用，工作台未能回答，亦沒有傳送訊息。",
+    aiUnavailable: "AI 供應商暫時無法使用，Kinnso 未能回答，亦沒有傳送訊息。",
     archived: "這個對話已封存，只供閱讀。",
     needsFacts: "起草前仍需要你確認以下資料：{facts}。",
     noDraftTarget: "未能把這項要求對應到未完成行動，暫時沒有可安全起草的基礎。",
@@ -515,7 +557,7 @@ const zhTW: StudioCopy = {
     uploadFailed: "未能上傳檔案。",
   },
 
-  nav: { label: "對話工作台", aria: "對話工作台" },
+  nav: { label: "Kinnso", aria: "Kinnso 對話" },
   rail: {
     title: "對話",
     newChat: "新對話",
@@ -531,12 +573,29 @@ const zhTW: StudioCopy = {
   },
   thread: { loadEarlier: "載入更早訊息" },
   header: {
-    title: "對話工作台",
+    title: "問 Kinnso",
     subtitle: "就這個工作區，持續對話",
     context: "工作區資料",
     hideContext: "收起資料",
     newChat: "新對話",
-    openStudio: "開啟對話工作台",
+    openStudio: "開啟 Kinnso",
+    back: "返回今天",
+    more: "更多操作",
+    oldNotes: "舊筆記",
+  },
+  deepLink: {
+    explainPriority: {
+      label: "為什麼這件排第一",
+      message: "解釋為什麼這件待辦是我下一步要做的事，只用作業裡已確認的證據。不要自己編分數或結果。",
+    },
+    comparePriorities: {
+      label: "比較哪件要我先做",
+      message: "比較手上的待辦，告訴我哪件應該先做，只根據記錄的優先順序、工作量和證據。不要自己拼一個總分。",
+    },
+    reviseAction: {
+      label: "改這件待辦",
+      message: "幫我改這件待辦：{title}。只用已確認的店裡資料；沒有的東西問我拿，不要自己填。",
+    },
   },
   empty: {
     eyebrow: "提問、決定、起草",
@@ -554,7 +613,7 @@ const zhTW: StudioCopy = {
     ],
   },
   composer: {
-    label: "向工作台對話",
+    label: "向 Kinnso 講",
     placeholder: "問這個工作區的狀況，或直接說你想完成什麼…",
     send: "傳送",
     sending: "傳送中",
@@ -575,7 +634,7 @@ const zhTW: StudioCopy = {
   },
   message: {
     you: "你",
-    assistant: "工作台",
+    assistant: "Kinnso",
     copy: "複製文字",
     copied: "已複製",
     copyFailed: "未能複製",
@@ -628,7 +687,7 @@ const zhTW: StudioCopy = {
     boundary: "草稿在獲授權人士核准指定版本之前仍屬草稿，不會自動發布。",
     viewer: "你可以在這裡提問；起草需要店主或範圍內的經理。",
     viewerShared: "這個討論以唯讀方式分享給你。",
-    aiUnavailable: "AI 供應商暫時無法使用，工作台未能回答，也沒有傳送訊息。",
+    aiUnavailable: "AI 供應商暫時無法使用，Kinnso 未能回答，也沒有傳送訊息。",
     archived: "這個對話已封存，僅供閱讀。",
     needsFacts: "起草前仍需要你確認以下資料：{facts}。",
     noDraftTarget: "未能把這項要求對應到未完成行動，暫時沒有可安全起草的基礎。",

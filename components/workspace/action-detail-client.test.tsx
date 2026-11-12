@@ -11,8 +11,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { act, cleanup, fireEvent, render as renderLive, screen, within } from "@testing-library/react";
 
 // The page and sticky bar deliberately repeat the current step's primary.
+// The Kinnso handoff is a link after one-chat convergence; it renders as a
+// disabled button only while unsaved edits block the handoff.
 function pageButton(name: string | RegExp) {
-  return screen.getAllByRole("button", { name })[0];
+  return screen.queryAllByRole("button", { name })[0] ?? screen.getAllByRole("link", { name })[0];
 }
 function editSavedDraft() {
   const change = screen.queryAllByRole("button", { name: /^(Change the draft|唔啱，改返|不合適，修改草稿)$/ })[0];
@@ -155,19 +157,19 @@ function render(templateKey: TemplateKey, measurements: ActionDetail["measuremen
 it("shows the Studio edit/approve handoff banner only when arriving from a saved Studio draft", () => {
   const withBanner = render("review-response", [], false, true);
   expect(withBanner.querySelector('[data-testid="studio-handoff-banner"]')).not.toBeNull();
-  expect(withBanner.textContent).toContain("Studio draft saved");
-  expect(withBanner.textContent).toContain("Back to Conversation Studio");
+  expect(withBanner.textContent).toContain("Kinnso draft saved");
+  expect(withBanner.textContent).toContain("Back to Kinnso");
   expect(render("review-response").querySelector('[data-testid="studio-handoff-banner"]')).toBeNull();
 });
 
 it("links editors to the Studio focused on this action, but not from the side panel", () => {
-  const studioHref = "/en/owner/kam-man-house/conversation/studio?location=yik-yam&action=act-1";
+  const studioHref = "/en/owner/kam-man-house/conversation?location=yik-yam&action=act-1";
   const linked = render("review-response", [], false, false, studioHref);
-  const link = linked.querySelector<HTMLAnchorElement>('a[href*="/conversation/studio"]');
+  const link = linked.querySelector<HTMLAnchorElement>('a[href*="/conversation"]');
   expect(link?.getAttribute("href")).toBe(studioHref);
-  expect(link?.textContent).toContain("Continue in Studio");
-  expect(render("review-response").textContent).not.toContain("Continue in Studio");
-  expect(render("review-response", [], true, false, studioHref).textContent).not.toContain("Continue in Studio");
+  expect(link?.textContent).toContain("Ask Kinnso");
+  expect(render("review-response").textContent).not.toContain("Ask Kinnso");
+  expect(render("review-response", [], true, false, studioHref).textContent).not.toContain("Ask Kinnso");
 });
 
 it("drops the Back to actions link in the side panel, where Close keeps the queue's filters", () => {
@@ -630,25 +632,25 @@ describe("assistant revisions preserve unsaved edits", () => {
       />,
     );
     editSavedDraft();
-    const trigger = pageButton(chinese ? "用助理修改並建立新版本" : "Revise with operator as a new version");
+    const triggerName = chinese ? "用助理修改並建立新版本" : "Revise with operator as a new version";
     const regenerate = pageButton(chinese ? "以 Agent 重新生成為新版本" : "Regenerate with the agent as a new version");
     const editor = screen.getByLabelText(field === "body" ? (chinese ? "草稿" : "Draft") : "Image alt text");
     const savedValue = field === "body" ? "Saved example reply" : "Saved example description";
-    expect(trigger).toBeEnabled();
+    expect(pageButton(triggerName)).toBeEnabled();
     expect(regenerate).toBeEnabled();
 
     fireEvent.change(editor, { target: { value: "Unsaved local edit" } });
-    expect(trigger).toBeDisabled();
+    expect(pageButton(triggerName)).toBeDisabled();
     expect(regenerate).toBeDisabled();
     expect(editor).toHaveValue("Unsaved local edit");
     expect(pageButton(chinese ? "儲存手動修改為新版本" : "Save manual edits as a new version")).toBeEnabled();
     expect(screen.getByText(message)).toBeInTheDocument();
-    fireEvent.click(trigger);
+    fireEvent.click(pageButton(triggerName));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
 
     fireEvent.change(editor, { target: { value: savedValue } });
-    expect(trigger).toBeEnabled();
+    expect(pageButton(triggerName)).toBeEnabled();
     expect(regenerate).toBeEnabled();
     expect(screen.queryByText(message)).not.toBeInTheDocument();
   });
@@ -891,40 +893,24 @@ describe("all generation paths preserve unsaved edits", () => {
     expect(screen.getByLabelText("Draft")).toBeDisabled();
   });
 
-  it.each([false, true])("assistant version saving respects current dirty state (%s)", async (makeDirty) => {
-    fetchSpy.mockImplementation(async (url: string) => {
-      if (url.startsWith("/api/assistant/suggestions")) return Response.json({ suggestions: [] });
-      if (url === "/api/assistant/run") return Response.json({
-        runId: "assistant-run", draftRunId: "persisted-assistant-draft", state: "needs_approval",
-        answer: "Revised reply preview", nextAction: "Review the preview", evidenceRefs: [], warnings: [],
-        requiresApproval: true, demoBoundary: "Nothing is published",
-        output: { artifactId: "artifact-1", type: "review_reply", title: "Reply", body: "Revised reply", version: 1, acceptanceCriteria: [] },
-      });
-      return Response.json({ versionId: "assistant-version", versionNo: 4 });
-    });
+  it.each([false, true])("hands assistant revision to Kinnso and blocks it while edits are dirty (%s)", (makeDirty) => {
     renderLive(element(draft()));
     editSavedDraft();
     const editor = screen.getByLabelText("Draft");
-    await act(async () => { fireEvent.click(pageButton("Revise with operator as a new version")); });
-    const warmer = await screen.findByRole("button", { name: "Make it warmer without overpromising" });
-    await act(async () => { fireEvent.click(warmer); });
-    const createName = "Create a new version without overwriting";
-    expect(pageButton(createName)).toBeInTheDocument();
+    const handoff = pageButton("Revise with operator as a new version");
+    expect(handoff).toHaveAttribute("href", expect.stringContaining("/example-business/conversation?"));
+    expect(handoff.getAttribute("href")).toContain("action=act-1");
+    expect(handoff.getAttribute("href")).toContain("ask=revise_action");
+    expect(handoff.getAttribute("href")).toContain("location=yik-yam");
     if (makeDirty) {
-      // Models an editor update while a previously opened assistant is still
-      // holding its preview. A disabled launcher alone cannot secure the save.
       fireEvent.change(editor, { target: { value: "Unsaved reply" } });
-      expect(screen.queryByRole("button", { name: createName })).not.toBeInTheDocument();
+      const blocked = pageButton("Revise with operator as a new version");
+      expect(blocked.tagName).toBe("BUTTON");
+      expect(blocked).toBeDisabled();
+      expect(screen.queryByRole("link", { name: "Revise with operator as a new version" })).not.toBeInTheDocument();
       expect(editor).toHaveValue("Unsaved reply");
-      expect(fetchSpy.mock.calls.filter(([url]) => String(url).endsWith("/versions"))).toHaveLength(0);
     } else {
-      await act(async () => { fireEvent.click(pageButton(createName)); });
-      const saves = fetchSpy.mock.calls.filter(([url]) => String(url).endsWith("/versions"));
-      expect(saves).toHaveLength(1);
-      expect(JSON.parse(String(saves[0][1]?.body))).toEqual({
-        assistant_run_id: "persisted-assistant-draft", base_version_id: "saved-version",
-      });
-      expect(editor).toBeDisabled();
+      expect(handoff.tagName).toBe("A");
     }
   });
 });

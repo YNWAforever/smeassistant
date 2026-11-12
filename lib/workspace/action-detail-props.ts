@@ -75,7 +75,7 @@ export async function loadActionDetailProps(page: OwnerPageContext, actionId: st
   // editors in scope see it; the Studio page re-validates the action id and
   // falls back to the normal rail when the id is stale or outside the scope.
   const studioHref = conversationStudioEnabled() && conversationHomeEnabled() && inScope && OPEN_ACTION_STATES.includes(detail.action.actionState) && (page.membership.role === "owner" || page.membership.role === "manager")
-    ? `/${page.locale}/owner/${page.workspaceSlug}/conversation/studio?location=${encodeURIComponent(detail.action.location.slug)}&action=${encodeURIComponent(actionId)}`
+    ? `/${page.locale}/owner/${page.workspaceSlug}/conversation?location=${encodeURIComponent(detail.action.location.slug)}&action=${encodeURIComponent(actionId)}&ask=revise_action`
     : null;
 
   return {

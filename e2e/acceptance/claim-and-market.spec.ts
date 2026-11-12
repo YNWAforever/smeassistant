@@ -93,9 +93,9 @@ for (const { locale, finish } of [
   await expect(page).toHaveURL(new RegExp(`/${locale}/owner/${merchant.slug}$`));
   // This is the real owner component reading the newly persisted snapshot and
   // derived action, rather than a mocked success page.
-  await expect(page.locator(".brief-priority-card h2")).not.toBeEmpty();
-  await expect(page.locator(".brief-priority-card a")).toHaveAttribute("href", /\/actions\//);
-  const priorityTitle = await page.locator(".brief-priority-card h2").innerText();
+  await expect(page.locator(".home-v2-next h2")).not.toBeEmpty();
+  await expect(page.locator(".home-v2-next-actions a")).toHaveAttribute("href", /\/actions\//);
+  const priorityTitle = await page.locator(".home-v2-next h2").innerText();
   expect(priorityTitle).not.toMatch(/No action|沒有需要/);
   expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${jobId}';`)).toBe("1");
   expect(sql(environment.db, `select count(*) from locations where workspace_id='${merchant.workspaceId}';`)).toBe("1");
@@ -109,7 +109,7 @@ for (const { locale, finish } of [
   expect(submittedSetups).toHaveLength(1);
   expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${jobId}';`)).toBe("1");
   await page.goto(`/${locale}/owner/${merchant.slug}`);
-  await expect(page.locator(".brief-priority-card h2")).toHaveText(priorityTitle);
+  await expect(page.locator(".home-v2-next h2")).toHaveText(priorityTitle);
   const resultScreenshot = testInfo.outputPath(`first-result-${locale}.png`);
   await page.screenshot({ path: resultScreenshot, fullPage: true });
   await testInfo.attach("First evidence-backed result", { path: resultScreenshot, contentType: "image/png" });

@@ -1,106 +1,46 @@
-import type { Locator } from "@playwright/test";
 import { test, expect, signIn } from "../../test/e2e/fixtures";
 import { sql } from "../../test/e2e/environment";
 
-/** A click made before the page hydrates is dropped, so repeat it until the thing it should open is there. Only for controls that open things. */
-async function clickUntil(target: Locator, opened: Locator) {
-  await expect(async () => {
-    await target.click({ timeout: 3000 });
-    await expect(opened).toBeVisible({ timeout: 3000 });
-  }).toPass({ timeout: 60000 });
-}
+/**
+ * The owner assistant sheet was removed on owner surfaces. Every owner entry is
+ * now the single Kinnso link with an allowlisted `ask` key; it carries context
+ * in the URL and never free text, a model call, or an approval/export action.
+ * The action header only renders that link when the conversation flags are on,
+ * so this spec needs the same prerequisite as the Studio acceptance suite.
+ */
+const STUDIO_ENABLED = process.env.CONVERSATION_STUDIO_ENABLED === "true";
 
-// The assistant never approves, exports or publishes; none of these routes may be called while the owner asks and follows the link.
-const AUTHORITY_ROUTE = /\/api\/versions\/[^/]+\/(approve|request-changes|reject|export)|\/api\/(.*\/)?publish/;
-
-test("an owner with a waiting draft continues from the assistant to the exact version", async ({ page, merchant, environment }) => {
-  const db = environment.db;
-  const ws = merchant.workspaceId;
-  const usage = () => sql(db, `select coalesce(sum(approved_deliveries),0) from workspace_usage where workspace_id='${ws}';`);
+test("owner surfaces expose only allowlisted Kinnso links, never the old assistant sheet", async ({ page, merchant, environment }) => {
+  test.skip(!STUDIO_ENABLED, "requires CONVERSATION_STUDIO_ENABLED=true in the acceptance app env");
 
   await signIn(page, environment, merchant);
-
-  // 1. On the action, generate a draft with the fixture model so one `draft` version exists.
-  await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}`);
-  await expect(page.locator(".action-detail-page")).toBeVisible();
-  const generate = page.getByRole("button", { name: /Generate a draft|Regenerate/ });
-  await expect(generate).toHaveCount(1);
-  await generate.click();
-  await page.getByRole("tab", { name: "History" }).click();
-  await expect(page.locator(".version-list button")).toHaveCount(1, { timeout: 90000 });
-  const versionId = sql(db, `select id from output_versions where action_id='${merchant.actionId}' and version_no=1 and approval_state='draft';`);
-  expect(versionId).toMatch(/^[a-f0-9-]{36}$/);
-  const before = {
-    versions: sql(db, `select count(*) from output_versions where workspace_id='${ws}';`),
-    deliveries: sql(db, `select count(*) from deliveries where workspace_id='${ws}';`),
-    runs: sql(db, `select count(*) from action_runs where workspace_id='${ws}';`),
-    state: sql(db, `select approval_state from output_versions where id='${versionId}';`),
-  };
-  expect(usage()).toBe("0");
-
-  // Record every request from here on: the sheet steps must never reach an approve, export or publish route.
   const requested: string[] = [];
   page.on("request", (request) => { requested.push(`${request.method()} ${new URL(request.url()).pathname}`); });
 
-  // 2. Home: open the sheet from "Ask why this comes first". The trigger is the
-  // question, so opening asks it (explain_priority, a fixed question) by itself.
-  await page.goto(`/en/owner/${merchant.slug}`);
-  const evidence = page.locator("details.owner-priority-evidence");
-  await expect(evidence).not.toHaveAttribute("open");
-  await evidence.locator("summary").click();
-  const isAssistantRun = (response: { url(): string; request(): { method(): string; postDataJSON(): unknown } }, origin: string) =>
-    response.url().includes("/api/assistant/run") && response.request().method() === "POST"
-    && (response.request().postDataJSON() as { origin?: string } | null)?.origin === origin;
-  const suggestionsResponse = page.waitForResponse((response) => response.url().includes("/api/assistant/suggestions") && response.status() === 200);
-  const autoAsk = page.waitForResponse((response) => isAssistantRun(response, "fixed"));
-  await clickUntil(page.getByRole("button", { name: "Ask why this comes first" }), page.getByRole("dialog"));
-  await suggestionsResponse;
-  const autoAskResponse = await autoAsk;
-  expect(autoAskResponse.status()).toBe(200);
-  expect(autoAskResponse.request().postDataJSON()).toMatchObject({ intentId: "explain_priority", origin: "fixed" });
+  // Today: no inline assistant, no dialog; three concrete Kinnso suggestions.
+  await page.goto(`/en/owner/${merchant.slug}?location=primary`);
+  await expect(page.locator(".assistant-launcher")).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const suggestions = page.locator(".home-v2-ask a[href*='ask=']");
+  await expect(suggestions).toHaveCount(3);
+  for (const key of ["write_ig", "reply_reviews", "plan_week"]) {
+    await expect(page.locator(`.home-v2-ask a[href*="ask=${key}"]`)).toHaveCount(1);
+  }
 
-  // 3. "Needs you now" and "Where do I continue?" are offered; ask it.
-  const sheet = page.getByRole("dialog");
-  await expect(sheet.getByText("Needs you now", { exact: true })).toBeVisible();
-  const askButton = sheet.getByRole("button", { name: "Where do I continue?" });
-  await expect(askButton).toBeVisible();
-  const run = page.waitForResponse((response) => isAssistantRun(response, "suggested"));
-  await askButton.click();
-  const runResponse = await run;
-  expect(runResponse.status()).toBe(200);
-  expect(runResponse.request().postDataJSON()).toMatchObject({ origin: "suggested" });
-
-  // 4. The answer names v1, and the next step links to that exact version.
-  await expect(sheet.locator(".assistant-answer-card")).toContainText("v1");
-  const link = sheet.getByRole("link", { name: "Continue here" });
-  await expect(link).toBeVisible();
-  const href = await link.getAttribute("href");
-  expect(href).toContain(`/actions/${merchant.actionId}?version=${versionId}`);
-  await link.click();
-
-  // 5. The action page opens with that version selected.
-  await expect(page).toHaveURL(new RegExp(`/actions/${merchant.actionId}\\?version=${versionId}(&|$)`));
+  // The task page keeps the exact action context and the allowlisted ask key,
+  // but no free-text field and no authority route.
+  await page.goto(`/en/owner/${merchant.slug}/actions/${merchant.actionId}?location=primary`);
   await expect(page.locator(".action-detail-page")).toBeVisible();
-  await page.getByRole("tab", { name: "History" }).click();
-  // A waiting version is always its action's newest (create_output_version supersedes earlier draft/changes_requested rows), so this does not isolate ?version=; components/workspace/action-detail-version-param.test.tsx does.
-  await expect(page.locator(".version-list button[aria-pressed='true']")).toContainText("Version 1");
+  const kinnso = page.getByRole("link", { name: "Ask Kinnso", exact: true }).first();
+  await expect(kinnso).toBeVisible();
+  const href = await kinnso.getAttribute("href");
+  expect(href).toContain(`/owner/${merchant.slug}/conversation?`);
+  expect(href).toContain(`action=${merchant.actionId}`);
+  expect(href).toContain("ask=revise_action");
+  expect(href).not.toMatch(/(?:^|[?&])(q|prompt|message|text)=/);
 
-  // Continuing opens saved text for confirmation; re-editing keeps one clear
-  // Regenerate control without creating another version or calling the model.
-  await page.getByRole("tab", { name: "Write & confirm" }).click();
-  await expect(page.locator("#draft-content")).toHaveAttribute("readonly", "");
-  await page.getByRole("button", { name: "Change the draft", exact: true }).click();
-  await expect(page.locator("#draft-content")).not.toHaveAttribute("readonly");
-  const regenerate = page.getByRole("button", { name: /^Regenerate/ });
-  await expect(regenerate).toHaveCount(1);
-  await expect(regenerate).toBeEnabled();
-
-  // The assistant and the link changed nothing and called no authority route.
-  expect(requested.filter((entry) => AUTHORITY_ROUTE.test(entry))).toEqual([]);
-  expect(requested.some((entry) => entry === "POST /api/assistant/run")).toBe(true);
-  expect(sql(db, `select count(*) from output_versions where workspace_id='${ws}';`)).toBe(before.versions);
-  expect(sql(db, `select count(*) from deliveries where workspace_id='${ws}';`)).toBe(before.deliveries);
-  expect(sql(db, `select count(*) from action_runs where workspace_id='${ws}';`)).toBe(before.runs);
-  expect(sql(db, `select approval_state from output_versions where id='${versionId}';`)).toBe(before.state);
-  expect(usage()).toBe("0");
+  expect(requested.some((entry) => entry.startsWith("POST /api/assistant/"))).toBe(false);
+  expect(requested.filter((entry) => /\/api\/versions\/[^/]+\/(approve|request-changes|reject|export)/.test(entry))).toEqual([]);
+  expect(sql(environment.db, `select count(*) from output_versions where workspace_id='${merchant.workspaceId}';`)).toBe("0");
+  expect(sql(environment.db, `select approved_deliveries from workspace_usage where workspace_id='${merchant.workspaceId}';`)).toBe("0");
 });

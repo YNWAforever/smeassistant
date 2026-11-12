@@ -120,9 +120,9 @@ for (const item of [
     expect(sql(environment.db, `select count(*) from locations where workspace_id='${merchant.workspaceId}';`)).toBe("1");
     expect(sql(environment.db, `select count(*) from scan_snapshots where job_id='${job.id}';`)).toBe("1");
     expect(sql(environment.db, `select count(*) from brand_profiles where workspace_id='${merchant.workspaceId}';`)).toBe("1");
-    await expect(page.locator(".brief-priority-card h2")).not.toBeEmpty();
+    await expect(page.locator(".home-v2-next h2")).not.toBeEmpty();
     await page.reload();
-    await expect(page.locator(".brief-priority-card h2")).not.toBeEmpty();
+    await expect(page.locator(".home-v2-next h2")).not.toBeEmpty();
     const after = info.outputPath(`new-brand-result-${item.locale}.png`);
     await page.screenshot({ path: after, fullPage: true });
     await info.attach("New business first persisted result", { path: after, contentType: "image/png" });

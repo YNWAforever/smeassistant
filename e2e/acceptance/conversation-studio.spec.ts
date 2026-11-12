@@ -80,16 +80,14 @@ test.describe("Conversation Studio", () => {
     await page.goto(`/en/owner/${merchant.slug}`);
     await waitForHydration(page);
     await expect(page).not.toHaveURL(/\/conversation/);
-    // The persistent topbar entry makes the workbench discoverable from Today.
-    const conversationEntry = page.locator(".conversation-topbar-link");
+    // Kinnso is the fourth primary destination, so it is discoverable from Today.
+    const conversationEntry = page.locator("[data-slot='sidebar-menu'] a").filter({ hasText: "Kinnso" });
     await expect(conversationEntry).toBeVisible();
     await expect(conversationEntry).toHaveAttribute("href", new RegExp(`/en/owner/${merchant.slug}/conversation\\?location=`));
 
-    // The conversation workbench is the single entry point to the Studio.
+    // Kinnso is canonical; the old Studio URL permanently redirects here.
     await page.goto(`/en/owner/${merchant.slug}/conversation`);
-    await expect(page.locator(".conversation-studio-entry")).toBeVisible();
-    await page.locator(".conversation-studio-entry").click();
-    await page.waitForURL(new RegExp(`/en/owner/${merchant.slug}/conversation/studio`));
+    await expect(page).toHaveURL(new RegExp(`/en/owner/${merchant.slug}/conversation\\?location=`));
     await expect(page.locator(".studio-root")).toBeVisible();
     await expect(page.locator(".studio-thread")).toHaveAttribute("role", "log");
     await expect(page.locator(".studio-thread")).toHaveAttribute("aria-live", "polite");
@@ -114,7 +112,7 @@ test.describe("Conversation Studio", () => {
     // The answer is the model's prose, not the classifier's raw JSON envelope.
     await expect(thread.locator(".studio-message-assistant").last()).not.toContainText('"intent"');
     await expect(page.locator(".studio-pending")).toHaveCount(0, { timeout: 90_000 });
-    await expect(page).toHaveURL(new RegExp(`/conversation/studio\\?.*chat=${conversation.id}`));
+    await expect(page).toHaveURL(new RegExp(`/conversation\\?.*chat=${conversation.id}`));
     expect(sql(environment.db, `select count(*) from studio_messages where conversation_id='${conversation.id}';`)).toBe("2");
     expect(sql(environment.db, `select count(*) from studio_conversations where id='${conversation.id}' and workspace_id='${merchant.workspaceId}';`)).toBe("1");
     // v1.1: the first-turn classifier names the conversation; the rail shows it.
@@ -132,7 +130,7 @@ test.describe("Conversation Studio", () => {
     // 5. Reopen from the rail and read the history again.
     await rail.locator(".studio-rail-select").first().click();
     await expect(page.locator(".studio-message-assistant").last()).toContainText("Start with the unanswered reviews");
-    await expect(page.getByLabel("Message the Studio")).toBeVisible();
+    await expect(page.getByLabel("Message Kinnso")).toBeVisible();
 
     // 6. The Studio never offers approve/publish/authority routes. The only
     //    export is the read-only transcript download.
@@ -162,7 +160,7 @@ test.describe("Conversation Studio", () => {
     await setSocialDraftScript(environment, socialActionId);
     await signIn(page, environment, merchant);
 
-    await page.goto(`/en/owner/${merchant.slug}/conversation/studio?location=primary`);
+    await page.goto(`/en/owner/${merchant.slug}/conversation?location=primary`);
     await waitForHydration(page);
     await page.getByRole("button", { name: "Plan this week's IG post" }).click();
     await expect(page.locator(".studio-artifact-card")).toBeVisible({ timeout: 90_000 });
@@ -183,8 +181,8 @@ test.describe("Conversation Studio", () => {
     expect(href).toContain("from=studio");
     await review.click();
     await page.waitForURL(new RegExp(`/actions/${socialActionId}\\?`));
-    await expect(page.getByTestId("studio-handoff-banner")).toContainText("Studio draft saved");
-    await expect(page.getByTestId("studio-handoff-banner")).toContainText("Back to Conversation Studio");
+    await expect(page.getByTestId("studio-handoff-banner")).toContainText("Kinnso draft saved");
+    await expect(page.getByTestId("studio-handoff-banner")).toContainText("Back to Kinnso");
 
     // B: approve the exact version on the action page; the Instagram delivery is
     // then available as Copy text (export-ready, never auto-published).
@@ -196,25 +194,25 @@ test.describe("Conversation Studio", () => {
     await expect(page.getByRole("button", { name: "Copy text" })).toBeVisible();
 
     // Returning keeps the same persistent conversation.
-    await page.getByTestId("studio-handoff-banner").getByRole("link", { name: "Back to Conversation Studio" }).click();
-    await expect(page).toHaveURL(new RegExp(`/conversation/studio\\?.*location=primary`));
+    await page.getByTestId("studio-handoff-banner").getByRole("link", { name: "Back to Kinnso" }).click();
+    await expect(page).toHaveURL(new RegExp(`/conversation\\?.*location=primary`));
     await expect(page.locator(".studio-message-user").first()).toContainText("Help me plan and draft this week's Instagram post");
     await expect(page.locator(".studio-artifact-card")).toContainText("This week at the shop");
   });
 
   test("promotes a browser-local note thread into a persistent Studio conversation", async ({ page, merchant, environment }) => {
     await signIn(page, environment, merchant, "owner");
-    await page.goto(`/en/owner/${merchant.slug}/conversation`);
+    await page.goto(`/en/owner/${merchant.slug}/conversation/notes`);
 
-    // The workbench is server-first; reveal the browser-only notes to create one.
+    // The archived workbench keeps browser-only notes; reveal them to create one.
     await page.getByRole("button", { name: "Browser-only notes" }).click();
     await page.getByLabel("Your note").fill("First local note");
     await page.getByRole("button", { name: "Save local note" }).click();
     await expect(page.locator(".conversation-note").first()).toContainText("First local note");
 
     // The convergence bridge imports the notes as opening user turns.
-    await page.getByRole("button", { name: "Continue in Studio" }).click();
-    await expect(page).toHaveURL(new RegExp(`/conversation/studio\\?.*chat=`));
+    await page.getByRole("button", { name: "Continue with Kinnso" }).click();
+    await expect(page).toHaveURL(new RegExp(`/conversation\\?.*chat=`));
     await expect(page.locator(".studio-message-user").first()).toContainText("First local note");
     const conversationId = new URL(page.url()).searchParams.get("chat")!;
     expect(sql(environment.db, `select count(*) from studio_messages where conversation_id='${conversationId}';`)).toBe("1");
@@ -223,7 +221,7 @@ test.describe("Conversation Studio", () => {
 
   test("imports all local note threads into persistent discussions in one click", async ({ page, merchant, environment }) => {
     await signIn(page, environment, merchant, "owner");
-    await page.goto(`/en/owner/${merchant.slug}/conversation`);
+    await page.goto(`/en/owner/${merchant.slug}/conversation/notes`);
 
     await page.getByRole("button", { name: "Browser-only notes" }).click();
     await page.getByLabel("Your note").fill("First local note");
@@ -234,8 +232,8 @@ test.describe("Conversation Studio", () => {
     await page.getByRole("button", { name: "Save local note" }).click();
     await expect(page.locator(".conversation-note").first()).toContainText("Second local note");
 
-    await page.getByRole("button", { name: /Import all to Studio/ }).click();
-    await expect(page.getByText("Local threads are now in Studio.")).toBeVisible();
+    await page.getByRole("button", { name: /Import all to Kinnso/ }).click();
+    await expect(page.getByText("Local threads are now in Kinnso.")).toBeVisible();
     expect(sql(environment.db, `select count(*) from studio_messages where workspace_id='${merchant.workspaceId}' and content in ('First local note','Second local note');`)).toBe("2");
 
     // The persistent copies are listed and the local threads link to them.
@@ -248,12 +246,12 @@ test.describe("Conversation Studio", () => {
   test("starts a new Studio conversation from a workbench action deep link", async ({ page, merchant, environment }) => {
     await setModelScript(environment);
     await signIn(page, environment, merchant, "owner");
-    await page.goto(`/en/owner/${merchant.slug}/conversation?location=primary`);
+    await page.goto(`/en/owner/${merchant.slug}/conversation/notes?location=primary`);
 
-    const discuss = page.getByRole("link", { name: "Discuss this action" }).first();
+    const discuss = page.getByRole("link", { name: "Discuss with Kinnso" }).first();
     await expect(discuss).toBeVisible();
     await discuss.click();
-    await expect(page).toHaveURL(new RegExp(`/en/owner/${merchant.slug}/conversation/studio\\?action=`));
+    await expect(page).toHaveURL(new RegExp(`/en/owner/${merchant.slug}/conversation\\?action=`));
     await expect(page.getByRole("heading", { name: "What should we work on?" })).toBeVisible();
 
     // The action is a contextual starter, not a prefilled answer or an authority.
@@ -265,7 +263,7 @@ test.describe("Conversation Studio", () => {
   test("shares a conversation with an accepted teammate and enforces viewer read-only", async ({ page, merchant, environment }) => {
     await setModelScript(environment);
     await signIn(page, environment, merchant, "owner");
-    await page.goto(`/en/owner/${merchant.slug}/conversation/studio`);
+    await page.goto(`/en/owner/${merchant.slug}/conversation`);
     await page.getByRole("button", { name: "What should I do first?" }).click();
     await expect(page.locator(".studio-message-assistant").last()).toContainText("Start with the unanswered reviews", { timeout: 90_000 });
     const conversationId = new URL(page.url()).searchParams.get("chat");
@@ -291,7 +289,7 @@ test.describe("Conversation Studio", () => {
     // The teammate signs in and sees the shared conversation on their rail.
     expect((await page.request.post("/api/auth/sign-out")).status()).toBe(200);
     await signIn(page, environment, merchant, "viewer");
-    await page.goto(`/en/owner/${merchant.slug}/conversation/studio`);
+    await page.goto(`/en/owner/${merchant.slug}/conversation`);
     await page.locator(".studio-rail-select").filter({ hasText: "Review replies first" }).click();
     await expect(page.getByText("This conversation is shared with you as read-only.")).toBeVisible();
     await expect(page.locator("#studio-composer-input")).toBeDisabled();
@@ -304,7 +302,7 @@ test.describe("Conversation Studio", () => {
   test("conversations are private per member: a teammate in the same workspace starts with an empty rail", async ({ page, merchant, environment }) => {
     await setModelScript(environment);
     await signIn(page, environment, merchant, "owner");
-    await page.goto(`/en/owner/${merchant.slug}/conversation/studio`);
+    await page.goto(`/en/owner/${merchant.slug}/conversation`);
     await page.getByRole("button", { name: "What should I do first?" }).click();
     await expect(page.locator(".studio-message-assistant").last()).toContainText("Start with the unanswered reviews", { timeout: 90_000 });
     const conversation = sql(environment.db, `select id from studio_conversations where workspace_id='${merchant.workspaceId}' and created_by=(select id from app_users where email='${merchant.emails.owner}');`);
@@ -314,7 +312,7 @@ test.describe("Conversation Studio", () => {
     await signIn(page, environment, merchant, "viewer");
 
     // The rail is the viewer's own list: the owner's conversation is absent.
-    await page.goto(`/en/owner/${merchant.slug}/conversation/studio`);
+    await page.goto(`/en/owner/${merchant.slug}/conversation`);
     await expect(page.getByRole("heading", { name: "What should we work on?" })).toBeVisible();
     await expect(page.locator(".studio-rail")).not.toContainText("What should I do first");
 

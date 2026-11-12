@@ -2,6 +2,16 @@
 
 Each phase has a full report in `docs/ux/`.
 
+## Owner IA v2: one next step, one Kinnso chat (2026-11-12)
+
+- **Navigation:** Today, Tasks, Kinnso, Results and Business are the five primary destinations; Settings moves to the account menu. Kinnso is canonical at `/conversation`, and old `/conversation/studio` links redirect there. Browser-only notes stay at `/conversation/notes`.
+- **Today:** one next step, drafts waiting for the owner, one Kinnso box with three suggestions, and an effort-only month strip. Scores, proof, photos and integration health move to Results, Business or the task.
+- **One assistant:** the owner assistant sheet is removed from Today, Tasks, action detail and New task. Those surfaces deep-link into Kinnso through an allowlisted `?ask=` key; approval/export still happens on the task page.
+- **Chat:** the global sidebar and mobile bar step aside on `/conversation`; a slim topbar keeps notifications, theme, language and the account menu, and the chat header carries back, location, context, new chat and an overflow menu.
+- **Business:** only shop facts, locations, photos and connections; Settings links are no longer duplicated there.
+
+Full report: [PHASE-12-OWNER-IA-REPORT.md](PHASE-12-OWNER-IA-REPORT.md).
+
 ## Taiwan wording, "uses" everywhere, quieter role notes (2026-10-27, fourth pass)
 
 - **Taiwan task names:** tasks had stored the Hong Kong wording for zh-TW, so Taiwan owners read 帖文, 餐牌, 相片 and 本地搜尋. Every task template now has its own zh-TW title, summary and outcome (貼文, 菜單, 照片, 在地搜尋), and the zh-TW dictionary uses the same words. A test blocks Hong Kong-only words and Cantonese particles in zh-TW task text. Existing tasks pick up the new names the next time they are re-derived after a scan.

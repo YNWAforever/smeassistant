@@ -26,7 +26,12 @@ export function StudioEmptyState({
   onStarter: (message: string) => void
 }) {
   const t = studioText(locale)
-  const starters = chips.length > 0 ? chips : t.empty.starters.map((starter) => ({ id: starter.id, label: starter.label, message: starter.message }))
+  // Three choices is the most a first-time owner should have to compare. A
+  // deep-linked question stays first; the action's contextual starter and the
+  // model-backed IG workflow stay ahead of generic briefing chips.
+  const allStarters = chips.length > 0 ? chips : t.empty.starters.map((starter) => ({ id: starter.id, label: starter.label, message: starter.message }))
+  const rank = (id: string) => id.startsWith("ask:") ? 0 : id.startsWith("action:") ? 1 : id === "starter_ig" ? 2 : 3
+  const starters = [...allStarters].sort((a, b) => rank(a.id) - rank(b.id)).slice(0, 3)
   return (
     <div className="studio-empty">
       <div className="studio-empty-inner">

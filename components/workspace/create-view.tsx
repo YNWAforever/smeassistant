@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
+import { AskKinnsoLink } from "@/components/kinnso/ask-kinnso-link"
 import { CapabilityBadge, FactType, PageIntro, SectionCard } from "@/components/product-ui"
 import { LocationSelect } from "@/components/workspace/location-select"
 import { copy, type PrototypeLocale } from "@/lib/copy"
@@ -167,7 +167,7 @@ export function CreateView({ locale, workspaceSlug, workspaceId, role, inScope, 
         eyebrow={pc.outcomeLedCreationCentre}
         title={pc.whatDoYouWant}
         description={pc.chooseABusinessOutcome}
-        actions={<><ContextualAssistant locale={locale} surface="create" mode="live" context={{ workspaceId, locationId: locationId ?? undefined }} basePath={base} locationParam={location} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /><Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{pc.openActionQueue}<ArrowRight /></Link></Button></>}
+        actions={<><AskKinnsoLink locale={locale} workspaceSlug={workspaceSlug} location={location} label={copy[locale].shell.assistant.name} /><LocationSelect locale={locale} value={location} locations={locations} className="location-select" /><Button asChild variant="outline"><Link href={withLocation(`${base}/actions`, location)}>{pc.openActionQueue}<ArrowRight /></Link></Button></>}
       />
       {!canCreate && <RoleNotice kind="createReadOnly" locale={locale} />}
       <div className="create-tabs">

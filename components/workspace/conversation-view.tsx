@@ -5,7 +5,7 @@ import { ArrowRight, ArrowUp, FileText, Globe, ListChecks, Megaphone, MessageSqu
 import { ConversationDocuments, ConversationConnectors } from "./conversation-resources";
 import { ConversationSearch } from "./conversation-search";
 import { PostDraftCoach, type ConfirmedPostDraft } from "./post-draft-coach";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { copy, type PrototypeLocale } from "@/lib/copy";
@@ -67,7 +67,11 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
   const d = conversationDesignCopy[locale];
   const navigation = useConversationNavigation();
   const router = useRouter();
+  const pathname = usePathname();
   const base = `/${locale}/owner/${workspaceSlug}`;
+  // Browser-only notes live at /conversation/notes, while the canonical chat is
+  // /conversation. Keep thread state on whichever surface mounted this view.
+  const workbenchPath = `${base}/conversation${pathname?.endsWith("/conversation/notes") ? "/notes" : ""}`;
   const locationQuery = `location=${encodeURIComponent(location)}`;
   const [local, setLocal] = useState(() => {
     try { return readConversationThreads(window.localStorage, scope); }
@@ -112,7 +116,7 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
 
   function selectThread(id?: string) {
     setSelectedId(id); setComposer(""); setSaved(false);
-    router.replace(`${base}/conversation?${locationQuery}${id ? `&thread=${encodeURIComponent(id)}` : ""}`, { scroll: false });
+    router.replace(`${workbenchPath}?${locationQuery}${id ? `&thread=${encodeURIComponent(id)}` : ""}`, { scroll: false });
   }
   function persist(next: LocalThread, savedNote = false) {
     const threads = [next, ...local.threads.filter(thread => thread.id !== next.id)];
@@ -140,7 +144,7 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
       : { id: crypto.randomUUID(), title: note.slice(0, CONVERSATION_LIMITS.titleLength), notes: [note], actionIds: [], createdAt: now, updatedAt: now };
     persist(next, true);
     setComposer("");
-    if (!selected) { setSelectedId(next.id); router.replace(`${base}/conversation?${locationQuery}&thread=${encodeURIComponent(next.id)}`, { scroll: false }); }
+    if (!selected) { setSelectedId(next.id); router.replace(`${workbenchPath}?${locationQuery}&thread=${encodeURIComponent(next.id)}`, { scroll: false }); }
   }
   function linkAction(id: string) {
     if (!selected || !actions.some(action => action.id === id) || selected.actionIds.includes(id)) return;
@@ -164,7 +168,7 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
         const saved = saveConversationImports(window.localStorage, scope, { [selected.id]: result.data.id });
         if (saved) setImports(saved);
       } catch { /* the mapping is a convenience; navigation still works */ }
-      router.push(`${base}/conversation/studio?chat=${encodeURIComponent(result.data.id)}&${locationQuery}`);
+      router.push(`${base}/conversation?chat=${encodeURIComponent(result.data.id)}&${locationQuery}`);
     } else {
       setImportError(true);
     }
@@ -221,7 +225,7 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
     </header>
     {studioEnabled && <section className="conversation-studio-callout" aria-label={d.discussion}>
       <div><strong>{d.studioCalloutTitle}</strong><p>{d.studioCalloutBody}</p></div>
-      <Link className="conversation-studio-entry" href={`/${locale}/owner/${workspaceSlug}/conversation/studio?${locationQuery}`}><MessagesSquare aria-hidden="true" />{studioText(locale).header.openStudio}<ArrowRight aria-hidden="true" /></Link>
+      <Link className="conversation-studio-entry" href={`/${locale}/owner/${workspaceSlug}/conversation?${locationQuery}`}><MessagesSquare aria-hidden="true" />{studioText(locale).header.openStudio}<ArrowRight aria-hidden="true" /></Link>
     </section>}
     {resources && connectionOutcome && <p role="status">{connectionOutcome === "ok" ? resourceCopy[locale].oauthConnected : connectionOutcome === "declined" ? resourceCopy[locale].oauthDeclined : resourceCopy[locale].oauthFailed}</p>}
     <div className="conversation-layout">
@@ -239,7 +243,7 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
             <div className="conversation-note-stack">{selected.notes.map((note, index) => <p className="conversation-note" key={index}>{note}</p>)}</div>
             {studioEnabled && <div className="conversation-studio-bridge">
               {persistentId
-                ? <Link href={`${base}/conversation/studio?chat=${encodeURIComponent(persistentId)}&${locationQuery}`}>{d.openPersistent}<ArrowRight aria-hidden="true" /></Link>
+                ? <Link href={`${base}/conversation?chat=${encodeURIComponent(persistentId)}&${locationQuery}`}>{d.openPersistent}<ArrowRight aria-hidden="true" /></Link>
                 : <Button type="button" size="sm" onClick={() => void continueInStudio()} disabled={importing}>{importing ? d.importing : d.continueInStudio}</Button>}
               {importError && <p role="alert">{d.importFailed}</p>}
             </div>}
@@ -271,17 +275,17 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
         </>)}
         <section className="conversation-continue" aria-label={t.continueWork}>
           <div className="conversation-section-heading"><h2>{t.continueWork}</h2><Link href={`${base}/actions?${locationQuery}`}>{t.allActions}<ArrowRight aria-hidden="true" /></Link></div>
-          {actions.length === 0 ? <p className="conversation-empty">{t.noActions}</p> : <ul>{actions.slice(0, 6).map(action => <li key={action.id}><span><Link href={actionHref(action)}>{action.title}</Link><small>{action.versionId ? d.savedVersion : t.openAction}</small>{studioEnabled && <Link className="conversation-discuss-link" href={`${base}/conversation/studio?action=${encodeURIComponent(action.id)}&${locationQuery}`}>{d.discussAction}</Link>}</span>{action.versionId ? <Link className="conversation-continue-link" href={actionHref(action, true)}>{t.openVersion}<ArrowRight aria-hidden="true" /></Link> : <Link className="conversation-continue-link" href={actionHref(action)}>{d.continue}<ArrowRight aria-hidden="true" /></Link>}</li>)}</ul>}
+          {actions.length === 0 ? <p className="conversation-empty">{t.noActions}</p> : <ul>{actions.slice(0, 6).map(action => <li key={action.id}><span><Link href={actionHref(action)}>{action.title}</Link><small>{action.versionId ? d.savedVersion : t.openAction}</small>{studioEnabled && <Link className="conversation-discuss-link" href={`${base}/conversation?action=${encodeURIComponent(action.id)}&${locationQuery}`}>{d.discussAction}</Link>}</span>{action.versionId ? <Link className="conversation-continue-link" href={actionHref(action, true)}>{t.openVersion}<ArrowRight aria-hidden="true" /></Link> : <Link className="conversation-continue-link" href={actionHref(action)}>{d.continue}<ArrowRight aria-hidden="true" /></Link>}</li>)}</ul>}
         </section>
         {studioEnabled && <section className="conversation-threads conversation-persistent" aria-label={d.persistent}>
           <div className="conversation-section-heading"><h2>{d.persistent}</h2><div className="conversation-persistent-actions">
-            <Link href={`${base}/conversation/studio?${locationQuery}`}>{d.newPersistent}</Link>
+            <Link href={`${base}/conversation?${locationQuery}`}>{d.newPersistent}</Link>
             {unimportedLocal.length > 0 && <Button type="button" size="sm" variant="outline" onClick={() => void importAllToStudio()} disabled={bulkImporting}>{bulkImporting ? d.importingAll : `${d.importAll} (${unimportedLocal.length})`}</Button>}
-            <Link href={`${base}/conversation/studio?${locationQuery}`}>{studioText(locale).header.openStudio}</Link>
+            <Link href={`${base}/conversation?${locationQuery}`}>{studioText(locale).header.openStudio}</Link>
           </div></div>
           {bulkImportError && <p role="alert">{d.importAllFailed}</p>}
           {bulkImportDone && <p role="status">{d.importAllDone}</p>}
-          {studioConversations?.length ? <ul>{studioConversations.map(conversation => <li key={conversation.id}><MessagesSquare aria-hidden="true" /><Link href={`${base}/conversation/studio?chat=${encodeURIComponent(conversation.id)}&${locationQuery}`}><span>{conversation.title || studioText(locale).rail.untitled}</span><small><time dateTime={conversation.lastMessageAt}>{formatDateTime(conversation.lastMessageAt, locale, timezone)}</time></small></Link><ArrowRight aria-hidden="true" /></li>)}</ul> : <p className="conversation-empty">{d.persistentEmpty}</p>}
+          {studioConversations?.length ? <ul>{studioConversations.map(conversation => <li key={conversation.id}><MessagesSquare aria-hidden="true" /><Link href={`${base}/conversation?chat=${encodeURIComponent(conversation.id)}&${locationQuery}`}><span>{conversation.title || studioText(locale).rail.untitled}</span><small><time dateTime={conversation.lastMessageAt}>{formatDateTime(conversation.lastMessageAt, locale, timezone)}</time></small></Link><ArrowRight aria-hidden="true" /></li>)}</ul> : <p className="conversation-empty">{d.persistentEmpty}</p>}
         </section>}
         {studioEnabled && !legacyOpen ? (
           <section id="conversation-recent" className="conversation-threads conversation-legacy" aria-label={d.legacyNotes}>

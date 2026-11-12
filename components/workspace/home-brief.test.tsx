@@ -66,10 +66,10 @@ function render(proof: HomeBrief["proof"], problems?: ReactNode, studioHref?: st
 }
 
 it("offers a continue-in-Studio link only when the deployment configures it", () => {
-  const linked = render(null, undefined, "/en/owner/kam-man-house/conversation/studio?location=yik-yam");
+  const linked = render(null, undefined, "/en/owner/kam-man-house/conversation?location=yik-yam");
   const link = linked.querySelector(".owner-studio-link");
-  expect(link?.textContent).toContain("Continue in Studio");
-  expect(link?.getAttribute("href")).toBe("/en/owner/kam-man-house/conversation/studio?location=yik-yam");
+  expect(link?.textContent).toContain("Ask Kinnso");
+  expect(link?.getAttribute("href")).toBe("/en/owner/kam-man-house/conversation?location=yik-yam");
   expect(render(null).querySelector(".owner-studio-link")).toBeNull();
 });
 

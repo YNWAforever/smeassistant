@@ -4,7 +4,7 @@ import Link from "next/link"
 import type { ReactNode } from "react"
 import { ArrowRight, CalendarClock, Check, CheckCircle2, CircleAlert, CircleCheck, Clock3, FileClock, Globe2, ShieldCheck, Sparkles, TrendingDown } from "lucide-react"
 
-import { ContextualAssistant } from "@/components/pocket-assistant/assistant-launcher"
+import { AskKinnsoLink } from "@/components/kinnso/ask-kinnso-link"
 import { CapabilityBadge, FactType, PageIntro, ScoreDial, SectionCard, TrendIcon } from "@/components/product-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -187,7 +187,7 @@ export function HomeBriefView({ locale, workspaceSlug, workspaceId, tier, timezo
       {priority && <>
         <div className="brief-action-meta"><Badge className={priorityClass(priority.priority)}>{priorityLabel(priority.priority, locale)}</Badge><span><Clock3 /> {effortLabel(priority.effortMinutes, locale)} {pc.ownerTime}</span><span><FileClock /> {resolveText(priority.displayPhase, locale)}</span>{priority.latestVersion && <span>{versionLabel(priority.latestVersion.versionNo)}</span>}</div>
         <div className="why-now-box"><FactType type={priority.evidence.factType} /><div><strong>{t.whyNow}</strong><span>{resolveText(priority.evidence.detail, locale)}</span><small>{pc.observed} {formatDateTime(priority.evidence.observedAt, locale, timezone)} · {sourceLabel(priority.evidence.source, locale)}</small></div></div>
-        <ContextualAssistant locale={locale} surface="home" triggerLabel={pc.askWhyThisComes} autoAsk="explain_priority" mode="live" context={{ workspaceId, locationId: brief.location?.id, snapshotId: snapshot?.id }} basePath={base} locationParam={location} />
+        <AskKinnsoLink locale={locale} workspaceSlug={workspaceSlug} location={location} label={pc.askWhyThisComes} actionId={priority.id} ask="explain_priority" />
       </>}
 
         {hasLocations && location === "all" && <div className="context-banner" role="status"><CircleAlert /><div><strong>{pc.contextChangedToAll}</strong><span>{pc.summaryDataIsLocation}</span></div></div>}

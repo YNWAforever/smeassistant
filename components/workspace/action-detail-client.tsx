@@ -76,7 +76,7 @@ function ActionDetailEditor(props: ActionDetailClientProps) {
         <div className="permission-banner" role="status" data-testid="studio-handoff-banner">
           <Check />
           <div><strong>{ac.studioHandoff.title}</strong><span>{ac.studioHandoff.body}</span></div>
-          <Link href={withLocation(`${base}/conversation/studio`, location)}>{ac.studioHandoff.back}</Link>
+          <Link href={withLocation(`${base}/conversation`, location)}>{ac.studioHandoff.back}</Link>
         </div>
       )}
       {effectiveRole === "viewer" && <RoleNotice kind="viewerAction" locale={locale} />}

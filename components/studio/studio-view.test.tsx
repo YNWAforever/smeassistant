@@ -124,6 +124,7 @@ function baseProps(overrides: Partial<StudioViewProps> = {}): StudioViewProps {
     workspaceId: WORKSPACE_ID,
     workspaceName: "Kam Man House",
     workspaceSlug: WORKSPACE_SLUG,
+    userId: "user-1",
     role: "owner",
     locationSlug: "all",
     locations: [{ id: "loc-1", slug: "yik-yam", name: "Yik Yam" }],
