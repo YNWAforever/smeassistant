@@ -497,6 +497,7 @@
 .home-v2-next-meta svg { width: 14px; height: 14px; }
 .home-v2-next-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .home-v2-why { max-width: 100%; }
+.home-v2-why[open] { flex-basis: 100%; }
 .home-v2-why summary { cursor: pointer; color: var(--ink-2); font-size: 13px; font-weight: 700; }
 .home-v2-why > div { display: grid; gap: 8px; margin-top: 10px; max-width: 65ch; color: var(--ink-2); font-size: 13px; line-height: 1.6; }
 .home-v2-why p { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
