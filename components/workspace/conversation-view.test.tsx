@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const replace = vi.hoisted(() => vi.fn());
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }), usePathname: () => "/en/owner/shop/conversation/notes" }));
 import { ConversationView, type ConversationViewProps } from "./conversation-view";
 import { conversationCopy } from "@/lib/copy-conversation";
 import { CONVERSATION_LIMITS, writeConversationThreads } from "@/lib/workspace/conversation-store";

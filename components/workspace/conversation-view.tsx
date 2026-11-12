@@ -5,7 +5,7 @@ import { ArrowRight, ArrowUp, FileText, Globe, ListChecks, Megaphone, MessageSqu
 import { ConversationDocuments, ConversationConnectors } from "./conversation-resources";
 import { ConversationSearch } from "./conversation-search";
 import { PostDraftCoach, type ConfirmedPostDraft } from "./post-draft-coach";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { copy, type PrototypeLocale } from "@/lib/copy";
@@ -67,7 +67,11 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
   const d = conversationDesignCopy[locale];
   const navigation = useConversationNavigation();
   const router = useRouter();
+  const pathname = usePathname();
   const base = `/${locale}/owner/${workspaceSlug}`;
+  // Browser-only notes live at /conversation/notes, while the canonical chat is
+  // /conversation. Keep thread state on whichever surface mounted this view.
+  const workbenchPath = `${base}/conversation${pathname?.endsWith("/conversation/notes") ? "/notes" : ""}`;
   const locationQuery = `location=${encodeURIComponent(location)}`;
   const [local, setLocal] = useState(() => {
     try { return readConversationThreads(window.localStorage, scope); }
@@ -112,7 +116,7 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
 
   function selectThread(id?: string) {
     setSelectedId(id); setComposer(""); setSaved(false);
-    router.replace(`${base}/conversation?${locationQuery}${id ? `&thread=${encodeURIComponent(id)}` : ""}`, { scroll: false });
+    router.replace(`${workbenchPath}?${locationQuery}${id ? `&thread=${encodeURIComponent(id)}` : ""}`, { scroll: false });
   }
   function persist(next: LocalThread, savedNote = false) {
     const threads = [next, ...local.threads.filter(thread => thread.id !== next.id)];
@@ -140,7 +144,7 @@ function ScopedConversation({ locale, timezone, workspaceSlug, workspaceName, lo
       : { id: crypto.randomUUID(), title: note.slice(0, CONVERSATION_LIMITS.titleLength), notes: [note], actionIds: [], createdAt: now, updatedAt: now };
     persist(next, true);
     setComposer("");
-    if (!selected) { setSelectedId(next.id); router.replace(`${base}/conversation?${locationQuery}&thread=${encodeURIComponent(next.id)}`, { scroll: false }); }
+    if (!selected) { setSelectedId(next.id); router.replace(`${workbenchPath}?${locationQuery}&thread=${encodeURIComponent(next.id)}`, { scroll: false }); }
   }
   function linkAction(id: string) {
     if (!selected || !actions.some(action => action.id === id) || selected.actionIds.includes(id)) return;
