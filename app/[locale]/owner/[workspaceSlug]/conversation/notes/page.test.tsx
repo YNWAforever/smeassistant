@@ -56,3 +56,9 @@ it("keeps local work available without substituting zero when the Today brief fa
   expect(element.props.today).toBeUndefined();
   expect(element.props.actions).toEqual([{ id: "a1", title: "Real action", versionId: "v1" }]);
 });
+
+it("still loads notes when Home is on and Studio is off", async () => {
+  vi.stubEnv("VERCEL_ENV", "production"); vi.stubEnv("CONVERSATION_HOME_ENABLED", "true"); vi.stubEnv("CONVERSATION_STUDIO_ENABLED", "false");
+  await Page(props);
+  expect(mocks.load).toHaveBeenCalledWith(props);
+});
