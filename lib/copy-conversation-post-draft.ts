@@ -108,9 +108,9 @@ export const postDraftCopy: Record<PrototypeLocale, PostDraftCopy> = {
       copied: "Copied. Paste it into {channel} when you’re ready.",
       copiedGeneric: "Copied.",
       copyFailed: "Couldn’t copy. Select the text and copy it yourself.",
-      saveTodo: "Save as to-do",
-      savedTodo: "Saved to To do. Nothing has been posted.",
-      saveTodoFailed: "Couldn’t save to To do. Try again.",
+      saveTodo: "Save as a task",
+      savedTodo: "Saved to Tasks. Nothing has been posted.",
+      saveTodoFailed: "Couldn’t save as a task. Try again.",
       editAgain: "Edit again",
     },
     channel: {

@@ -11,7 +11,8 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); });
 describe("one copy question", () => {
   it("records Posted against the copied immutable version, independent of any newer draft", async () => {
     calls.markApplied.mockResolvedValue({ ok: true, data: { applicationId: "1" } });
-    render(<CopyFollowUpCard followUp={followUp} locale="zh-HK" />);
+    const view = render(<CopyFollowUpCard followUp={followUp} locale="zh-HK" />);
+    expect(view.container.querySelector("article.home-v2-followup")).not.toBeNull();
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "貼咗" })));
     expect(calls.markApplied).toHaveBeenCalledWith("action", { output_version_id: "copied-v2" });
     expect(calls.recordCopyFollowUp).not.toHaveBeenCalled();

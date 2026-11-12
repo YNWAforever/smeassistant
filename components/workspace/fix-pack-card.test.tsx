@@ -25,7 +25,7 @@ async function mount(drafts: unknown[]) {
   let result!: ReturnType<typeof render>;
   await act(async () => {
     result = render(
-      // The same value home-brief.tsx passes: the owner's own drafts, not the
+      // The same value the Tasks page passes: the owner's own drafts, not the
       // whole queue.
       <FixPackCard locale="en" workspaceId="ws-1" viewerRole="owner" createHref="/en/owner/kam-man-house/create?location=all" actionsHref="/en/owner/kam-man-house/actions?view=drafts" />,
     );
