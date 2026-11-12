@@ -93,7 +93,7 @@ it("shows waiting work in server order with search only, without capability or p
   const second = buildActionOverview({ ...row, id: "second", title: { en: "Second from server" }, priority_score: 90 }, { location: null, latestRun: null, latestVersion: null });
   const { container } = render(<ActionsListView locale="en" workspaceSlug="shop" workspaceId="w" timezone="Asia/Hong_Kong" role="owner" locations={[]} locationId={null}
     filters={{}} result={{ actions: [first, second], counts: { all: 2, drafts: 0, needs_input: 0, awaiting_approval: 0, completed: 0 }, nextCursor: null, hasMore: false }} />);
-  expect(screen.getByRole("heading", { level: 1, name: "To do" })).toBeVisible();
+  expect(screen.getByRole("heading", { level: 1, name: "Tasks" })).toBeVisible();
   expect([...container.querySelectorAll(".action-card h2")].map(h => h.textContent)).toEqual(["First from server", "Second from server"]);
   expect(container.querySelectorAll(".filter-bar [role=combobox]")).toHaveLength(0);
   expect(screen.getByRole("searchbox")).toBeVisible();

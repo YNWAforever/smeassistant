@@ -97,7 +97,7 @@ export function HomeView({
               <summary>{copy.whyThis}</summary>
               <div>
                 <p>{copy.whyThisBody}</p>
-                <p><FactType type={priority.evidence.factType} /> {copy.observed} {formatDateTime(priority.evidence.observedAt, locale, timezone)}</p>
+                <p><FactType type={priority.evidence.factType} /> {copy.observed} {priority.evidence.source} · {formatDateTime(priority.evidence.observedAt, locale, timezone)}</p>
                 <p>{resolveText(priority.evidence.detail, locale)}</p>
               </div>
             </details>

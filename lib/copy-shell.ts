@@ -169,7 +169,7 @@ export const shellEn: ShellCopy = {
   },
   queue: {
     eyebrow: "Waiting for you",
-    title: "To do",
+    title: "Tasks",
     lead: "Pick one thing waiting for you, then open it to continue.",
     newAction: "New",
     navLabel: "More to do",

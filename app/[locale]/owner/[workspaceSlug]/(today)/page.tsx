@@ -59,7 +59,7 @@ export default async function WorkspaceHome(props: OwnerPageProps) {
             problems={filterToLocation(problems, locationId)}
           />
         )}
-        gettingStarted={gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
+        gettingStarted={!brief.priority && gettingStarted && <GettingStarted items={gettingStarted} locale={page.locale} />}
       />
     </>
   );
