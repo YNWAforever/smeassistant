@@ -17,6 +17,42 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  kinnso-acceptance:
+    name: Kinnso enabled acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CONVERSATION_HOME_ENABLED: "true"
+      CONVERSATION_STUDIO_ENABLED: "true"
+      SCAN_SOURCES: fixture
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Prepare owned PostgreSQL fixture image
+        run: docker pull postgres:16
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Required enabled Kinnso journey
+        run: pnpm exec playwright test --config playwright.acceptance.config.ts e2e/acceptance/conversation-studio.spec.ts e2e/acceptance/contextual-assistant.spec.ts --forbid-only --reporter=line,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/kinnso-results.json
+      - name: Reject skipped Kinnso coverage
+        run: node scripts/check-kinnso-acceptance.mjs test-results/kinnso-results.json
+      - name: Upload Kinnso acceptance diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kinnso-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 45

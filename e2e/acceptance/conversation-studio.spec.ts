@@ -80,14 +80,14 @@ test.describe("Conversation Studio", () => {
     await page.goto(`/en/owner/${merchant.slug}`);
     await waitForHydration(page);
     await expect(page).not.toHaveURL(/\/conversation/);
-    // Kinnso is the fourth primary destination, so it is discoverable from Today.
+    // Kinnso is a primary destination, discoverable from Today.
     const conversationEntry = page.locator("[data-slot='sidebar-menu'] a").filter({ hasText: "Kinnso" });
     await expect(conversationEntry).toBeVisible();
     await expect(conversationEntry).toHaveAttribute("href", new RegExp(`/en/owner/${merchant.slug}/conversation\\?location=`));
 
     // Kinnso is canonical; the old Studio URL permanently redirects here.
     await page.goto(`/en/owner/${merchant.slug}/conversation`);
-    await expect(page).toHaveURL(new RegExp(`/en/owner/${merchant.slug}/conversation\\?location=`));
+    expect(new URL(page.url()).pathname).toBe(`/en/owner/${merchant.slug}/conversation`);
     await expect(page.locator(".studio-root")).toBeVisible();
     await expect(page.locator(".studio-thread")).toHaveAttribute("role", "log");
     await expect(page.locator(".studio-thread")).toHaveAttribute("aria-live", "polite");
@@ -142,6 +142,7 @@ test.describe("Conversation Studio", () => {
     expect(sql(environment.db, `select count(*) from output_versions where workspace_id='${merchant.workspaceId}';`)).toBe("0");
 
     // 7. Read-only transcript export downloads the conversation as Markdown.
+    await page.locator(".studio-more-toggle").click();
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Export transcript" }).click();
     const download = await downloadPromise;
@@ -273,7 +274,8 @@ test.describe("Conversation Studio", () => {
     // invitations pending; real owners share with accepted teammates).
     expect(sql(environment.db, `update workspace_members set user_id=(select id from app_users where email='${merchant.emails.viewer}'), accepted_at=now() where workspace_id='${merchant.workspaceId}' and email='${merchant.emails.viewer}'; select 'ok';`)).toBe("ok");
 
-    await page.getByRole("button", { name: "Share" }).click();
+    await page.locator(".studio-more-toggle").click();
+    await page.getByRole("button", { name: "Share", exact: true }).click();
     const dialog = page.locator(".studio-share-dialog");
     await expect(dialog).toBeVisible();
     await dialog.getByRole("combobox").first().selectOption({ label: merchant.emails.viewer });
