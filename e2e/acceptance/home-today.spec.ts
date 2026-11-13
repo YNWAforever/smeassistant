@@ -21,9 +21,9 @@ async function visibleLimit(page: Page): Promise<number> {
 }
 
 for (const visual of [
-  { locale: "en", heading: "Today", why: "Why this?", observed: "Observed" },
-  { locale: "zh-HK", heading: "今日", why: "點解係呢件？", observed: "觀察到" },
-  { locale: "zh-TW", heading: "今天", why: "為什麼是這件？", observed: "觀察到" },
+  { locale: "en", heading: "Today", why: "Why this?", unavailable: "The recorded finding details are unavailable." },
+  { locale: "zh-HK", heading: "今日", why: "點解係呢件？", unavailable: "暫時未能讀取已記錄嘅發現。" },
+  { locale: "zh-TW", heading: "今天", why: "為什麼是這件？", unavailable: "目前無法讀取已記錄的發現。" },
 ] as const) {
   test(`owner home shows one next step above the fold at 375px (${visual.locale})`, async ({ page, merchant, environment }) => {
     await signIn(page, environment, merchant, "owner");
@@ -71,7 +71,11 @@ for (const visual of [
     await page.keyboard.press("Enter");
     await expect(why).toHaveAttribute("open", "");
     await expect(why.locator("summary")).toHaveText(visual.why);
-    await expect(why).toContainText(visual.observed);
+    // The base merchant fixture has no recorded finding keys or evidence.
+    // A task's existence alone must not be promoted to an observation.
+    await expect(why).toContainText(visual.unavailable);
+    await expect(why.locator(".fact-unknown")).toHaveCount(2);
+    await expect(why.locator(".fact-observed")).toHaveCount(0);
     await page.keyboard.press("Enter");
     await expect(why).not.toHaveAttribute("open");
 

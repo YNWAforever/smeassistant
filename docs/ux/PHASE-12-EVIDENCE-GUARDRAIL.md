@@ -33,5 +33,7 @@ No migration, scorer, prompt, permission, approval, export or provider setting c
 
 - Final typecheck and lint on changed source/tests passed.
 - Final production build and all route JavaScript budgets passed (Today 231/300 KB; task detail 272/300 KB).
+- Focused owned-database merchant acceptance: 4/4 passed (46.2s), covering the saved-draft approval journey and Today at 375px in all three locales. The legacy causal prose is seeded with an exact finding key and must be replaced; the empty base fixture must show Unknown/unavailable instead of Observed.
+- The first PR CI run was cancelled after stale acceptance expectations were identified. Those expectations were corrected and locally verified before restarting CI; no gate was bypassed.
 
 PR/CI and hosted recheck results are recorded here as they complete.
