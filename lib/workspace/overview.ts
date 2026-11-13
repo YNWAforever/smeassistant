@@ -14,6 +14,7 @@ import {
   type RunState,
 } from "@/lib/domain";
 import { freshnessText } from "./actions";
+import { recordedFindingEvidence } from "./action-evidence";
 import type { PriorityFactor } from "./priority";
 import { findTemplate, type TemplateDelivery, type TemplateKey } from "./templates";
 import { gateBlockingInputs } from "./workflow-inputs";
@@ -240,6 +241,11 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
   const blockingInputs = template ? gateBlockingInputs(template, provided, satisfied) : [];
   const factors = Array.isArray(row.priority_factors) ? (row.priority_factors as PriorityFactor[]) : [];
   const evidence = (row.evidence && typeof row.evidence === "object" ? row.evidence : {}) as Partial<ActionOverview["evidence"]>;
+  const findingKeys = Array.isArray(row.source_finding_keys) ? row.source_finding_keys.filter((key): key is string => typeof key === "string") : [];
+  // Derivation refreshes can attach findings to an owner-objective task while
+  // retaining its original source. Finding provenance, not source alone, wins.
+  const findingEvidence = row.source === "finding" || (Array.isArray(row.source_finding_keys) && row.source_finding_keys.length > 0)
+    ? recordedFindingEvidence(findingKeys) : null;
   const phaseKey = displayPhaseKey({
     capability: row.capability,
     actionState: row.action_state,
@@ -264,6 +270,9 @@ export function buildActionOverview(row: ActionRow, ctx: ActionOverviewContext):
       source: evidence.source ?? "",
       value: evidence.value ?? "",
       detail: text(evidence.detail, localized("", "")),
+      // Stored scan explanations can contain advice and causal claims. Never
+      // promote that prose to an observation when reading legacy finding tasks.
+      ...findingEvidence,
       observedAt: evidence.observedAt ?? row.updated_at,
       // The persisted label was frozen at derivation time ("Updated today" days
       // later); recompute it from the observation whenever that is a real date.

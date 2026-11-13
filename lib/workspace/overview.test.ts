@@ -30,6 +30,39 @@ const row: ActionRow = {
   updated_at: "2026-09-02T00:00:00Z",
 };
 
+describe("saved finding evidence", () => {
+  it("replaces legacy explanatory prose on read without altering the stored row or provenance", () => {
+    const saved = { ...row, source_finding_keys: ["gbp.reviews_volume_low"], evidence: { factType: "Observed", source: "Google Business Profile", value: "1", observedAt: "2026-10-14T07:11:00Z", detail: lt("Too few reviews deter new customers and directly hurts your Google local ranking and click-through rate.") } };
+    const original = structuredClone(saved);
+    const result = buildActionOverview(saved, { location: null, latestRun: null, latestVersion: null });
+    expect(result.evidence.detail).toEqual({ en: "The scan flagged: Review Count.", "zh-HK": "掃描記錄到：評論數量。", "zh-TW": "掃描記錄到：評論數量。" });
+    expect(result.evidence).toMatchObject({ factType: "Observed", source: "Google Business Profile", value: "1", observedAt: "2026-10-14T07:11:00Z" });
+    expect(saved).toEqual(original);
+  });
+
+  it("does not claim a known observation or echo raw keys when a legacy finding key is unavailable", () => {
+    const result = buildActionOverview({ ...row, source_finding_keys: ["unsupported.unproven_causation"] }, { location: null, latestRun: null, latestVersion: null });
+    expect(result.evidence.factType).toBe("Unknown");
+    expect(result.evidence.detail.en).toBe("The recorded finding details are unavailable.");
+    expect(JSON.stringify(result.evidence.detail)).not.toContain("unproven");
+  });
+
+  it("also protects an owner-objective task later refreshed with scan finding evidence", () => {
+    const result = buildActionOverview({ ...row, source: "owner_objective", evidence: { ...row.evidence as object, detail: lt("Unproven customer and ranking impact") } }, { location: null, latestRun: null, latestVersion: null });
+    expect(result.evidence.detail.en).toBe("The scan flagged: Owner Responses.");
+    expect(result.evidence.factType).toBe("Observed");
+  });
+
+  it("preserves genuine owner objectives and integration-health tasks with no finding keys", () => {
+    for (const source of ["owner_objective", "system"]) {
+      const evidence = { ...row.evidence as object, factType: "Recommended", detail: lt("Owner requested a draft") };
+      const result = buildActionOverview({ ...row, source, source_finding_keys: [], evidence }, { location: null, latestRun: null, latestVersion: null });
+      expect(result.evidence.detail).toEqual(lt("Owner requested a draft"));
+      expect(result.evidence.factType).toBe("Recommended");
+    }
+  });
+});
+
 describe("displayPhaseKey", () => {
   const b = { capability: "Live" as const, actionState: "recommended" as const, runState: null, approvalState: null, deliveryState: "not_requested" as const, measurementState: "not_eligible" as const, applied: false, verified: false };
   it("follows the 3.4 order", () => {

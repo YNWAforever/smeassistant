@@ -70,4 +70,9 @@ the task page; Kinnso only prepares a draft.
   `Why this?`, Business as the supporting-tools destination, Settings in the
   account menu, the `Tasks` heading, and Kinnso links instead of the removed
   owner assistant sheet.
-- Hosted browser acceptance is still to be run after deployment.
+- Signed-in hosted read-only walkthrough completed on 2026-11-13: 18 page
+  visits returned 200 with no horizontal overflow or JavaScript page errors;
+  11 interaction/theme checks passed. One existing evidence-wording guardrail
+  issue remains open. See [hosted walkthrough](PHASE-12-HOSTED-WALKTHROUGH.md)
+  for scope, the mobile readiness retry, findings and limits. Mutation-based
+  hosted Studio acceptance was not repeated.

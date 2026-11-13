@@ -94,10 +94,10 @@ test.beforeEach(async ({ environment, merchant, page }) => {
   await modelOutput(environment, null);
   const evidence = JSON.stringify({
     factType: "Observed", source: "Google Business Profile", value: "1",
-    detail: { en: "One synthetic review is waiting for a reply.", "zh-HK": "一則合成評論等候回覆。", "zh-TW": "一則合成評論等候回覆。" },
+    detail: { en: "One synthetic review is waiting for a reply. Too few reviews deter new customers and directly hurts your Google local ranking and click-through rate.", "zh-HK": "一則合成評論等候回覆。太少評論直接影響排名。", "zh-TW": "一則合成評論等候回覆。評論太少直接影響排名。" },
     observedAt: "2026-10-17T00:00:00Z",
   });
-  sql(environment.db, `update actions set evidence=${quote(evidence)}::jsonb where id='${merchant.actionId}';`);
+  sql(environment.db, `update actions set source_finding_keys=array['gbp.owner_response_low']::text[], evidence=${quote(evidence)}::jsonb where id='${merchant.actionId}';`);
 });
 test.afterEach(async ({ page }) => { expect(deliveriesByTest.get(page)).toEqual([]); });
 
@@ -140,9 +140,13 @@ test("S1 existing brand: recommendation, source/time/limits, first saved draft a
   const reason = page.locator(".home-v2-next details.home-v2-why");
   await reason.locator(":scope > summary").focus();
   await page.keyboard.press("Enter");
-  await expect(reason).toContainText("One synthetic review is waiting for a reply.");
+  await expect(reason).toContainText("The scan flagged: Owner Responses.");
+  await expect(reason).not.toContainText("One synthetic review is waiting for a reply.");
+  await expect(reason).not.toContainText("directly hurts");
   await expect(reason).toContainText("Observed");
   await expect(reason).toContainText("Google Business Profile");
+  await expect(reason).toContainText("A scan finding does not measure effects on customers, search rankings or clicks.");
+  await expect(reason.locator(".fact-unknown")).toHaveCount(1);
   await page.screenshot({ path: `${evidenceDir}/desktop-recommendation.png`, fullPage: true });
   await page.locator(".home-v2-next-actions a").first().click();
   await expect(page).toHaveURL(new RegExp(`/actions/${merchant.actionId}`));

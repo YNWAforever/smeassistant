@@ -83,6 +83,16 @@ describe("owner home v2", () => {
     expect(html).not.toContain("<p></p>")
   })
 
+  it.each([
+    ["en", "A scan finding does not measure effects on customers, search rankings or clicks."],
+    ["zh-HK", "掃描發現唔代表已量度到對顧客、搜尋排名或者點擊嘅影響。"],
+    ["zh-TW", "掃描發現不代表已量測對顧客、搜尋排名或點擊的影響。"],
+  ] as const)("separates unmeasured effects from the observed finding in %s", (locale, limitation) => {
+    const html = renderToStaticMarkup(<HomeView locale={locale} workspaceSlug="shop" timezone="Asia/Hong_Kong" locations={[]} brief={brief()} role="owner" />)
+    expect(html).toContain(limitation)
+    expect(html).toMatch(/fact-unknown[^]*<\/span>[^]*does not measure|fact-unknown[^]*<\/span>[^]*掃描發現/)
+  })
+
   it("starts an unscanned shop with the free scan", () => {
     const html = renderToStaticMarkup(<HomeView locale="en" workspaceSlug="shop" timezone="Asia/Hong_Kong" locations={[{ slug: "a", name: "A" }]} brief={brief({ snapshot: null, priority: null, openActions: [], openActionCount: 0 })} role="owner" />)
     expect(html).toContain("Start with one free scan")
