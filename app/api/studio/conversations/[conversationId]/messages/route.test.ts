@@ -435,6 +435,62 @@ describe("the SSE turn", () => {
     expect(release).toHaveBeenCalledTimes(1);
   });
 
+  it.each(["success", "failure"] as const)("keeps a cancelled stream's lock until the held turn settles: %s", async (outcome) => {
+    let finishProvider!: () => void;
+    const provider = new Promise<void>((resolve) => { finishProvider = resolve; });
+    let finishTurn!: () => void;
+    const turnFinished = new Promise<void>((resolve) => { finishTurn = resolve; });
+    let locked = false;
+    const persist = vi.fn();
+    const release = vi.fn(async () => { locked = false; });
+    mocks.acquireStudioTurnLock.mockImplementation(async () => {
+      if (locked) return null;
+      locked = true;
+      return release;
+    });
+    mocks.runStudioTurn.mockImplementationOnce(async (input: {
+      emit: (event: StudioStreamEvent) => Promise<void> | void;
+      lock: () => Promise<() => Promise<void>>;
+    }) => {
+      const releaseTurn = await input.lock();
+      try {
+        await provider;
+        if (outcome === "failure") throw new Error("provider failed after disconnect");
+        persist();
+        await input.emit({ type: "message", message: assistantMessage, conversation });
+        await input.emit({ type: "done" });
+        return { ok: true, intent: "explain_priority", turn: "explain", artifact: false };
+      } finally {
+        await releaseTurn();
+        finishTurn();
+      }
+    });
+
+    const response = await send(body());
+    expect(response.status).toBe(200);
+    try {
+      await response.body!.cancel();
+      const concurrent = await send(body());
+      expect(concurrent.status).toBe(409);
+      expect(await concurrent.json()).toEqual({ error: "conversation_busy" });
+      expect(mocks.runStudioTurn).toHaveBeenCalledTimes(1);
+      expect(release).not.toHaveBeenCalled();
+      expect(persist).not.toHaveBeenCalled();
+    } finally {
+      finishProvider();
+      await turnFinished;
+    }
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(persist).toHaveBeenCalledTimes(outcome === "success" ? 1 : 0);
+
+    const next = await send(body());
+    expect(next.status).toBe(200);
+    await frames(next);
+    expect(mocks.runStudioTurn).toHaveBeenCalledTimes(2);
+    expect(release).toHaveBeenCalledTimes(2);
+    expect(mocks.recordNeonEvent).toHaveBeenCalledTimes(outcome === "success" ? 2 : 1);
+  });
+
   it("pins the studio_message rate-limit policy at 60 turns an hour", async () => {
     const actual = await vi.importActual<typeof import("@/lib/security/rate-limit")>("@/lib/security/rate-limit");
     expect(actual.RATE_LIMITS.studio_message).toEqual({ limit: 60, windowSeconds: 3600 });

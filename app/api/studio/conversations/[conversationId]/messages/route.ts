@@ -296,9 +296,10 @@ export async function POST(
         try { controller.close(); } catch { /* already closed */ }
       }
     },
-    async cancel() {
+    cancel() {
+      // Disconnect stops delivery, not the durable turn. Its finally paths own
+      // the lock until model work and message persistence have settled.
       closed = true;
-      await releaseOnce();
     },
   });
 
