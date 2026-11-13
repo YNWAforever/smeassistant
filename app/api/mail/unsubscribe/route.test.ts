@@ -84,10 +84,15 @@ describe("POST /api/mail/unsubscribe", () => {
   });
 
   it("rejects a tampered signature without calling optOut", async () => {
-    const token = tokenFor();
+    const token = tokenFor({ expiresAt: 4_000_000_000_031 });
     const [payload, signature] = token.split(".");
-    const flippedChar = signature!.at(-1) === "A" ? "B" : "A";
-    const tampered = `${payload}.${signature!.slice(0, -1)}${flippedChar}`;
+    // This fixture ends in A: changing only its trailing padding bits to B
+    // preserves the MAC bytes. Flip the first character to corrupt real bits.
+    expect(signature!.at(-1)).toBe("A");
+    const flippedChar = signature![0] === "A" ? "B" : "A";
+    const tamperedSignature = `${flippedChar}${signature!.slice(1)}`;
+    expect(Buffer.from(tamperedSignature, "base64url")).not.toEqual(Buffer.from(signature!, "base64url"));
+    const tampered = `${payload}.${tamperedSignature}`;
     const response = await POST(postWithBody(tampered));
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: "invalid_link" });

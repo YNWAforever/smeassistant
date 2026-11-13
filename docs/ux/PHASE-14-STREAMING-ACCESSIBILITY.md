@@ -43,7 +43,9 @@ Root and workspace type checks and repository lint passed. The first unrestricte
 
 Independent review, enabled acceptance and all local repository gates are complete. The isolated safe-media suite passed 62/62; workspace packages passed 525/525 (region 23, scoring 183, contracts 20, scan-engine 299), for **7,509 passing tests** across the required unit commands. Production build and all route JavaScript budgets passed; the conversation route is 253 KB against its 300 KB budget. `git diff --check` passed.
 
-Pending: PR CI, guarded merge, deployment identity and read-only hosted verification. The server lock guardrail lands first in its own PR, followed by the client/accessibility change. Hosted release is not claimed by this pre-merge report.
+The server lock guardrail landed first through green CI in [PR #179](https://github.com/YNWAforever/smeassistant/pull/179). The client change is [PR #180](https://github.com/YNWAforever/smeassistant/pull/180); its enabled browser CI passed all 17 cases. Its first full CI run exposed an unrelated time-dependent unsubscribe test: changing a final base64url `A` to `B` changes only ignored padding bits, leaving the MAC bytes identical. A fixed-expiry fixture reproduced the failure deterministically; changing the first signature character and asserting different decoded bytes restored the intended invalid-signature check (12/12 route tests passed). Production token verification is unchanged. Independent review approved the test-only repair; all required local gates then passed again, including 6,922 root tests (331.83 seconds), 62 safe-media tests, 525 workspace tests, type checks, lint, production build and route budgets.
+
+Pending: final client CI, guarded merge, deployment identity and read-only hosted verification. Hosted release is not claimed by this pre-merge report.
 
 The prior Phase 13 final-main CI run 43468003695 completed successfully during this work; its quiet monitor exited 0.
 
