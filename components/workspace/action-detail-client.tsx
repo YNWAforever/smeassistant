@@ -39,8 +39,14 @@ function VersionBoundActionDetail(props: ActionDetailClientProps) {
   if (!invalid && lastValidProps !== props) setLastValidProps(props)
   const editorProps = invalid ? lastValidProps : props
   const text = homeReviewCopy[props.locale]
+  const restoreQuery = new URLSearchParams()
+  if (editorProps?.initialVersionId != null) restoreQuery.set("version", editorProps.initialVersionId)
+  if (editorProps?.studioHandoff) {
+    restoreQuery.set("from", "studio")
+    if (editorProps.studioReturn) restoreQuery.set("chat", editorProps.studioReturn.conversationId)
+  }
   const restoreHref = editorProps ? withLocation(
-    `/${editorProps.locale}/owner/${editorProps.workspaceSlug}/actions/${editorProps.detail.action.id}${editorProps.initialVersionId != null ? `?version=${encodeURIComponent(editorProps.initialVersionId)}` : ""}`,
+    `/${editorProps.locale}/owner/${editorProps.workspaceSlug}/actions/${editorProps.detail.action.id}${restoreQuery.size ? `?${restoreQuery}` : ""}`,
     editorProps.location,
   ) : null
   return <>
@@ -76,7 +82,9 @@ function ActionDetailEditor(props: ActionDetailClientProps) {
         <div className="permission-banner" role="status" data-testid="studio-handoff-banner">
           <Check />
           <div><strong>{ac.studioHandoff.title}</strong><span>{ac.studioHandoff.body}</span></div>
-          <Link href={withLocation(`${base}/conversation`, location)}>{ac.studioHandoff.back}</Link>
+          <Link href={props.studioReturn
+            ? withLocation(`${base}/conversation?chat=${encodeURIComponent(props.studioReturn.conversationId)}`, props.studioReturn.locationSlug)
+            : withLocation(`${base}/conversation`, location)}>{ac.studioHandoff.back}</Link>
         </div>
       )}
       {effectiveRole === "viewer" && <RoleNotice kind="viewerAction" locale={locale} />}

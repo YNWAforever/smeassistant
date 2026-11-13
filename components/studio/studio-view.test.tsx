@@ -352,6 +352,7 @@ describe("StudioView ??inline work", () => {
     const review = await screen.findByRole("link", { name: t.message.reviewVersion })
     expect(review.getAttribute("href")).toContain(`/actions/${ACTION_ID}?version=${VERSION_ID}`)
     expect(review.getAttribute("href")).toContain("from=studio")
+    expect(new URL(review.getAttribute("href")!, "https://example.test").searchParams.get("chat")).toBe(conversationA.id)
     expect(screen.getByText(t.message.versionSaved)).toBeInTheDocument()
 
     for (const pattern of [/approve/i, /publish/i]) {
@@ -360,6 +361,36 @@ describe("StudioView ??inline work", () => {
     }
     // The only export on the surface is the read-only transcript download.
     expect(screen.getByRole("button", { name: t.transcript.export })).toBeInTheDocument()
+  })
+
+  it.each(["yik-yam", "all"])("uses the selected conversation rather than the initial conversation in a saved draft review link (%s)", async locationSlug => {
+    const olderDraft = assistantMessage(2, "Draft from the older discussion.", [artifactPart], conversationB)
+    installFetch((url, init) => {
+      if (init.method === "GET" && url.startsWith(`/api/studio/conversations/${conversationB.id}`)) {
+        return jsonResponse({ conversation: conversationB, messages: [olderDraft], hasMore: false })
+      }
+      if (url.endsWith(`/api/actions/${ACTION_ID}/versions`) && init.method === "POST") {
+        return jsonResponse({ versionId: VERSION_ID, versionNo: 1 }, 201)
+      }
+      return jsonResponse({ error: "unavailable" }, 500)
+    })
+    render(<StudioView {...baseProps({
+      conversations: [conversationA, conversationB],
+      activeConversationId: conversationA.id,
+      locationSlug,
+    })} />)
+    fireEvent.click(screen.getByRole("button", { name: conversationB.title }))
+    await screen.findByText("Draft from the older discussion.")
+    fireEvent.click(screen.getByRole("button", { name: t.message.saveVersion }))
+    const review = await screen.findByRole("link", { name: t.message.reviewVersion })
+    const url = new URL(review.getAttribute("href")!, "https://example.test")
+    expect(url.pathname).toBe(`/en/owner/${WORKSPACE_SLUG}/actions/${ACTION_ID}`)
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      version: VERSION_ID,
+      from: "studio",
+      chat: conversationB.id,
+      location: locationSlug,
+    })
   })
 
   it("renders the Studio carousel outline next to the caption with the planning note", () => {

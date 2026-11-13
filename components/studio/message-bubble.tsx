@@ -66,6 +66,7 @@ export function StudioMessageBubble({
   locale,
   workspaceSlug,
   locationSlug,
+  conversationId,
   message,
   canSaveVersions,
   pending = false,
@@ -73,6 +74,7 @@ export function StudioMessageBubble({
   locale: PrototypeLocale
   workspaceSlug: string
   locationSlug: string
+  conversationId?: string | null
   message: StudioMessage
   canSaveVersions: boolean
   pending?: boolean
@@ -161,6 +163,7 @@ export function StudioMessageBubble({
             locale={locale}
             workspaceSlug={workspaceSlug}
             locationSlug={locationSlug}
+            conversationId={conversationId}
             part={artifact}
             canSave={canSaveVersions}
           />

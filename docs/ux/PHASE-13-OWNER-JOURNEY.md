@@ -35,6 +35,22 @@ Re-enabling the dormant suite exposed stale UI expectations: the canonical conve
 - Independent read-only review identified two omissions: the contextual-entry spec and exclusive-test protection. Both were added before the final eight-case run; no other actionable findings were reported.
 - PR CI, merge and deployment: pending.
 
+## PR 2 implementation — exact conversation return
+
+The active conversation ID now flows from the chat view through the message/artifact components into the saved draft's review URL. It is not taken from model output, and switching conversations changes the ID used by subsequent review links. Saving still redeems the existing assistant run through the same idempotent version endpoint.
+
+After authorizing the member and loading the task, the server resolves the optional return context. It requires both conversation flags, a Studio handoff, a UUID, actor-authorized conversation access, active status, the same workspace and compatible location. A scoped manager must cover the task and conversation location; workspace-wide conversations are not offered to scoped managers. An all-locations task view resolves the return location to the actual task location. Tasks without a concrete location, malformed/missing/archived/inaccessible conversations and failed reads use the ordinary Kinnso entry.
+
+The task banner links to that validated conversation. Invalid-version recovery retains the previous valid editor's exact version, handoff and validated chat context without discarding unsaved text. Fresh revision requests retain their existing new-conversation behaviour.
+
+Verification:
+- Focused component and authorization run: 52 tests passed.
+- Additional route-wiring and finalized resolver checks: 25 tests passed (includes the repeated resolver cases and the new null-location fallback).
+- Typecheck, changed-file lint and whitespace checks passed.
+- Real browser regression: original chat produces a draft, a newer chat is created, the exact saved version is reviewed/approved, the task page is refreshed and Back to Kinnso returns to the original conversation. Passed in 45.3 seconds with isolated fixtures.
+- Independent review found one all-locations edge case: the artifact review link previously omitted `location=all`, causing the task to resolve a secondary-location conversation against the default primary location. The review link now preserves `all`; component and resolver regressions cover it. No other introduced correctness/security issues were reported.
+- Full unit run: 6,941 passed; the existing repository-wide terminology scan exceeded its 5-second timeout (no offender assertion failure). All 16 Studio component cases, including the all-locations variant, and all 22 resolver cases passed in that run. Isolated terminology recheck passed in 1.4 seconds, together with all 38 finalized Studio/resolver checks. Production build (including TypeScript and all 34 static pages) passed. PR CI: pending.
+
 ## Release boundary
 
 After required CI passes, land through reviewed PRs and verify deployed routes/layout read-only. A new hosted generation/approval/export exercise needs a designated test workspace and explicit authorization for production writes and model spend. Local isolated acceptance provides automated behavioural proof without those effects.
