@@ -175,11 +175,22 @@ test.describe("Conversation Studio", () => {
     expect(versionId).toMatch(/^[a-f0-9-]{36}$/);
     expect(sql(environment.db, `select count(*) from output_versions where action_id='${socialActionId}';`)).toBe("1");
 
+    const originalChat = new URL(page.url()).searchParams.get("chat");
+    expect(originalChat).toMatch(/^[a-f0-9-]{36}$/);
+    // A newer discussion must not steal the return destination from this draft.
+    const newer = await page.request.post("/api/studio/conversations", {
+      data: { workspaceId: merchant.workspaceId, locationId: merchant.locationId, title: "A newer unrelated discussion" },
+    });
+    expect(newer.status()).toBe(201);
+    const newerId = (await newer.json()).conversation.id as string;
+    expect(newerId).not.toBe(originalChat);
+
     // The review link selects that exact version and marks the Studio handoff.
     const review = page.getByRole("link", { name: "Review version" });
     const href = await review.getAttribute("href");
     expect(href).toContain(`version=${versionId}`);
     expect(href).toContain("from=studio");
+    expect(href).toContain(`chat=${originalChat}`);
     await review.click();
     await page.waitForURL(new RegExp(`/actions/${socialActionId}\\?`));
     await expect(page.getByTestId("studio-handoff-banner")).toContainText("Kinnso draft saved");
@@ -194,9 +205,16 @@ test.describe("Conversation Studio", () => {
     await expect.poll(() => sql(environment.db, `select approval_state from output_versions where id='${versionId}';`)).toBe("approved");
     await expect(page.getByRole("button", { name: "Copy text" })).toBeVisible();
 
-    // Returning keeps the same persistent conversation.
+    // A refresh must retain the server-validated return context and exact version.
+    await page.reload();
+    await waitForHydration(page);
+    expect(new URL(page.url()).searchParams.get("version")).toBe(versionId);
+    await expect(page.getByTestId("studio-handoff-banner").getByRole("link", { name: "Back to Kinnso" }))
+      .toHaveAttribute("href", new RegExp(`chat=${originalChat}`));
+    // Returning keeps the original discussion despite a newer conversation.
     await page.getByTestId("studio-handoff-banner").getByRole("link", { name: "Back to Kinnso" }).click();
     await expect(page).toHaveURL(new RegExp(`/conversation\\?.*location=primary`));
+    expect(new URL(page.url()).searchParams.get("chat")).toBe(originalChat);
     await expect(page.locator(".studio-message-user").first()).toContainText("Help me plan and draft this week's Instagram post");
     await expect(page.locator(".studio-artifact-card")).toContainText("This week at the shop");
   });

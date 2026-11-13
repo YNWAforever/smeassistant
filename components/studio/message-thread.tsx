@@ -29,6 +29,7 @@ export function StudioMessageThread({
   locale,
   workspaceSlug,
   locationSlug,
+  conversationId,
   messages,
   optimisticUser,
   pending,
@@ -44,6 +45,7 @@ export function StudioMessageThread({
   locale: PrototypeLocale
   workspaceSlug: string
   locationSlug: string
+  conversationId?: string | null
   messages: StudioMessage[]
   optimisticUser: StudioMessage | null
   pending: { stage: StudioStreamStage | null; text: string } | null
@@ -92,6 +94,7 @@ export function StudioMessageThread({
                 locale={locale}
                 workspaceSlug={workspaceSlug}
                 locationSlug={locationSlug}
+                conversationId={conversationId}
                 message={message}
                 canSaveVersions={canSaveVersions}
               />
@@ -103,6 +106,7 @@ export function StudioMessageThread({
                 locale={locale}
                 workspaceSlug={workspaceSlug}
                 locationSlug={locationSlug}
+                conversationId={conversationId}
                 message={optimisticUser}
                 canSaveVersions={canSaveVersions}
                 pending

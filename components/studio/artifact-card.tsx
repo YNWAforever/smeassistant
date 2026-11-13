@@ -32,12 +32,14 @@ export function StudioArtifactCard({
   locale,
   workspaceSlug,
   locationSlug,
+  conversationId,
   part,
   canSave,
 }: {
   locale: PrototypeLocale
   workspaceSlug: string
   locationSlug: string
+  conversationId?: string | null
   part: StudioArtifactPart
   canSave: boolean
 }) {
@@ -52,7 +54,12 @@ export function StudioArtifactCard({
   }
   const actionHref = withLocation(`${base}/actions/${encodeURIComponent(part.actionId)}`)
   const reviewHref = state.kind === "saved"
-    ? withLocation(`${base}/actions/${encodeURIComponent(part.actionId)}`, [`version=${encodeURIComponent(state.versionId)}`, "from=studio"])
+    ? withLocation(`${base}/actions/${encodeURIComponent(part.actionId)}`, [
+      `version=${encodeURIComponent(state.versionId)}`,
+      "from=studio",
+      ...(conversationId ? [`chat=${encodeURIComponent(conversationId)}`] : []),
+      ...(locationSlug === "all" ? ["location=all"] : []),
+    ])
     : null
 
   async function saveVersion() {

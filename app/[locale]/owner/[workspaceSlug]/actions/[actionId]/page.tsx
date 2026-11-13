@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { ActionDetailView } from "@/components/workspace/action-detail-view";
 import { loadActionDetailProps } from "@/lib/workspace/action-detail-props";
+import { resolveStudioReturn } from "@/lib/workspace/studio-handoff";
 import { loadOwnerPage, ownerPageMetadata, type OwnerPageProps } from "@/lib/workspace/page-context";
 
 export const dynamic = "force-dynamic";
@@ -28,5 +29,6 @@ export default async function ActionDetailRoute(props: OwnerPageProps) {
   const rawFrom = (await props.searchParams)?.from;
   const studioHandoff = (Array.isArray(rawFrom) ? rawFrom[0] : rawFrom) === "studio";
   if (!detail) notFound();
-  return <ActionDetailView {...detail} studioHandoff={studioHandoff} />;
+  const studioReturn = await resolveStudioReturn(page, detail.detail.action.location);
+  return <ActionDetailView {...detail} studioHandoff={studioHandoff} studioReturn={studioReturn} />;
 }

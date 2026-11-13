@@ -30,6 +30,8 @@ export interface ActionDetailViewProps {
   embedded?: boolean
   /** Arrived from a saved Studio draft. */
   studioHandoff?: boolean
+  /** Return context validated by the server against current conversation access and location. */
+  studioReturn?: { conversationId: string; locationSlug: string } | null
   /** When set, the header links to the Studio focused on this action. */
   studioHref?: string | null
 }

@@ -62,14 +62,14 @@ function versionRow(id: string, versionNo: number, body: string): ActionDetail["
 // Newest first, as the page loads them.
 const VERSIONS = [versionRow("ver-2", 2, "second body"), versionRow("ver-1", 1, "first body")];
 
-function mount(opts: { initialVersionId?: string | null; missingInputs?: string[]; locale?: "en" | "zh-HK" } = {}) {
+function mount(opts: { initialVersionId?: string | null; missingInputs?: string[]; locale?: "en" | "zh-HK"; studioHandoff?: boolean; studioReturn?: { conversationId: string; locationSlug: string } | null } = {}) {
   const value: ActionDetail = { action: overview(), offerId: null, versions: VERSIONS, runs: [], measurements: [], scanInputs: [], businessContext: [], faqQuestions: [] };
   if (opts.missingInputs) {
     value.action.actionState = "needs_input";
     value.action.missingInputs = opts.missingInputs;
   }
   return render(
-    <ActionDetailClient locale={opts.locale ?? "en"} workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} initialVersionId={opts.initialVersionId} />,
+    <ActionDetailClient locale={opts.locale ?? "en"} workspaceSlug="kam-man-house" workspaceId="ws-1" timezone="Asia/Hong_Kong" role="owner" inScope location="yik-yam" detail={value} auditRows={[]} locations={[{ slug: "yik-yam", name: "Yik Yam" }]} approvedAssets={[]} initialVersionId={opts.initialVersionId} studioHandoff={opts.studioHandoff} studioReturn={opts.studioReturn} />,
   );
 }
 
@@ -165,6 +165,22 @@ describe("the action page's version landing (P4.3)", () => {
     expect(router.replace).toHaveBeenCalledWith("/en/owner/kam-man-house/actions/act-1?version=ver-1&location=yik-yam");
     rerenderWith(view, "ver-1");
     expect(draft()).toBe("Unsaved owner text");
+  });
+
+  it("keeps the validated conversation when recovering the previous exact version", () => {
+    const view = mount({ initialVersionId: "ver-1", studioHandoff: true, studioReturn: { conversationId: "chat-1", locationSlug: "yik-yam" } });
+    expect(screen.getByRole("link", { name: "Back to Kinnso" })).toHaveAttribute("href", "/en/owner/kam-man-house/conversation?chat=chat-1&location=yik-yam");
+    fireEvent.change(document.querySelector("#draft-content")!, { target: { value: "Unsaved owner text" } });
+    rerenderWith(view, "ver-nope");
+    fireEvent.click(screen.getByRole("button", { name: "Return to the previous view" }));
+    expect(router.replace).toHaveBeenCalledWith("/en/owner/kam-man-house/actions/act-1?version=ver-1&from=studio&chat=chat-1&location=yik-yam");
+    rerenderWith(view, "ver-1");
+    expect(draft()).toBe("Unsaved owner text");
+  });
+
+  it("uses the ordinary Kinnso entry when the server supplies no authorized return", () => {
+    mount({ studioHandoff: true, studioReturn: null });
+    expect(screen.getByRole("link", { name: "Back to Kinnso" })).toHaveAttribute("href", "/en/owner/kam-man-house/conversation?location=yik-yam");
   });
 
   it("still refuses switching to another valid version while the current draft is dirty", () => {

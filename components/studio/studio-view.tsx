@@ -563,6 +563,7 @@ export function StudioView({
               locale={locale}
               workspaceSlug={workspaceSlug}
               locationSlug={locationSlug}
+              conversationId={activeId}
               messages={messages}
               optimisticUser={optimisticUser}
               pending={pending}
