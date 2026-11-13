@@ -1,8 +1,33 @@
-# Conversation Studio v1.1 — next development roadmap
+# Conversation Studio v1.1 — historical roadmap and current status
 
-Status: **active plan** (2026-11-09). Baseline: `main` at `8d57823`; production DB migrated through `0021`; conversation workbench live (`CONVERSATION_HOME_ENABLED=true`); Studio hidden (`CONVERSATION_STUDIO_ENABLED` unset); PRs #130–#133 merged.
+Status reconciled **2026-11-14** for Phase 13. The original 2026-11-09 plan below is retained as historical design/release evidence, not the active implementation queue. Its “next PR”, “implemented locally”, flag-state and pending-acceptance wording describes that earlier point in time.
 
-The Studio is integrated as the persistent mode of the conversation workbench (Path A). What remains is making it the *only* thread model, making its grounding cover documents/search, and making it shareable and operable.
+## Current delivery status
+
+| Capability | Status and evidence |
+|---|---|
+| Persistent owner conversation | **Shipped.** Kinnso is canonical at `/conversation`; `/conversation/studio` redirects there. The server loads persistent conversations/messages, and browser-local notes remain at `/conversation/notes` with explicit import. See the [canonical page](../../../app/[locale]/owner/[workspaceSlug]/conversation/page.tsx) and [Phase 12 report](../../ux/PHASE-12-OWNER-IA-REPORT.md). This does not claim the historical offline-cache/automatic-note-retirement design was implemented. |
+| Documents and approved search briefs | **Shipped.** The [evidence picker](../../../components/studio/evidence-picker.tsx) attaches existing evidence and supports owner document upload; selected evidence is re-read by the server. Phase 13's three-locale browser attachment regression found an existing client parser omission that rejected citation-bearing messages. The final follow-up fixes that defect and passed the eleven-case enabled local suite, including attachment request/history identity and reload at mobile/desktop widths. Final PR CI/release remains pending; this does not claim Blob upload or live model grounding was tested. |
+| Shared team conversations | **Shipped.** The [sharing dialog](../../../components/studio/share-dialog.tsx) manages accepted workspace members with editor/viewer access. Migration 0022 and the historical release checks are recorded in the [production evidence](CONVERSATION-STUDIO-PRODUCTION-EVIDENCE.md). This is not a request to add the schema or sharing feature again. |
+| Saved draft → exact-version task review | **Shipped.** Explicit draft saving and `version`/`from=studio` review handoff predate Phase 13. Approval and delivery remain on the task page. See the [historical handoff evidence](CONVERSATION-STUDIO-PRODUCTION-EVIDENCE.md#phase-b--ig-draft-handoff). |
+| Enabled Kinnso CI alongside flag-off coverage | **PR [#176](https://github.com/YNWAforever/smeassistant/pull/176), merged.** Adds the enabled Studio/contextual-entry job, no-skips report gate and exclusive-test protection. Both PR CI jobs passed before merge; this is not a claim of GitHub branch-protection enforcement. |
+| Return to the exact originating conversation | **PR [#177](https://github.com/YNWAforever/smeassistant/pull/177), pending merge.** Adds authorized conversation/location context to the existing version handoff, including refresh/recovery and a two-conversation regression. This strengthens an existing journey; it is not the initial release of persistent chat or version saving. Do not describe it as deployed. |
+
+The active follow-up is the [Phase 13 owner-journey record](../../ux/PHASE-13-OWNER-JOURNEY.md). At this reconciliation point, PR #176 is merged and PR #177 awaits merge; their local/CI evidence must not be treated as fresh production verification.
+
+## Verification boundaries and remaining work
+
+- The [2026-11-10/11 production record](CONVERSATION-STUDIO-PRODUCTION-EVIDENCE.md) records the provider probe and **owner-reported** 15-point acceptance on 2026-11-11. Those are historical observations, not checks rerun for this documentation update. The configuration table there is not a fresh assertion about the currently serving deployment.
+- The [Phase 12 hosted walkthrough](../../ux/PHASE-12-HOSTED-WALKTHROUGH.md) and [PR #174 evidence-guardrail release](../../ux/PHASE-12-EVIDENCE-GUARDRAIL.md) record later read-only checks. PR #174 fixed the observed-evidence wording issue without rewriting live business records. PR [#175](https://github.com/YNWAforever/smeassistant/pull/175) fixed the transient-null-document hydration regression in the browser test helper.
+- Phase 13 local verification passed all eleven enabled cases, including the three-locale attachment fixture and mobile/desktop layouts, plus production build. Land the final reviewed citation fix and journey regressions after green PR checks, then record read-only hosted verification in the phase report.
+- Fresh production generation, document upload, import, approval or export requires a designated authorized test workspace and explicit authorization for writes/model spend. Read-only hosted verification does not establish those mutation paths.
+- Streaming load testing, a broader accessibility audit, and hosted preview-branch provisioning remain follow-ups from the historical plan. No new hosted provisioning, provider routing or paid operation is authorized by this roadmap.
+
+## Historical plan — 2026-11-09
+
+Historical baseline: `main` at `8d57823`; production DB migrated through `0021`; conversation workbench live (`CONVERSATION_HOME_ENABLED=true`); Studio hidden (`CONVERSATION_STUDIO_ENABLED` unset); PRs #130–#133 merged. Subsequent dated status notes below record the rollout as it progressed.
+
+Original intent: integrate Studio as the persistent mode of the conversation workbench (Path A), converge the thread model, add document/search grounding, and add sharing and operations. The current status above supersedes this historical sequence as a development queue.
 
 ## Guiding principles
 
@@ -83,6 +108,6 @@ P3 after P1.3 / product review
 
 Phase 1 PRs are independent of P0: the Studio stays safely hidden until the owner flips the flag.
 
-## Immediate start: P1.1
+## Historical immediate start: P1.1
 
-Branch `feat/studio-v1.1-evidence-picker`. First commits: citation contract extension + search-brief loading in the messages route; then the picker UI; then tests and the PR.
+The original starting branch was `feat/studio-v1.1-evidence-picker`, with citation contract/search-brief loading, picker UI, tests and a PR planned in that order. This is retained for traceability; the picker has shipped and is not the next implementation task.

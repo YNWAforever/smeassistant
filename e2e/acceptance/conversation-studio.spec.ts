@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { studioText } from "../../lib/studio/copy";
 
 import { test, expect, signIn, waitForHydration } from "../../test/e2e/fixtures";
 import { sql, type AcceptanceEnvironment } from "../../test/e2e/environment";
@@ -68,6 +69,73 @@ function seedSocialAction(environment: AcceptanceEnvironment, merchant: { worksp
 
 test.describe("Conversation Studio", () => {
   test.skip(!STUDIO_ENABLED, "requires CONVERSATION_STUDIO_ENABLED=true in the acceptance app env plus migration 0021");
+
+  for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
+    test(`attaches owner-provided evidence and retains its provenance after reload (${locale}, mobile and desktop)`, async ({ page, merchant, environment }) => {
+      await signIn(page, environment, merchant);
+      const documentId = randomUUID();
+      const assetId = randomUUID();
+      const versionId = randomUUID();
+      const title = "owner-hours.txt";
+      const text = "Owner-provided opening hours: Monday to Friday, 10am to 6pm.";
+      const sha = createHash("sha256").update(text).digest("hex");
+      // Seed an existing private document in the owned database. Blob upload is
+      // separately tested; this fixture neither configures nor calls Blob storage.
+      sql(environment.db, `begin;
+        insert into assets(id,workspace_id,location_id,kind,storage_path,filename,uploaded_by)
+        select '${assetId}','${merchant.workspaceId}','${merchant.locationId}','document',
+          '${merchant.workspaceId}/${assetId}/__conversation_document__/${title}','${title}',user_id
+        from workspace_members where workspace_id='${merchant.workspaceId}' and role='owner' and accepted_at is not null;
+        insert into conversation_document_versions(id,workspace_id,location_id,document_id,asset_id,version,title,extracted_text,truncated,sha256,uploaded_by)
+        select '${versionId}','${merchant.workspaceId}','${merchant.locationId}','${documentId}','${assetId}',1,'${title}','${text}',false,'${sha}',uploaded_by
+        from assets where id='${assetId}';
+        commit;`);
+      await setModelScript(environment);
+      const copy = studioText(locale);
+      const errors: string[] = [];
+      page.on("pageerror", error => errors.push(error.message));
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(`/${locale}/owner/${merchant.slug}/conversation?location=primary`);
+      const evidenceToggle = page.getByRole("button", { name: copy.evidence.title, exact: true });
+      await evidenceToggle.focus();
+      await expect(evidenceToggle).toBeFocused();
+      await evidenceToggle.press("Enter");
+      const documentCheckbox = page.getByRole("checkbox", { name: title, exact: true });
+      await documentCheckbox.focus();
+      await documentCheckbox.press("Space");
+      await expect(documentCheckbox).toBeChecked();
+      await expect(page.locator(".studio-evidence-chip")).toContainText(title);
+      await page.locator(".studio-composer-input").fill("Summarize the owner-provided opening hours and identify the source.");
+      const turnRequest = page.waitForRequest(request => request.method() === "POST" && /\/api\/studio\/conversations\/[^/]+\/messages$/.test(new URL(request.url()).pathname));
+      await page.getByRole("button", { name: copy.composer.send, exact: true }).click();
+      expect((await turnRequest).postDataJSON()).toMatchObject({ documentVersionIds: [versionId] });
+      await expect(page.locator(".studio-message-assistant")).toContainText(ANSWER);
+      const chat = new URL(page.url()).searchParams.get("chat");
+      expect(chat).toMatch(/^[a-f0-9-]{36}$/);
+      const persisted = await page.request.get(`/api/studio/conversations/${chat}?workspaceId=${merchant.workspaceId}`);
+      expect(persisted.status()).toBe(200);
+      const history = await persisted.json();
+      expect(history.messages).toEqual(expect.arrayContaining([expect.objectContaining({
+        role: "user", parts: expect.arrayContaining([expect.objectContaining({
+          kind: "citation", refs: expect.arrayContaining([expect.objectContaining({ source: "document", documentVersionId: versionId, title })]),
+        })]),
+      })]));
+      await expect(page.locator(".studio-citations").first()).toContainText(title);
+      for (const width of [390, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.reload();
+        await waitForHydration(page);
+        expect(new URL(page.url()).searchParams.get("chat")).toBe(chat);
+        await expect(page.locator(".studio-citations").first()).toContainText(title);
+        await expect(page.locator(".studio-composer-input")).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+      }
+      expect(errors).toEqual([]);
+      expect(sql(environment.db, `select rights_status from assets where id='${assetId}';`)).toBe("needs_review");
+      expect(sql(environment.db, `select count(*) from output_versions where workspace_id='${merchant.workspaceId}';`)).toBe("0");
+      expect(sql(environment.db, `select approved_deliveries from workspace_usage where workspace_id='${merchant.workspaceId}';`)).toBe("0");
+    });
+  }
 
   test("an owner starts one continuous conversation from a starter and reloads back into its history", async ({ page, merchant, environment }) => {
     await setModelScript(environment);
@@ -156,7 +224,7 @@ test.describe("Conversation Studio", () => {
     expect(exported).not.toContain('"kind"');
   });
 
-  test("drafts an IG post, saves a version and hands off to the action page for approval and copy-ready delivery", async ({ page, merchant, environment }) => {
+  test("retries a saved IG draft, approves and copies its exact version, then returns to the original chat", async ({ page, merchant, environment }) => {
     const socialActionId = seedSocialAction(environment, merchant);
     await setSocialDraftScript(environment, socialActionId);
     await signIn(page, environment, merchant);
@@ -167,12 +235,24 @@ test.describe("Conversation Studio", () => {
     await expect(page.locator(".studio-artifact-card")).toBeVisible({ timeout: 90_000 });
     await expect(page.locator(".studio-artifact-card")).toContainText("This week at the shop");
 
-    // Saving posts to the existing version route, not an authority route.
-    const saves = page.waitForResponse((response) => response.url().endsWith(`/api/actions/${socialActionId}/versions`) && response.request().method() === "POST" && response.status() === 201);
+    // Lose the first acknowledgement after the real server commits. Retrying
+    // the same artifact must redeem the existing version, not create another.
+    let committedVersion = "";
+    await page.route(`**/api/actions/${socialActionId}/versions`, async route => {
+      const response = await route.fetch();
+      expect(response.status()).toBe(201);
+      committedVersion = (await response.json()).versionId;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "unavailable" }) });
+    }, { times: 1 });
+    await page.getByRole("button", { name: "Save as a version" }).click();
+    await expect(page.locator(".studio-artifact-error")).toBeVisible();
+    expect(committedVersion).toMatch(/^[a-f0-9-]{36}$/);
+    expect(sql(environment.db, `select count(*) from output_versions where action_id='${socialActionId}';`)).toBe("1");
+    const saves = page.waitForResponse((response) => response.url().endsWith(`/api/actions/${socialActionId}/versions`) && response.request().method() === "POST" && response.ok());
     await page.getByRole("button", { name: "Save as a version" }).click();
     const saved = await saves;
     const { versionId } = await saved.json() as { versionId: string };
-    expect(versionId).toMatch(/^[a-f0-9-]{36}$/);
+    expect(versionId).toBe(committedVersion);
     expect(sql(environment.db, `select count(*) from output_versions where action_id='${socialActionId}';`)).toBe("1");
 
     const originalChat = new URL(page.url()).searchParams.get("chat");
@@ -204,6 +284,19 @@ test.describe("Conversation Studio", () => {
     await dialog.getByRole("button", { name: "Confirm this version" }).click();
     await expect.poll(() => sql(environment.db, `select approval_state from output_versions where id='${versionId}';`)).toBe("approved");
     await expect(page.getByRole("button", { name: "Copy text" })).toBeVisible();
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    for (const counted of [true, false]) {
+      await page.evaluate(value => navigator.clipboard.writeText(value), `before-copy-${randomUUID()}`);
+      const exported = page.waitForResponse(response => response.url().endsWith(`/api/versions/${versionId}/export`) && response.request().method() === "POST");
+      await page.getByRole("button", { name: "Copy text", exact: true }).click();
+      const response = await exported;
+      expect(response.status()).toBe(200);
+      expect(await response.json()).toMatchObject({ counted, usage: { approved_deliveries: 1 } });
+      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("A warm invitation to visit this week.");
+      await expect(page.getByRole("button", { name: "Copy text", exact: true })).toBeEnabled();
+    }
+    expect(sql(environment.db, `select approved_deliveries from workspace_usage where workspace_id='${merchant.workspaceId}';`)).toBe("1");
+    expect(sql(environment.db, `select count(*) from audit_events where workspace_id='${merchant.workspaceId}' and event in ('delivery.published','content.published','version.published');`)).toBe("0");
 
     // A refresh must retain the server-validated return context and exact version.
     await page.reload();

@@ -48,10 +48,16 @@ question, “what do I do now?”, not around the product's internal toolset.
 `explain_priority`, `compare_priorities`, `revise_action`, `write_ig`,
 `reply_reviews`, `plan_week`. The server maps each key to a starter message,
 and a deep link starts a fresh thread so the starter is visible. Action links
-also carry `?action=` and optionally `?version=`. Save/approve/export stay on
-the task page; Kinnso only prepares a draft.
+also carry `?action=` and optionally `?version=`. Kinnso prepares a draft and
+can explicitly save it as a version for task-page review. Editing, approval and
+copy/export remain on the task page; the chat grants no approval or delivery
+authority.
 
 ## Verification
+
+These are the recorded Phase 12 results, not fresh Phase 13 checks. Later fixes
+and pending follow-ups are distinguished below; the original counts remain as
+historical evidence.
 
 - `node node_modules/typescript/bin/tsc --noEmit` — pass.
 - `node node_modules/eslint/bin/eslint.js .` — 0 errors, 14 pre-existing warnings.
@@ -72,7 +78,46 @@ the task page; Kinnso only prepares a draft.
   owner assistant sheet.
 - Signed-in hosted read-only walkthrough completed on 2026-11-13: 18 page
   visits returned 200 with no horizontal overflow or JavaScript page errors;
-  11 interaction/theme checks passed. One existing evidence-wording guardrail
-  issue remains open. See [hosted walkthrough](PHASE-12-HOSTED-WALKTHROUGH.md)
-  for scope, the mobile readiness retry, findings and limits. Mutation-based
-  hosted Studio acceptance was not repeated.
+  11 interaction/theme checks passed. The evidence-wording guardrail issue
+  found then was subsequently **fixed by [PR #174](https://github.com/YNWAforever/smeassistant/pull/174)**.
+  Its separate post-fix read-only release check covered Today, Tasks and task
+  evidence in all three locales at 1440px/390px (18 HTTP-200 visits, no page
+  errors or overflow); no live business records were rewritten. See the
+  [guardrail release evidence](PHASE-12-EVIDENCE-GUARDRAIL.md) and
+  [hosted walkthrough](PHASE-12-HOSTED-WALKTHROUGH.md) for scope, the earlier
+  mobile readiness retry, findings and limits. Mutation-based hosted Studio
+  acceptance was not repeated.
+- The transient-null-document hydration regression observed in the follow-up
+  acceptance run was **fixed by [PR #175](https://github.com/YNWAforever/smeassistant/pull/175)**
+  (merge `b99365f9543ef3e5dc2bbcf292ec56f1bc298a46`). The browser fixture now waits
+  safely when the document root is temporarily absent. This test-readiness fix
+  is separate from the original hosted mobile readiness retry.
+
+## Phase 13 reconciliation — 2026-11-14
+
+Persistent chat, document/search-brief attachment, sharing and explicit
+save-as-version/task review are already shipped capabilities. The
+[historical Studio production record](../implementation/owner-platform-v1/CONVERSATION-STUDIO-PRODUCTION-EVIDENCE.md)
+contains the owner's **2026-11-11 report** that the 15-point hosted checklist
+passed; it is not a fresh Phase 13 browser run. The
+[reconciled roadmap](../implementation/owner-platform-v1/CONVERSATION-STUDIO-V1.1-ROADMAP.md)
+retains the original planning history without presenting those features as new
+pending work.
+
+- [PR #176](https://github.com/YNWAforever/smeassistant/pull/176) adds enabled
+  Kinnso acceptance alongside the existing flag-off run. It is **merged** after
+  both CI jobs passed. The eight skipped checks above remain the accurate historical
+  Phase 12 result; the new enabled job closes that coverage gap prospectively.
+- [PR #177](https://github.com/YNWAforever/smeassistant/pull/177) preserves the
+  authorized originating conversation through exact-version review, refresh
+  and return. It is **pending merge**, not deployed. Its two-conversation test
+  distinguishes exact return from reopening the most recent discussion.
+- The dedicated browser attachment fixture passed in all three locales at
+  mobile/desktop widths as part of Phase 13's **11 passing enabled local cases**.
+  It exposed an existing citation-parser omission, fixed in the final follow-up.
+  These results cover attachment, send and reload with an existing owned fixture;
+  they do not cover Blob upload or prove live model grounding. Final PR CI and
+  hosted release status belong in the [Phase 13 record](PHASE-13-OWNER-JOURNEY.md).
+- Fresh production generation, upload/import, approval or export requires a
+  designated authorized test workspace and explicit permission for writes and
+  model spend. Read-only page verification does not exercise these operations.
