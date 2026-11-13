@@ -111,6 +111,15 @@ export function StudioEvidencePicker({
     onChange([...selected, ref])
   }
 
+  function remove(ref: StudioCitationRef, button: HTMLButtonElement) {
+    const buttons = Array.from(button.closest(".studio-evidence-head")?.querySelectorAll<HTMLButtonElement>("button") ?? [])
+    const index = buttons.indexOf(button)
+    // The Evidence toggle precedes the chips, so it is the final fallback.
+    const target = buttons[index + 1] ?? buttons[index - 1]
+    target?.focus({ preventScroll: true })
+    toggle(ref)
+  }
+
   function isSelected(ref: StudioCitationRef): boolean {
     const key = refKey(ref)
     return selected.some((item) => refKey(item) === key)
@@ -183,7 +192,7 @@ export function StudioEvidencePicker({
           <span className="studio-evidence-chip" key={refKey(ref)}>
             {ref.source === "document" ? <FileText aria-hidden="true" /> : <Search aria-hidden="true" />}
             <span>{ref.title}</span>
-            <button type="button" aria-label={`${t.evidence.remove}: ${ref.title}`} onClick={() => toggle(ref)} disabled={disabled}>
+            <button type="button" aria-label={`${t.evidence.remove}: ${ref.title}`} onClick={(event) => remove(ref, event.currentTarget)} disabled={disabled}>
               <X aria-hidden="true" />
             </button>
           </span>

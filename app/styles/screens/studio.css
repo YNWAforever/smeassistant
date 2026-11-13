@@ -747,7 +747,8 @@
   flex: 1;
   padding: 18px clamp(16px, 3vw, 28px) 8px;
   overflow-y: auto;
-  scroll-behavior: smooth;
+  /* Anchor corrections must settle before paint, including history prepends. */
+  scroll-behavior: auto;
 }
 
 .studio-thread-earlier {
@@ -1603,11 +1604,12 @@
     box-shadow: var(--shadow-md);
     visibility: hidden;
     transform: translateX(102%);
-    transition: transform 0.18s ease, visibility 0.18s ease;
+    transition: transform 0.18s ease, visibility 0s linear 0.18s;
   }
 
   .studio-root[data-context-drawer="open"] .studio-context {
     visibility: visible;
+    transition-delay: 0s;
     transform: none;
   }
 
@@ -1636,11 +1638,12 @@
     box-shadow: var(--shadow-md);
     visibility: hidden;
     transform: translateX(-102%);
-    transition: transform 0.18s ease, visibility 0.18s ease;
+    transition: transform 0.18s ease, visibility 0s linear 0.18s;
   }
 
   .studio-root[data-rail="open"] .studio-rail {
     visibility: visible;
+    transition-delay: 0s;
     transform: none;
   }
 
@@ -1648,7 +1651,8 @@
     display: block;
   }
 
-  .studio-rail-toggle {
+  .studio-rail-toggle,
+  .studio-drawer-close {
     display: inline-flex;
   }
 }
@@ -1678,11 +1682,12 @@
     box-shadow: var(--shadow-md);
     visibility: hidden;
     transform: translateX(-102%);
-    transition: transform 0.18s ease, visibility 0.18s ease;
+    transition: transform 0.18s ease, visibility 0s linear 0.18s;
   }
 
   .studio-root[data-rail="open"] .studio-rail {
     visibility: visible;
+    transition-delay: 0s;
     transform: none;
   }
 
@@ -1697,11 +1702,12 @@
     box-shadow: var(--shadow-md);
     visibility: hidden;
     transform: translateX(102%);
-    transition: transform 0.18s ease, visibility 0.18s ease;
+    transition: transform 0.18s ease, visibility 0s linear 0.18s;
   }
 
   .studio-root[data-context-drawer="open"] .studio-context {
     visibility: visible;
+    transition-delay: 0s;
     transform: none;
   }
 

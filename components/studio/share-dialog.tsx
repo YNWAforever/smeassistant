@@ -1,7 +1,9 @@
 "use client"
 
 import { X } from "lucide-react"
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState, type RefObject } from "react"
+
+import { useStudioOverlay } from "./use-studio-overlay"
 
 import { Button } from "@/components/ui/button"
 import type { PrototypeLocale } from "@/lib/copy"
@@ -24,11 +26,13 @@ export function StudioShareDialog({
   workspaceId,
   conversationId,
   onClose,
+  returnFocusRef,
 }: {
   locale: PrototypeLocale
   workspaceId: string
   conversationId: string
   onClose: () => void
+  returnFocusRef?: RefObject<HTMLElement | null>
 }) {
   const t = studioText(locale)
   const titleId = useId()
@@ -40,20 +44,8 @@ export function StudioShareDialog({
   const [candidateId, setCandidateId] = useState("")
   const [role, setRole] = useState<StudioConversationMemberRole>("editor")
 
-  // Dialog hygiene: focus the close button on open and let Escape dismiss it
-  // from anywhere inside the dialog. No focus trap dependency is required for
-  // this small owner-only surface; the backdrop blocks pointer interaction.
-  useEffect(() => {
-    closeRef.current?.focus()
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        event.preventDefault()
-        onClose()
-      }
-    }
-    window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
-  }, [onClose])
+  const dialogRef = useRef<HTMLElement>(null)
+  useStudioOverlay({ active: true, rootRef: dialogRef, initialFocusRef: closeRef, returnFocusRef, onClose })
 
   async function reload(): Promise<void> {
     const result = await listStudioConversationMembers(workspaceId, conversationId)
@@ -116,7 +108,7 @@ export function StudioShareDialog({
 
   return (
     <div className="studio-share-backdrop" role="presentation">
-      <section className="studio-share-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <section ref={dialogRef} tabIndex={-1} className="studio-share-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header className="studio-share-head">
           <h2 id={titleId}>{t.share.title}</h2>
           <button ref={closeRef} type="button" className="studio-icon-button" onClick={onClose} aria-label={t.share.close} title={t.share.close}>

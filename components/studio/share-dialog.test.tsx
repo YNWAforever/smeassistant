@@ -37,11 +37,62 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  document.body.replaceChildren();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
 describe("StudioShareDialog", () => {
+  it("keeps focus and data stable when streaming recreates the close callback", async () => {
+    const first = vi.fn();
+    const latest = vi.fn();
+    const props = { locale: "en" as const, workspaceId: WORKSPACE, conversationId: CONVERSATION };
+    const view = render(<StudioShareDialog {...props} onClose={first} />);
+    await screen.findByText("editor@example.test");
+    const candidate = screen.getByRole("combobox", { name: "Add a teammate" });
+    candidate.focus();
+    const requests = fetchMock.mock.calls.length;
+    view.rerender(<StudioShareDialog {...props} onClose={latest} />);
+    expect(candidate).toHaveFocus();
+    expect(fetchMock).toHaveBeenCalledTimes(requests);
+    fireEvent.keyDown(candidate, { key: "Escape" });
+    expect(latest).toHaveBeenCalledOnce();
+    expect(first).not.toHaveBeenCalled();
+  });
+
+  it("traps both Tab directions, isolates background and returns focus on unmount", async () => {
+    const trigger = document.createElement("button");
+    document.body.append(trigger);
+    trigger.focus();
+    const view = render(<StudioShareDialog locale="en" workspaceId={WORKSPACE} conversationId={CONVERSATION} onClose={vi.fn()} />);
+    await screen.findByText("editor@example.test");
+    const first = screen.getByRole("button", { name: "Close" });
+    const last = screen.getByRole("combobox", { name: "Can continue" });
+    expect(trigger).toHaveAttribute("inert");
+    first.focus();
+    fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
+    expect(last).toHaveFocus();
+    fireEvent.keyDown(last, { key: "Tab" });
+    expect(first).toHaveFocus();
+    trigger.focus();
+    expect(first).toHaveFocus();
+    view.unmount();
+    expect(trigger).not.toHaveAttribute("inert");
+    expect(trigger).toHaveFocus();
+    trigger.remove();
+  });
+  it("returns to an explicit persistent trigger when its menu action disappears", async () => {
+    const trigger = document.createElement("button");
+    const action = document.createElement("button");
+    document.body.append(trigger, action);
+    action.focus();
+    const view = render(<StudioShareDialog locale="en" workspaceId={WORKSPACE} conversationId={CONVERSATION} onClose={vi.fn()} returnFocusRef={{ current: trigger }} />);
+    await screen.findByText("editor@example.test");
+    action.remove();
+    view.unmount();
+    expect(trigger).toHaveFocus();
+  });
+
   it("loads members and candidates, then shares the selected teammate with the chosen role", async () => {
     render(<StudioShareDialog locale="en" workspaceId={WORKSPACE} conversationId={CONVERSATION} onClose={vi.fn()} />);
     expect(await screen.findByText("editor@example.test")).toBeInTheDocument();

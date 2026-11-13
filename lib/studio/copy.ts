@@ -101,6 +101,8 @@ export type StudioCopy = {
     carouselPlanOnly: string
     warnings: string
     retry: string
+    checkResponse: string
+    responsePending: string
   }
   context: {
     title: string
@@ -300,6 +302,8 @@ const en: StudioCopy = {
     documents: "Attached documents",
     warnings: "Before you use this",
     retry: "Try again",
+    checkResponse: "Check response",
+    responsePending: "The response may still be finishing. Check its status without sending your message again.",
   },
   context: {
     title: "Workspace context",
@@ -475,6 +479,8 @@ const zhHK: StudioCopy = {
     documents: "已附加文件",
     warnings: "使用前請注意",
     retry: "再試一次",
+    checkResponse: "查看回答",
+    responsePending: "回答可能仍在處理中。你可以查看最新狀態，不用再次傳送訊息。",
   },
   context: {
     title: "工作台資料",
@@ -650,6 +656,8 @@ const zhTW: StudioCopy = {
     documents: "已附加文件",
     warnings: "使用前請注意",
     retry: "再試一次",
+    checkResponse: "查看回答",
+    responsePending: "回答可能仍在處理中。你可以查看最新狀態，不用再次傳送訊息。",
   },
   context: {
     title: "工作區資料",

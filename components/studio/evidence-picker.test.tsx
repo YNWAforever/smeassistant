@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StudioEvidencePicker } from "./evidence-picker";
@@ -42,6 +43,22 @@ afterEach(() => {
 });
 
 describe("StudioEvidencePicker", () => {
+  it("moves removal focus to the next chip, previous chip, then Evidence", () => {
+    function Picker() {
+      const [selected, setSelected] = useState(["First", "Middle", "Last"].map(title => ({ source: "document" as const, documentVersionId: title, title, truncated: false })));
+      return <StudioEvidencePicker locale="en" workspaceId="workspace-1" locationId={LOCATION} selected={selected} onChange={refs => setSelected(refs.filter(ref => ref.source === "document"))} />;
+    }
+    render(<Picker />);
+    const middle = screen.getByRole("button", { name: /Remove.*Middle/ });
+    middle.focus();
+    fireEvent.click(middle);
+    expect(screen.getByRole("button", { name: /Remove.*Last/ })).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: /Remove.*Last/ }));
+    expect(screen.getByRole("button", { name: /Remove.*First/ })).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: /Remove.*First/ }));
+    expect(screen.getByRole("button", { name: "Evidence" })).toHaveFocus();
+  });
+
   it("loads documents and approved briefs and reports the selected item", async () => {
     const onChange = vi.fn();
     render(<StudioEvidencePicker locale="en" workspaceId="workspace-1" locationId={LOCATION} selected={[]} onChange={onChange} />);

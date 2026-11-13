@@ -71,6 +71,180 @@ test.describe("Conversation Studio", () => {
   test.skip(!STUDIO_ENABLED, "requires CONVERSATION_STUDIO_ENABLED=true in the acceptance app env plus migration 0021");
 
   for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
+    test(`keeps keyboard focus through sheets and streamed completion (${locale}, mobile/tablet/desktop)`, async ({ page, merchant, environment }) => {
+      await signIn(page, environment, merchant);
+      const copy = studioText(locale);
+      const errors: string[] = [];
+      page.on("pageerror", error => errors.push(error.message));
+      // Deterministic read-only member choices exercise focus, not sharing writes.
+      await page.route(/\/api\/studio\/conversations\/[^/]+\/members(?:\?|$)/, route => route.fulfill({
+        json: { members: [], candidates: [{ userId: randomUUID(), email: "keyboard-fixture@example.test", workspaceRole: "manager" }], canManage: true, accessRole: "owner" },
+      }));
+      for (const width of [390, 900, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        const created = await page.request.post("/api/studio/conversations", { data: { workspaceId: merchant.workspaceId, locationId: merchant.locationId } });
+        expect(created.status()).toBe(201);
+        const { conversation } = await created.json();
+        await page.goto(`/${locale}/owner/${merchant.slug}/conversation?location=primary&chat=${conversation.id}`);
+        await waitForHydration(page);
+        const composer = page.getByRole("textbox", { name: copy.composer.label });
+        const contextTrigger = page.getByRole("button", { name: copy.header.context, exact: true });
+        await contextTrigger.focus();
+        await page.keyboard.press("Enter");
+        const context = page.getByRole("dialog", { name: copy.context.title });
+        const contextClose = context.getByRole("button", { name: copy.header.hideContext });
+        await expect(contextClose).toBeFocused();
+        await page.keyboard.press("Shift+Tab");
+        await expect.poll(() => context.evaluate(node => node.contains(document.activeElement))).toBe(true);
+        if (width !== 900) {
+          await page.setViewportSize({ width: width === 390 ? 1440 : 390, height: 900 });
+          // Let matchMedia, React and the isolation observer process the resize.
+          await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+          await expect(page.locator(".studio-rail")).toHaveAttribute("inert", "");
+        }
+        await page.keyboard.press("Escape");
+        await expect(contextTrigger).toBeFocused();
+        if (width !== 900) {
+          expect(await page.locator(".studio-rail").evaluate(node => node.hasAttribute("inert"))).toBe(width === 1440);
+          await page.setViewportSize({ width, height: 900 });
+        }
+        if (width < 1200) {
+          const railTrigger = page.getByRole("button", { name: copy.rail.open });
+          await railTrigger.focus();
+          await page.keyboard.press("Enter");
+          const rail = page.getByRole("dialog", { name: copy.rail.listLabel });
+          await expect(rail.getByRole("button", { name: copy.rail.close, exact: true })).toBeVisible();
+          await expect(rail.getByRole("button", { name: copy.rail.close, exact: true })).toBeFocused();
+          await page.keyboard.press("Escape");
+          await expect(railTrigger).toBeFocused();
+          await page.keyboard.press("Enter");
+          await rail.locator('.studio-rail-item[data-active="true"] .studio-rail-select').focus();
+          await page.keyboard.press("Enter");
+          await expect(composer).toBeFocused();
+          await expect(rail).toHaveCount(0);
+        } else {
+          await expect(page.locator(".studio-rail")).not.toHaveAttribute("aria-modal", "true");
+          await expect(page.locator(".studio-drawer-close")).toBeHidden();
+        }
+
+        let release!: () => void;
+        const heldResponse = new Promise<void>(resolve => { release = resolve; });
+        let requested = false;
+        const pattern = `**/api/studio/conversations/${conversation.id}/messages*`;
+        const answer = `Keyboard fixture answer ${locale} ${width}.`;
+        // Hold the browser stream boundary so completion occurs while the owner
+        // operates Share. This path never calls a provider or claims persistence.
+        await page.route(pattern, async route => {
+          requested = true;
+          await heldResponse;
+          const message = (role: "user" | "assistant", seq: number, content: string) => ({ id: randomUUID(), conversationId: conversation.id, role, seq, content, parts: [{ kind: "text", text: content }], intent: null, createdAt: new Date().toISOString() });
+          const frames = [
+            { type: "user", message: message("user", 1, "Keyboard fixture question") },
+            { type: "status", stage: "thinking" },
+            { type: "delta", text: answer },
+            { type: "message", message: message("assistant", 2, answer), conversation },
+            { type: "done" },
+          ];
+          await route.fulfill({ status: 200, contentType: "text/event-stream", body: frames.map(frame => `data: ${JSON.stringify(frame)}\n\n`).join("") });
+        });
+        try {
+          await composer.fill("Keyboard fixture question");
+          await page.getByRole("button", { name: copy.composer.send, exact: true }).click();
+          await expect.poll(() => requested).toBe(true);
+          const more = page.locator(".studio-more-toggle");
+          await more.focus();
+          await page.keyboard.press("Enter");
+          await page.getByRole("button", { name: copy.share.action, exact: true }).focus();
+          await page.keyboard.press("Enter");
+          const share = page.getByRole("dialog", { name: copy.share.title });
+          const close = share.getByRole("button", { name: copy.share.close });
+          const role = share.getByRole("combobox", { name: copy.share.roleEditor });
+          await expect(close).toBeFocused();
+          await expect(role).toBeVisible();
+          await page.keyboard.press("Tab");
+          await expect(share.getByRole("combobox", { name: copy.share.candidates })).toBeFocused();
+          await page.keyboard.press("Tab");
+          await expect(role).toBeFocused();
+          release();
+          await expect(page.getByText(answer, { exact: true })).toBeVisible();
+          await expect(role).toBeFocused();
+          await page.keyboard.press("Tab");
+          await expect(close).toBeFocused();
+          await page.keyboard.press("Shift+Tab");
+          await expect(role).toBeFocused();
+          await page.keyboard.press("Escape");
+          await expect(more).toBeFocused();
+        } finally {
+          release();
+          await page.unroute(pattern);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+      }
+      expect(errors).toEqual([]);
+    });
+
+    test(`preserves the history reading anchor and keyboard focus (${locale}, mobile and desktop)`, async ({ page, merchant, environment }) => {
+      await signIn(page, environment, merchant);
+      const copy = studioText(locale);
+      for (const width of [390, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        const create = () => page.request.post("/api/studio/conversations", { data: { workspaceId: merchant.workspaceId, locationId: merchant.locationId } });
+        const initial = await create();
+        const target = await create();
+        expect(initial.status()).toBe(201);
+        expect(target.status()).toBe(201);
+        const first = (await initial.json()).conversation;
+        const second = (await target.json()).conversation;
+        const title = `History fixture ${width}`;
+        const renamed = await page.request.patch(`/api/studio/conversations/${second.id}`, { data: { workspaceId: merchant.workspaceId, title } });
+        expect(renamed.status()).toBe(200);
+        const conversation = (await renamed.json()).conversation;
+        const message = (seq: number, content: string, role: "user" | "assistant" = "assistant") => ({ id: randomUUID(), conversationId: conversation.id, role, seq, content, parts: [{ kind: "text", text: content }], intent: null, createdAt: new Date().toISOString() });
+        const latest = Array.from({ length: 20 }, (_, index) => message(index + 41, `Recent paragraph ${index + 41}. ` + "A saved observation for reading history. ".repeat(12)));
+        const earlier = Array.from({ length: 40 }, (_, index) => message(index + 1, `Earlier paragraph ${index + 1}. ` + "An older saved observation with its original context. ".repeat(12)));
+        const detail = (url: URL) => url.pathname === `/api/studio/conversations/${conversation.id}`;
+        await page.route(detail, route => route.fulfill({ json: { conversation, messages: new URL(route.request().url()).searchParams.has("beforeSeq") ? earlier : latest, hasMore: !new URL(route.request().url()).searchParams.has("beforeSeq") } }));
+        await page.goto(`/${locale}/owner/${merchant.slug}/conversation?location=primary&chat=${first.id}`);
+        await waitForHydration(page);
+        if (width < 1200) await page.getByRole("button", { name: copy.rail.open }).click();
+        await page.getByRole("button", { name: title, exact: true }).click();
+        const log = page.getByRole("log", { name: copy.header.title });
+        await expect(log.locator(".studio-messages > li")).toHaveCount(20);
+        await log.evaluate(node => { node.scrollTop = 0; });
+        const load = log.getByRole("button", { name: copy.thread.loadEarlier });
+        await load.focus();
+        const anchor = log.getByText(latest[0].content, { exact: true });
+        const before = await anchor.evaluate(node => node.getBoundingClientRect().top);
+        const composer = page.getByRole("textbox", { name: copy.composer.label });
+        const composerTop = await composer.evaluate(node => node.getBoundingClientRect().top);
+        const pageTop = await page.evaluate(() => window.scrollY);
+        await page.keyboard.press("Enter");
+        await expect(log.locator(".studio-messages > li")).toHaveCount(60);
+        await expect(load).toHaveCount(0);
+        await expect(log).toBeFocused();
+        expect(Math.abs(await anchor.evaluate(node => node.getBoundingClientRect().top) - before)).toBeLessThanOrEqual(2);
+        expect(await page.evaluate(() => window.scrollY)).toBe(pageTop);
+        expect(await composer.evaluate(node => node.getBoundingClientRect().top)).toBe(composerTop);
+
+        await log.evaluate(node => { node.scrollTop = 100; });
+        await expect.poll(() => log.evaluate(node => node.scrollTop)).toBe(100);
+        const answer = `Appended while reading ${locale} ${width}.`;
+        const pattern = `**/api/studio/conversations/${conversation.id}/messages*`;
+        await page.route(pattern, route => route.fulfill({ contentType: "text/event-stream", body: [
+          { type: "user", message: message(61, "Keep my reading position", "user") },
+          { type: "message", message: message(62, answer), conversation },
+          { type: "done" },
+        ].map(frame => `data: ${JSON.stringify(frame)}\n\n`).join("") }));
+        await composer.fill("Keep my reading position");
+        await page.getByRole("button", { name: copy.composer.send, exact: true }).click();
+        await expect(log.getByText(answer, { exact: true })).toBeAttached();
+        expect(await log.evaluate(node => node.scrollTop)).toBe(100);
+        expect(await page.evaluate(() => window.scrollY)).toBe(pageTop);
+        await page.unroute(pattern);
+        await page.unroute(detail);
+      }
+    });
+
     test(`attaches owner-provided evidence and retains its provenance after reload (${locale}, mobile and desktop)`, async ({ page, merchant, environment }) => {
       await signIn(page, environment, merchant);
       const documentId = randomUUID();
@@ -90,6 +264,9 @@ test.describe("Conversation Studio", () => {
         select '${versionId}','${merchant.workspaceId}','${merchant.locationId}','${documentId}','${assetId}',1,'${title}','${text}',false,'${sha}',uploaded_by
         from assets where id='${assetId}';
         commit;`);
+      const seededDocuments = await page.request.get(`/api/workspaces/${merchant.workspaceId}/conversation/documents?location_id=${merchant.locationId}`);
+      expect(seededDocuments.status()).toBe(200);
+      expect((await seededDocuments.json()).versions).toEqual(expect.arrayContaining([expect.objectContaining({ id: versionId })]));
       await setModelScript(environment);
       const copy = studioText(locale);
       const errors: string[] = [];

@@ -2,7 +2,9 @@
 
 import { PanelRightClose, ArrowRight } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useRef } from "react"
+import { useRef } from "react"
+
+import { useStudioOverlay } from "./use-studio-overlay"
 
 import type { PrototypeLocale } from "@/lib/copy"
 import { studioText } from "@/lib/studio/copy"
@@ -14,16 +16,14 @@ import type { StudioContextSummary } from "@/lib/studio/types"
  * Every value was formatted on the server with the request locale, so this
  * component only lays it out: it never recomputes a score, coverage or date and
  * it has no control that writes. On tablet/mobile the same element is the
- * drawer; on wide screens it is the third column and can be collapsed.
- * `focusOnOpen` moves focus to the close control when the drawer is opened, so
- * a keyboard user is not left behind the overlay.
+ * drawer; on wide screens it is also a modal sheet. Opening the sheet moves
+ * focus to its close control and isolates the surrounding workspace.
  */
 export function StudioContextPanel({
   locale,
   summary,
   open,
   onClose,
-  focusOnOpen = false,
   newActionHref,
   actionHrefBase,
   actionLocation,
@@ -42,13 +42,12 @@ export function StudioContextPanel({
   const t = studioText(locale)
   const closeButton = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
-    if (focusOnOpen) closeButton.current?.focus()
-  }, [focusOnOpen])
+  const panelRef = useRef<HTMLElement>(null)
+  useStudioOverlay({ active: open, rootRef: panelRef, initialFocusRef: closeButton, onClose })
 
   const scan = summary.latestScan
   return (
-    <aside className="studio-context" data-open={open ? "true" : "false"} aria-label={t.context.title} role={open ? "dialog" : undefined} aria-modal={open ? true : undefined}>
+    <aside ref={panelRef} tabIndex={-1} inert={!open} className="studio-context" data-open={open ? "true" : "false"} aria-label={t.context.title} role={open ? "dialog" : undefined} aria-modal={open ? true : undefined}>
       <header className="studio-context-head">
         <h2>{t.context.title}</h2>
         <button ref={closeButton} type="button" className="studio-icon-button" onClick={onClose} aria-label={t.header.hideContext} title={t.header.hideContext}>
