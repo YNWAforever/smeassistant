@@ -1,7 +1,9 @@
 "use client"
 
 import { Archive, Check, MessagesSquare, Pencil, Plus, Search, X } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
+
+import { useStudioOverlay, useStudioRailModal } from "./use-studio-overlay"
 
 import type { PrototypeLocale } from "@/lib/copy"
 import { studioText } from "@/lib/studio/copy"
@@ -80,9 +82,25 @@ export function StudioConversationRail({
   const closeButton = useRef<HTMLButtonElement>(null)
   const search = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (open && closeButton.current) closeButton.current.focus()
-  }, [open])
+  const railRef = useRef<HTMLElement>(null)
+  const narrow = useStudioRailModal()
+  const modal = narrow && open
+  const releaseFocus = useStudioOverlay({ active: modal, rootRef: railRef, initialFocusRef: closeButton, onClose })
+  const rows = useRef(new Map<string, HTMLButtonElement>())
+  const pendingRowFocus = useRef<string | null>(null)
+  const renameOperation = useRef(0)
+  useLayoutEffect(() => {
+    if (editing || !pendingRowFocus.current) return
+    rows.current.get(pendingRowFocus.current)?.focus()
+    pendingRowFocus.current = null
+  }, [editing])
+
+  function finishRename(id: string) {
+    renameOperation.current += 1
+    pendingRowFocus.current = id
+    setRenameBusy(false)
+    setEditing(null)
+  }
 
   const groups = useMemo(() => {
     const now = new Date()
@@ -104,24 +122,27 @@ export function StudioConversationRail({
   async function submitRename() {
     if (!editing) return
     const title = editing.value.trim()
-    if (title.length === 0 || renameBusy) {
-      setEditing(null)
+    if (renameBusy) return
+    if (title.length === 0) {
+      finishRename(editing.id)
       return
     }
+    const operation = ++renameOperation.current
     setRenameBusy(true)
     setRenameError(false)
     const ok = await onRename(editing.id, title)
+    if (operation !== renameOperation.current) return
     setRenameBusy(false)
-    if (ok) setEditing(null)
+    if (ok) finishRename(editing.id)
     else setRenameError(true)
   }
 
   return (
-    <aside className="studio-rail" data-open={open ? "true" : "false"} aria-label={t.rail.listLabel}>
+    <aside ref={railRef} tabIndex={-1} inert={narrow && !open} role={modal ? "dialog" : undefined} aria-modal={modal ? true : undefined} className="studio-rail" data-open={open ? "true" : "false"} aria-label={t.rail.listLabel}>
       <header className="studio-rail-head">
         <h2>{t.rail.title}</h2>
         <div className="studio-rail-head-actions">
-          <button type="button" className="studio-icon-button" onClick={onNew} disabled={disabled} aria-label={t.rail.newChat} title={t.rail.newChat}>
+          <button type="button" className="studio-icon-button" onClick={() => { releaseFocus(); onNew() }} disabled={disabled} aria-label={t.rail.newChat} title={t.rail.newChat}>
             <Plus aria-hidden="true" />
           </button>
           <button ref={closeButton} type="button" className="studio-icon-button studio-drawer-close" onClick={onClose} aria-label={t.rail.close}>
@@ -165,6 +186,13 @@ export function StudioConversationRail({
                             event.preventDefault()
                             void submitRename()
                           }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Escape") {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              finishRename(conversation.id)
+                            }
+                          }}
                         >
                           <label className="sr-only" htmlFor={`studio-rename-${conversation.id}`}>{t.rail.rename}</label>
                           <input
@@ -173,14 +201,11 @@ export function StudioConversationRail({
                             value={editing.value}
                             maxLength={80}
                             onChange={(event) => setEditing({ id: conversation.id, value: event.target.value })}
-                            onKeyDown={(event) => {
-                              if (event.key === "Escape") setEditing(null)
-                            }}
                           />
                           <button type="submit" className="studio-icon-button" aria-label={t.rail.rename} disabled={renameBusy}>
                             <Check aria-hidden="true" />
                           </button>
-                          <button type="button" className="studio-icon-button" aria-label={t.rail.close} onClick={() => setEditing(null)}>
+                          <button type="button" className="studio-icon-button" aria-label={t.rail.close} onClick={() => finishRename(conversation.id)}>
                             <X aria-hidden="true" />
                           </button>
                         </form>
@@ -192,7 +217,8 @@ export function StudioConversationRail({
                       <button
                         type="button"
                         className="studio-rail-select"
-                        onClick={() => onSelect(conversation.id)}
+                        ref={(element) => { if (element) rows.current.set(conversation.id, element); else rows.current.delete(conversation.id) }}
+                        onClick={() => { releaseFocus(); onSelect(conversation.id) }}
                         disabled={disabled}
                         aria-current={active ? "page" : undefined}
                         title={title}

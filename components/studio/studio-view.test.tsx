@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react"
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en/owner/kam-man-house/studio",
@@ -195,6 +195,14 @@ function composer() {
   return screen.getByLabelText(t.composer.label) as HTMLTextAreaElement
 }
 
+beforeEach(() => {
+  vi.stubGlobal("matchMedia", vi.fn((media: string) => ({
+    media, matches: false, onchange: null,
+    addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+  })))
+})
+
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
@@ -301,12 +309,12 @@ describe("StudioView ??rail and continuity", () => {
     render(<StudioView {...baseProps({ conversations: [conversationA], activeConversationId: conversationA.id })} />)
     fireEvent.change(composer(), { target: { value: "What should I do first?" } })
     fireEvent.click(screen.getByRole("button", { name: t.composer.send }))
-    await waitFor(() => expect(screen.getByText(t.status.reading)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(t.status.reading))
     // Optimistic: the owner's words are already in the thread, the composer cleared.
     expect(within(screen.getByRole("log")).getByText("What should I do first?")).toBeInTheDocument()
     expect(composer().value).toBe("")
     await act(async () => stream.push({ type: "status", stage: "thinking" }))
-    await waitFor(() => expect(screen.getByText(t.status.thinking)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(t.status.thinking))
     await act(async () => stream.push({ type: "user", message: userMessage(1, "What should I do first?") }))
     await act(async () => stream.push({ type: "delta", text: "Start with " }))
     await waitFor(() => expect(screen.getByText(/Start with/)).toBeInTheDocument())
@@ -492,6 +500,165 @@ describe("StudioView ??honest failures", () => {
     expect(screen.queryByRole("button", { name: t.composer.stop })).not.toBeInTheDocument()
     // Reconciliation proved the turn was not stored, so the text is back.
     await waitFor(() => expect(composer().value).toBe("What should I do first?"))
+  })
+})
+
+describe("StudioView recovery operations", () => {
+  it.each(["en", "zh-HK", "zh-TW"] as const)("checks an unfinished response without resending (%s)", async locale => {
+    const copy = studioText(locale)
+    let posts = 0
+    let reads = 0
+    installFetch((url, init) => {
+      if (init.method === "POST" && url.includes("/messages")) {
+        posts += 1
+        return sseResponse([{ type: "user", message: userMessage(1, "Saved pending question") }])
+      }
+      if (init.method === "GET" && url.startsWith(`/api/studio/conversations/${conversationA.id}`)) {
+        reads += 1
+        return jsonResponse({ conversation: conversationA, messages: [userMessage(1, "Saved pending question"), ...(reads > 1 ? [assistantMessage(2, "The delayed answer arrived.")] : [])], hasMore: false })
+      }
+      return jsonResponse({ error: "unavailable" }, 500)
+    })
+    render(<StudioView {...baseProps({ locale, conversations: [conversationA], activeConversationId: conversationA.id })} />)
+    fireEvent.change(screen.getByLabelText(copy.composer.label), { target: { value: "Saved pending question" } })
+    fireEvent.click(screen.getByRole("button", { name: copy.composer.send }))
+    const check = await screen.findByRole("button", { name: copy.message.checkResponse })
+    expect(screen.getByText(copy.message.responsePending)).toBeInTheDocument()
+    fireEvent.click(check)
+    await screen.findByText("The delayed answer arrived.")
+    expect(posts).toBe(1)
+    expect(reads).toBe(2)
+    expect(screen.queryByRole("button", { name: copy.message.checkResponse })).not.toBeInTheDocument()
+  })
+
+  it.each(["selection", "history"] as const)("retries a failed %s read with its original target", async operation => {
+    const reads: string[] = []
+    installFetch((url, init) => {
+      if (init.method === "GET" && url.includes("/api/studio/conversations/")) {
+        reads.push(url)
+        if (reads.length === 1) return jsonResponse({ error: "unavailable" }, 503)
+        const conversation = operation === "selection" ? conversationB : conversationA
+        return jsonResponse({ conversation, messages: [assistantMessage(1, "Recovered earlier discussion.", [], conversation)], hasMore: false })
+      }
+      return jsonResponse({ error: "unavailable" }, 500)
+    })
+    render(<StudioView {...baseProps({ conversations: [conversationA, conversationB], activeConversationId: conversationA.id, initialMessages: [assistantMessage(4, "Current latest message.")], initialHasMore: true })} />)
+    fireEvent.click(screen.getByRole("button", { name: operation === "selection" ? conversationB.title : t.thread.loadEarlier }))
+    fireEvent.click(await screen.findByRole("button", { name: t.message.retry }))
+    await screen.findByText("Recovered earlier discussion.")
+    expect(reads).toHaveLength(2)
+    expect(reads[1]).toBe(reads[0])
+    expect(fetchMock.mock.calls.every(([, init]) => (init as RequestInit).method === "GET")).toBe(true)
+  })
+
+  it("reconciles a lost user acknowledgement without posting the question twice", async () => {
+    let posts = 0
+    installFetch((url, init) => {
+      if (init.method === "POST" && url.includes("/messages")) {
+        posts += 1
+        return Promise.reject(new TypeError("Connection lost after commit"))
+      }
+      if (init.method === "GET" && url.startsWith(`/api/studio/conversations/${conversationA.id}`)) {
+        return jsonResponse({ conversation: conversationA, messages: [userMessage(1, "Saved question"), assistantMessage(2, "Already persisted answer.")], hasMore: false })
+      }
+      return jsonResponse({ error: "unavailable" }, 500)
+    })
+    render(<StudioView {...baseProps({ conversations: [conversationA], activeConversationId: conversationA.id })} />)
+    fireEvent.change(composer(), { target: { value: "Saved question" } })
+    fireEvent.click(screen.getByRole("button", { name: t.composer.send }))
+    await screen.findByText("Already persisted answer.")
+    expect(posts).toBe(1)
+    expect(screen.queryByRole("button", { name: t.message.retry })).not.toBeInTheDocument()
+    expect(composer().value).toBe("")
+  })
+
+  it("preserves a newer draft when checking an unacknowledged turn", async () => {
+    let posts = 0
+    let reads = 0
+    installFetch((url, init) => {
+      if (init.method === "POST" && url.includes("/messages")) {
+        posts += 1
+        return Promise.reject(new TypeError("Connection lost before acknowledgement"))
+      }
+      if (init.method === "GET" && url.startsWith(`/api/studio/conversations/${conversationA.id}`)) {
+        reads += 1
+        return jsonResponse({ conversation: conversationA, messages: [], hasMore: false })
+      }
+      return jsonResponse({ error: "unavailable" }, 500)
+    })
+    render(<StudioView {...baseProps({ conversations: [conversationA], activeConversationId: conversationA.id })} />)
+    fireEvent.change(composer(), { target: { value: "Original uncertain question" } })
+    fireEvent.click(screen.getByRole("button", { name: t.composer.send }))
+    await screen.findByRole("button", { name: t.message.checkResponse })
+    expect(composer().value).toBe("Original uncertain question")
+    fireEvent.change(composer(), { target: { value: "My newer unsent draft" } })
+    fireEvent.click(screen.getByRole("button", { name: t.message.checkResponse }))
+    await waitFor(() => expect(reads).toBe(2))
+    await screen.findByRole("button", { name: t.message.checkResponse })
+    expect(composer().value).toBe("My newer unsent draft")
+    expect(posts).toBe(1)
+  })
+
+  it("retries conversation creation instead of only dismissing its error", async () => {
+    let creates = 0
+    installFetch((url, init) => {
+      if (init.method === "POST" && url === "/api/studio/conversations") {
+        creates += 1
+        return creates === 1 ? jsonResponse({ error: "unavailable" }, 503) : jsonResponse({ conversation: conversationA }, 201)
+      }
+      if (init.method === "POST" && url.includes("/messages")) {
+        return sseResponse([
+          { type: "user", message: userMessage(1, "Create and send") },
+          { type: "message", message: assistantMessage(2, "Creation recovered."), conversation: conversationA },
+          { type: "done" },
+        ])
+      }
+      return jsonResponse({ error: "unavailable" }, 500)
+    })
+    render(<StudioView {...baseProps()} />)
+    fireEvent.change(composer(), { target: { value: "Create and send" } })
+    fireEvent.click(screen.getByRole("button", { name: t.composer.send }))
+    fireEvent.click(await screen.findByRole("button", { name: t.message.retry }))
+    await screen.findByText("Creation recovered.")
+    expect(creates).toBe(2)
+    expect(messagesPostCall().body.text).toBe("Create and send")
+  })
+})
+
+describe("StudioView interrupted-stream navigation", () => {
+  it("does not replace a selected discussion with late recovery from a stopped stream", async () => {
+    const stream = controlledSse()
+    let finishRecovery!: (response: Response) => void
+    const recovery = new Promise<Response>(resolve => { finishRecovery = resolve })
+    let recoveryStarted = false
+    installFetch((url, init) => {
+      if (init.method === "POST" && url.includes("/messages")) {
+        init.signal?.addEventListener("abort", () => stream.failAbort())
+        return stream.response
+      }
+      if (init.method === "GET" && url.startsWith(`/api/studio/conversations/${conversationA.id}`)) {
+        recoveryStarted = true
+        return recovery
+      }
+      if (init.method === "GET" && url.startsWith(`/api/studio/conversations/${conversationB.id}`)) {
+        return jsonResponse({ conversation: conversationB, messages: [assistantMessage(2, "Second discussion remains selected.", [], conversationB)], hasMore: false })
+      }
+      return jsonResponse({ error: "unavailable" }, 500)
+    })
+    render(<StudioView {...baseProps({ conversations: [conversationA, conversationB], activeConversationId: conversationA.id })} />)
+    fireEvent.change(composer(), { target: { value: "First discussion question" } })
+    fireEvent.click(screen.getByRole("button", { name: t.composer.send }))
+    await screen.findByRole("button", { name: t.composer.stop })
+    fireEvent.click(screen.getByRole("button", { name: t.composer.stop }))
+    await waitFor(() => expect(recoveryStarted).toBe(true))
+    fireEvent.click(screen.getByRole("button", { name: conversationB.title }))
+    await screen.findByText("Second discussion remains selected.")
+    await act(async () => {
+      finishRecovery(jsonResponse({ conversation: conversationA, messages: [assistantMessage(2, "Late first discussion answer.")], hasMore: false }))
+    })
+    expect(screen.getByText("Second discussion remains selected.")).toBeInTheDocument()
+    expect(screen.queryByText("Late first discussion answer.")).not.toBeInTheDocument()
+    expect(new URL(window.location.href).searchParams.get("chat")).toBe(conversationB.id)
   })
 })
 

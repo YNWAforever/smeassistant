@@ -57,6 +57,13 @@ export type StudioViewProps = {
 }
 
 type AiBlocked = "ai_paused" | "ai_unavailable"
+type Recovery = { conversationId: string; afterSeq: number; text: string }
+type RetryIntent =
+  | { kind: "send"; text: string }
+  | { kind: "select"; conversationId: string }
+  | { kind: "history" }
+  | { kind: "archive"; conversationId: string }
+  | ({ kind: "recover" } & Recovery)
 
 function mergeConversation(list: StudioConversation[], conversation: StudioConversation): StudioConversation[] {
   return list.some((entry) => entry.id === conversation.id)
@@ -124,7 +131,8 @@ export function StudioView({
   const [streaming, setStreaming] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<StudioThreadError | null>(null)
-  const [retryText, setRetryText] = useState<string | null>(null)
+  const [retryIntent, setRetryIntent] = useState<RetryIntent | null>(null)
+  const [recovering, setRecovering] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState(false)
@@ -136,7 +144,31 @@ export function StudioView({
   const [focusKey, setFocusKey] = useState(0)
 
   const abortRef = useRef<AbortController | null>(null)
-  const persistedUserRef = useRef(false)
+  const moreSummaryRef = useRef<HTMLElement>(null)
+  // Every navigation or new turn owns its asynchronous results. A stopped
+  // request may still settle after the owner starts another discussion.
+  const operationRef = useRef(0)
+
+  function beginOperation() {
+    operationRef.current += 1
+    setRecovering(false)
+    setLoadingConversation(false)
+    setLoadingEarlier(false)
+    return operationRef.current
+  }
+
+  function restoreTurnFocus() {
+    const active = document.activeElement
+    if (document.querySelector('[aria-modal="true"]')) return
+    if (!active || active === document.body || active.closest(".studio-composer")) {
+      setFocusKey((key) => key + 1)
+    }
+  }
+
+  useEffect(() => () => {
+    operationRef.current += 1
+    abortRef.current?.abort()
+  }, [])
 
   const locationId = locations.find((location) => location.slug === locationSlug)?.id ?? null
   const activeConversation = conversations.find((conversation) => conversation.id === activeId) ?? null
@@ -152,22 +184,14 @@ export function StudioView({
   }
 
   function toggleContext() {
+    setRailOpen(false)
+    setShareOpen(false)
     setContextOpen((open) => !open)
   }
 
   function closeContext() {
     setContextOpen(false)
   }
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return
-      setRailOpen(false)
-      setContextOpen(false)
-    }
-    window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
-  }, [])
 
   function syncUrl(next: { chat?: string | null; location?: string }) {
     if (typeof window === "undefined") return
@@ -180,38 +204,51 @@ export function StudioView({
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`)
   }
 
-  async function reconcile(conversationId: string, options: { afterSeq?: number; restoreText?: string } = {}): Promise<boolean> {
-    const detail = await readStudioConversation(workspaceId, conversationId)
+  async function reconcile(recovery: Recovery, operation: number) {
+    setRecovering(true)
+    const detail = await readStudioConversation(workspaceId, recovery.conversationId)
+    if (operation !== operationRef.current) return
+    setRecovering(false)
+    restoreTurnFocus()
+    setRetryIntent({ kind: "recover", ...recovery })
     if (!detail.ok) {
-      setError({ code: detail.code, message: studioErrorText(t, detail.code), retryable: true })
-      if (options.restoreText) setDraftText(options.restoreText)
-      return false
+      setDraftText((current) => current || recovery.text)
+      setError({ code: detail.code, message: studioErrorText(t, detail.code), retryable: true, retryLabel: t.message.checkResponse })
+      return
     }
     setMessages(detail.data.messages)
     setHasMore(detail.data.hasMore)
     setConversations((current) => mergeConversation(current, detail.data.conversation))
-    const after = options.afterSeq ?? 0
-    const assistantArrived = detail.data.messages.some((message) => message.role === "assistant" && message.seq > after)
-    if (!assistantArrived && options.restoreText) {
-      const userStored = detail.data.messages.some((message) => message.role === "user" && message.content === options.restoreText && message.seq > after)
-      if (!userStored) setDraftText(options.restoreText)
+    const user = detail.data.messages.find((message) => message.role === "user" && message.content === recovery.text && message.seq > recovery.afterSeq)
+    const assistantArrived = user && detail.data.messages.some((message) => message.role === "assistant" && message.seq > user.seq)
+    if (user) setDraftText((current) => current === recovery.text ? "" : current)
+    if (assistantArrived) {
+      setError(null)
+      setRetryIntent(null)
+      return
     }
-    return assistantArrived
+    // A missing acknowledgement is not proof of rollback. Read history again
+    // on recovery; never automatically append a second copy of this question.
+    if (!user) setDraftText((current) => current || recovery.text)
+    setError({ code: "stream", message: t.message.responsePending, retryable: true, retryLabel: t.message.checkResponse })
   }
 
   async function send(text: string) {
     const content = text.trim()
-    if (!content || streaming || sending) return
+    if (!content || streaming || sending || recovering || loadingConversation) return
+    const operation = beginOperation()
     setError(null)
-    setRetryText(null)
+    setRetryIntent(null)
     setSending(true)
 
     let conversationId = activeId
     if (!conversationId) {
       const created = await createStudioConversation(workspaceId, locationId)
+      if (operation !== operationRef.current) return
       if (!created.ok) {
         setSending(false)
         setDraftText(content)
+        setRetryIntent({ kind: "send", text: content })
         setError({ code: created.code, message: studioErrorText(t, created.code), retryable: isRetryableStudioFailure(created.code) })
         return
       }
@@ -239,11 +276,9 @@ export function StudioView({
     setStreaming(true)
     setSending(false)
     setDraftText("")
-    persistedUserRef.current = false
 
     const controller = new AbortController()
     abortRef.current = controller
-    let userSeq = baseSeq
     let deliveredUser = false
 
     const documentVersionIds = evidence.filter((ref) => ref.source === "document").map((ref) => ref.documentVersionId)
@@ -261,14 +296,13 @@ export function StudioView({
         signal: controller.signal,
         locale,
         onEvent: (event) => {
+          if (operation !== operationRef.current) return
           if (event.type === "status") {
             setPending((current) => ({ stage: event.stage, text: current?.text ?? "" }))
             return
           }
           if (event.type === "user") {
             deliveredUser = true
-            persistedUserRef.current = true
-            userSeq = event.message.seq
             setOptimisticUser(null)
             setMessages((current) => mergeMessage(current, event.message))
             return
@@ -286,55 +320,39 @@ export function StudioView({
       },
     )
 
+    if (operation !== operationRef.current) return
     abortRef.current = null
     setStreaming(false)
     setPending(null)
     setSending(false)
-    // Return focus to the composer once the turn settles (the disabled textarea
-    // loses focus while streaming), so a conversation continues without a click.
-    setFocusKey((key) => key + 1)
+    // Restore only focus owned by this turn, never an overlay or another control.
+    restoreTurnFocus()
 
     if (result.ok) {
-      setRetryText(null)
+      setRetryIntent(null)
       return
     }
 
-    // A second send while the first turn is still finishing is not a failure:
-    // keep the text, say the turn is still running, and never offer a retry
-    // button that would only race the in-flight turn again. The notice clears
-    // itself once the server-side turn has had time to settle.
+    // A busy refusal did not accept this new question. Keep its text without
+    // treating an arbitrary timer as proof that the server finished.
     if (result.code === "conversation_busy") {
       setOptimisticUser(null)
       setDraftText(content)
-      setRetryText(null)
+      setRetryIntent(null)
       setError({ code: result.code, message: studioErrorText(t, result.code), retryable: false })
-      window.setTimeout(() => {
-        setError((current) => current?.code === "conversation_busy" ? null : current)
-      }, 8_000)
       return
     }
 
-    if (result.code === "aborted") {
+    if (deliveredUser || result.code === "aborted" || result.code === "network" || result.code === "stream" || result.status >= 500) {
       setOptimisticUser(null)
-      await reconcile(conversationId, { afterSeq: baseSeq, restoreText: content })
+      await reconcile({ conversationId, afterSeq: baseSeq, text: content }, operation)
       return
     }
 
-    if (deliveredUser || persistedUserRef.current) {
-      // The owner's turn is stored. Keep the thread continuous: prefer the
-      // persisted answer if it landed, otherwise say plainly that it stopped.
-      setOptimisticUser(null)
-      const recovered = await reconcile(conversationId, { afterSeq: userSeq })
-      if (recovered) return
-      setRetryText(content)
-      setError({ code: result.code, message: studioErrorText(t, result.code), retryable: true })
-      return
-    }
-
-    // Nothing was written: hand the text back instead of losing it.
+    // A definite pre-write refusal can be retried as a new submission.
     setOptimisticUser(null)
     setDraftText(content)
-    setRetryText(content)
+    setRetryIntent({ kind: "send", text: content })
     if (result.code === "ai_paused" || result.code === "ai_unavailable") setAiBlocked(result.code)
     setError({ code: result.code, message: studioErrorText(t, result.code), retryable: isRetryableStudioFailure(result.code) })
   }
@@ -345,29 +363,42 @@ export function StudioView({
     setStreaming(false)
     setPending(null)
     setOptimisticUser(null)
-    setFocusKey((key) => key + 1)
+    restoreTurnFocus()
   }
 
   function retry() {
-    const text = retryText
+    if (recovering || streaming || sending || loadingConversation || loadingEarlier) return
+    const intent = retryIntent
+    if (!intent) return
     setError(null)
-    setRetryText(null)
-    if (aiBlocked) setAiBlocked(null)
-    if (text) void send(text)
+    setRetryIntent(null)
+    if (intent.kind === "recover") void reconcile(intent, beginOperation())
+    if (intent.kind === "select") void selectConversation(intent.conversationId)
+    if (intent.kind === "history") void loadEarlier()
+    if (intent.kind === "archive") void archiveConversation(intent.conversationId)
+    if (intent.kind === "send") {
+      if (aiBlocked) setAiBlocked(null)
+      void send(intent.text)
+    }
   }
 
   async function selectConversation(conversationId: string) {
     if (streaming || sending) return
-    if (conversationId === activeId) {
-      setRailOpen(false)
+    setRailOpen(false)
+    if (conversationId === activeId && !loadingConversation) {
+      setFocusKey((key) => key + 1)
       return
     }
     setError(null)
-    setRetryText(null)
+    setRetryIntent(null)
+    const operation = beginOperation()
     setLoadingConversation(true)
     const result = await readStudioConversation(workspaceId, conversationId)
+    if (operation !== operationRef.current) return
     setLoadingConversation(false)
     if (!result.ok) {
+      restoreTurnFocus()
+      setRetryIntent({ kind: "select", conversationId })
       setError({ code: result.code, message: studioErrorText(t, result.code), retryable: isRetryableStudioFailure(result.code) })
       return
     }
@@ -385,13 +416,14 @@ export function StudioView({
 
   function newConversation() {
     if (streaming || sending) return
+    beginOperation()
     setActiveId(null)
     setMessages([])
     setHasMore(false)
     setOptimisticUser(null)
     setPending(null)
     setError(null)
-    setRetryText(null)
+    setRetryIntent(null)
     setDraftText("")
     syncUrl({ chat: null })
     setRailOpen(false)
@@ -400,6 +432,7 @@ export function StudioView({
 
   function changeLocation(slug: string) {
     if (streaming || sending) return
+    const operation = beginOperation()
     setLocationSlug(slug)
     setActiveId(null)
     setMessages([])
@@ -407,20 +440,23 @@ export function StudioView({
     setOptimisticUser(null)
     setPending(null)
     setError(null)
-    setRetryText(null)
+    setRetryIntent(null)
     setDraftText("")
     syncUrl({ location: slug, chat: null })
     setRailOpen(false)
     const scopedId = locations.find((location) => location.slug === slug)?.id ?? null
     void listStudioConversations(workspaceId, scopedId).then((result) => {
-      if (result.ok) setConversations(result.data)
+      if (operation === operationRef.current && result.ok) setConversations(result.data)
     })
   }
 
   async function archiveConversation(conversationId: string) {
     if (streaming || sending) return
+    const operation = operationRef.current
     const result = await archiveStudioConversation(workspaceId, conversationId)
+    if (operation !== operationRef.current) return
     if (!result.ok) {
+      setRetryIntent({ kind: "archive", conversationId })
       setError({ code: result.code, message: studioErrorText(t, result.code), retryable: isRetryableStudioFailure(result.code) })
       return
     }
@@ -438,11 +474,14 @@ export function StudioView({
     const conversationId = activeId
     const first = messages[0]
     if (!conversationId || !first || loadingEarlier) return
+    const operation = operationRef.current
     setLoadingEarlier(true)
     const result = await readStudioConversation(workspaceId, conversationId, { beforeSeq: first.seq })
+    if (operation !== operationRef.current) return
     setLoadingEarlier(false)
     if (!result.ok) {
-      setError({ code: result.code, message: studioErrorText(t, result.code), retryable: true })
+      setRetryIntent({ kind: "history" })
+      setError({ code: result.code, message: studioErrorText(t, result.code), retryable: isRetryableStudioFailure(result.code) })
       return
     }
     setMessages((current) => {
@@ -454,7 +493,7 @@ export function StudioView({
 
   const blockedNote = archived ? t.notices.archived : aiBlocked ? studioBlockedText(t, aiBlocked) : null
   const conversationReadOnly = activeConversation?.accessRole === "viewer"
-  const composerDisabled = streaming || sending || loadingConversation || archived || conversationReadOnly
+  const composerDisabled = streaming || sending || recovering || loadingConversation || archived || conversationReadOnly
   const homeHref = `/${locale}/owner/${workspaceSlug}?location=${encodeURIComponent(locationSlug)}`
   const notesHref = `/${locale}/owner/${workspaceSlug}/conversation/notes?location=${encodeURIComponent(locationSlug)}`
 
@@ -480,7 +519,7 @@ export function StudioView({
               <Link className="studio-back" href={homeHref} aria-label={t.header.back} title={t.header.back}>
                 <ArrowLeft aria-hidden="true" />
               </Link>
-              <button type="button" className="studio-icon-button studio-rail-toggle" onClick={() => setRailOpen(true)} aria-label={t.rail.open} title={t.rail.open}>
+              <button type="button" className="studio-icon-button studio-rail-toggle" onClick={() => { setContextOpen(false); setShareOpen(false); setRailOpen(true) }} aria-label={t.rail.open} title={t.rail.open}>
                 <Menu aria-hidden="true" />
               </button>
               <div>
@@ -515,7 +554,7 @@ export function StudioView({
                 <span>{t.header.newChat}</span>
               </Button>
               <details className="studio-more">
-                <summary className="studio-icon-button studio-more-toggle" aria-label={t.header.more} title={t.header.more}>
+                <summary ref={moreSummaryRef} className="studio-icon-button studio-more-toggle" aria-label={t.header.more} title={t.header.more}>
                   <MoreHorizontal aria-hidden="true" />
                 </summary>
                 <div className="studio-more-menu">
@@ -526,7 +565,12 @@ export function StudioView({
                     </button>
                   )}
                   {activeConversation?.accessRole === "owner" && !archived && (
-                    <button type="button" onClick={() => setShareOpen(true)}>
+                    <button type="button" onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open")
+                      setContextOpen(false)
+                      setRailOpen(false)
+                      setShareOpen(true)
+                    }}>
                       <Share2 aria-hidden="true" />
                       <span>{t.share.action}</span>
                     </button>
@@ -614,7 +658,7 @@ export function StudioView({
         <StudioContextPanel locale={locale} summary={contextSummary} open={contextOpen} onClose={closeContext} focusOnOpen={contextOpen} newActionHref={canSaveVersions && locationSlug !== "all" ? `/${locale}/owner/${workspaceSlug}/actions/new?location=${encodeURIComponent(locationSlug)}` : undefined} actionHrefBase={`/${locale}/owner/${workspaceSlug}/actions`} actionLocation={locationSlug} />
       </div>
       {shareOpen && activeConversation && (
-        <StudioShareDialog locale={locale} workspaceId={workspaceId} conversationId={activeConversation.id} onClose={() => setShareOpen(false)} />
+        <StudioShareDialog locale={locale} workspaceId={workspaceId} conversationId={activeConversation.id} onClose={() => setShareOpen(false)} returnFocusRef={moreSummaryRef} />
       )}
       <button type="button" className="studio-overlay" aria-label={t.rail.close} tabIndex={-1} onClick={() => { setRailOpen(false); closeContext() }} />
     </div>
