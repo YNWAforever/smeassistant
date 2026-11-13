@@ -47,16 +47,18 @@ describe("deriveActions", () => {
     expect(derived.find((a) => a.templateKey === "visibility-content")!.sourceFindingKeys).toEqual(["website.checks.faq_schema"]);
   });
 
-  it("uses the Taiwan finding message for zh-TW and falls back to the Hong Kong one", () => {
-    const withTw: FindingRow[] = [
-      { ...findings[0], owner_message_tw: "tw1" },
-      { ...findings[4] },
-    ];
-    const derived = deriveActions({ ...baseInput, findings: withTw });
-    const review = derived.find((a) => a.templateKey === "review-response")!;
-    expect(review.evidence.detail["zh-TW"]).toBe("tw1");
-    expect(review.evidence.detail["zh-HK"]).toBe("zh1");
-    expect(derived.find((a) => a.templateKey === "social-post")!.evidence.detail["zh-TW"]).toBe("zh4");
+  it("uses catalogued finding labels instead of promoting explanatory prose to observations in any locale", () => {
+    const withProse: FindingRow[] = [{
+      ...findings[0],
+      owner_message_en: "Too few reviews deter new customers and directly hurts your Google local ranking and click-through rate.",
+      owner_message_zh: "太少評論直接影響排名。",
+      owner_message_tw: "評論太少直接影響排名。",
+    }];
+    const review = deriveActions({ ...baseInput, findings: withProse }).find(a => a.templateKey === "review-response")!;
+    expect(review.evidence.factType).toBe("Observed");
+    expect(review.evidence.detail).toEqual({ en: "The scan flagged: Owner Responses.", "zh-HK": "掃描記錄到：老闆回覆。", "zh-TW": "掃描記錄到：老闆回覆。" });
+    expect(review.evidence.value).toBe("18");
+    expect(review.evidence.source).toBe("Google Business Profile");
   });
 
   it("adds google-reconnect when the connection is missing or expired and ranks deterministically", () => {

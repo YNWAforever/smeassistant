@@ -13,6 +13,7 @@ export type HomeCopyV2 = {
   whyThis: string
   whyThisBody: string
   observed: string
+  evidenceLimit: string
   review: string
   open: string
   view: string
@@ -50,6 +51,7 @@ const en: HomeCopyV2 = {
   whyThis: "Why this?",
   whyThisBody: "This is the highest-priority open task for the selected location.",
   observed: "Observed",
+  evidenceLimit: "A scan finding does not measure effects on customers, search rankings or clicks.",
   review: "Review draft",
   open: "Open task",
   view: "View task",
@@ -87,6 +89,7 @@ const zhHK: HomeCopyV2 = {
   whyThis: "點解係呢件？",
   whyThisBody: "呢件係所選地點入面，優先次序最高嘅待辦。",
   observed: "觀察到",
+  evidenceLimit: "掃描發現唔代表已量度到對顧客、搜尋排名或者點擊嘅影響。",
   review: "睇稿",
   open: "開始做",
   view: "睇詳情",
@@ -124,6 +127,7 @@ const zhTW: HomeCopyV2 = {
   whyThis: "為什麼是這件？",
   whyThisBody: "這件是所選據點裡，優先順序最高的待辦。",
   observed: "觀察到",
+  evidenceLimit: "掃描發現不代表已量測對顧客、搜尋排名或點擊的影響。",
   review: "看稿",
   open: "開始做",
   view: "看詳情",

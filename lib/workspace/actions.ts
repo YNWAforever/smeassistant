@@ -1,5 +1,6 @@
 import { localized, type Capability, type FactType, type LocalizedText, type Priority } from "@/lib/domain";
 import { applyResolvedInputs } from "./evidence-inputs";
+import { recordedFindingEvidence } from "./action-evidence";
 import { scorePriority, type PriorityFactor } from "./priority";
 import { type ScanDiffRow, type SnapshotRecord } from "./snapshots";
 import { isLedgerOnly, templateByKey, templateForFinding, WEBSITE_FAQ_TRIGGER, type ActionTemplate, type TemplateKey } from "./templates";
@@ -153,9 +154,7 @@ function buildAction(
     moduleConfidence: moduleState?.confidence ?? "none",
     moduleMeasured: moduleState ? moduleState.status === "measured" : true,
   });
-  const detail = lead
-    ? localized(lead.owner_message_en ?? lead.owner_message_zh ?? lead.finding_key, lead.owner_message_zh ?? lead.owner_message_en ?? lead.finding_key, lead.owner_message_tw ?? lead.owner_message_zh ?? lead.owner_message_en ?? lead.finding_key)
-    : template.summary;
+  const findingEvidence = lead ? recordedFindingEvidence(findings.map(finding => finding.finding_key)) : null;
   return {
     templateKey: template.key,
     locationId: snapshot.locationId,
@@ -167,7 +166,8 @@ function buildAction(
       factType: "Observed",
       source: SOURCE_LABEL[lead?.module ?? "system"] ?? lead?.module ?? "system",
       value: lead ? evidenceValue(lead) : "",
-      detail,
+      detail: template.summary,
+      ...findingEvidence,
       observedAt: snapshot.observedAt,
       freshness: freshnessText(snapshot.observedAt, now),
       ...evidenceOverride,
