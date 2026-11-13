@@ -39,13 +39,13 @@ Date: 2026-11-13. The recorded page sweep started at 05:25 UTC (13:25 Asia/Singa
 
 Today's Why disclosure was opened and reviewed. The full-width layout and evidence source/time are present. Existing drafts and prior conversation history load from the real workspace. Task pages show Back to Tasks, and the edit-mode revision action says Ask Kinnso to revise.
 
-## Open content finding
+## Content finding — resolved
 
 The existing priority task's saved evidence detail is rendered under the Observed label, but combines measured-looking review counts with unverified competitive targets and causal business claims. In English it includes “Too few reviews deter new customers and directly hurts your Google local ranking and click-through rate.” The Cantonese detail makes the corresponding direct-impact claim.
 
 The walkthrough does not establish those effects. The recorded detail should distinguish source observations from recommendations/inferences, and should not assert customer or ranking causation without evidence. The observation is a content/guardrail finding, not a layout or navigation failure. No live record was edited during this walkthrough.
 
-Follow-up tracing found that action derivation copied `audit_findings.owner_message_*` into `evidence.detail` while assigning Observed, and the action read model trusted that stored prose. The guardrail change uses controlled, translated finding labels for newly derived finding tasks and recomputes those descriptions when reading existing finding tasks. Unknown finding keys use an Unknown/unavailable description. Values, sources, timestamps, priorities and original stored rows are retained. Today separately labels customer/ranking/click effects as Unknown. Hosted verification of this change is recorded below when completed.
+Follow-up tracing found that action derivation copied `audit_findings.owner_message_*` into `evidence.detail` while assigning Observed, and the action read model trusted that stored prose. The guardrail change uses controlled, translated finding labels for newly derived finding tasks and recomputes those descriptions when reading existing finding tasks. Unknown finding keys use an Unknown/unavailable description. Values, sources, timestamps, priorities and original stored rows are retained. Today separately labels customer/ranking/click effects as Unknown. The change shipped through [PR #174](https://github.com/YNWAforever/smeassistant/pull/174). Signed-in production verification at 17:28 SGT checked Today, the matching Tasks card and task-detail source context in all three locales at 1440px and 390px. All 18 page visits returned HTTP 200 without JavaScript errors or horizontal overflow. The existing task now shows recorded Review Freshness / Review Count findings and a separate Unknown limitation; the old causal wording is absent. The PR and main CI runs passed; the latter had one hydration-helper retry, which passed. No live business records were rewritten.
 
 ## Execution notes and limits
 
@@ -57,10 +57,8 @@ Follow-up tracing found that action derivation copied `audit_findings.owner_mess
 
 ## Local evidence
 
-Artifacts remain in the ignored `test-results/hosted-owner-ia/` directory:
+The original walkthrough created 18 page records, 11 passing interaction/theme checks and screenshots under Playwright's ignored output directory. A subsequent local acceptance run cleared that disposable directory. This report preserves the historical observations; the original temporary files are no longer claimed to be available.
 
-- `report.json`: 18 page records, routes, headings, navigation, error/overflow observations and screenshot filenames.
-- `interactions.json`: 11 passing interaction/theme checks.
-- Screenshots: Today, Tasks, Kinnso, Results, Business, Settings, notes, redirect result, task detail, edit mode and the Taiwanese dark-theme spot check.
+Fresh post-fix production captures and machine-readable results are retained locally outside Playwright's output directory. They cover the 18 action-evidence page checks described above, including a scrolled Cantonese mobile view of the Why disclosure. They do not replace the earlier navigation/theme sweep with a new claim of full navigation coverage.
 
-The screenshots contain the owner's real workspace and existing conversation content. They were not pushed to GitHub or published externally.
+The screenshots contain the owner's real workspace. They were not pushed to GitHub or published externally.

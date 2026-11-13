@@ -51,7 +51,8 @@ export { expect };
  * into a full navigation and lets React wipe typed input.
  */
 export async function waitForHydration(page: Page): Promise<void> {
-  await page.waitForFunction(() => document.documentElement.dataset.hydrated === "true", undefined, { timeout: 30_000 });
+  // Navigation can briefly leave the document without a root before hydration.
+  await page.waitForFunction(() => document.documentElement?.dataset.hydrated === "true", undefined, { timeout: 30_000 });
 }
 
 /**
