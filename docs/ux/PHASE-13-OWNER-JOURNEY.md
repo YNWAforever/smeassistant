@@ -33,7 +33,7 @@ Re-enabling the dormant suite exposed stale UI expectations: the canonical conve
 - Typecheck, changed-file lint and whitespace checks: passed.
 - Full eight-case enabled command, including contextual entry links: 8 passed in 1.3 minutes, no skips. The report guard passed on the generated Playwright JSON.
 - Independent read-only review identified two omissions: the contextual-entry spec and exclusive-test protection. Both were added before the final eight-case run; no other actionable findings were reported.
-- PR CI, merge and deployment: pending.
+- PR #176 CI [43457629628](https://github.com/YNWAforever/smeassistant/actions/runs/43457629628): both jobs passed (`verify` 25m26s; enabled Kinnso 2m10s). Merged as `b9fd73347b41bafd801b069721512c8b27b7df06` on 2026-11-14 at 00:22:48 Asia/Singapore after guarding the exact reviewed head. A merge commit retains ancestry for the stacked follow-ups. Final hosted verification follows the completed release.
 
 ## PR 2 implementation — exact conversation return
 
@@ -50,6 +50,26 @@ Verification:
 - Real browser regression: original chat produces a draft, a newer chat is created, the exact saved version is reviewed/approved, the task page is refreshed and Back to Kinnso returns to the original conversation. Passed in 45.3 seconds with isolated fixtures.
 - Independent review found one all-locations edge case: the artifact review link previously omitted `location=all`, causing the task to resolve a secondary-location conversation against the default primary location. The review link now preserves `all`; component and resolver regressions cover it. No other introduced correctness/security issues were reported.
 - Full unit run: 6,941 passed; the existing repository-wide terminology scan exceeded its 5-second timeout (no offender assertion failure). All 16 Studio component cases, including the all-locations variant, and all 22 resolver cases passed in that run. Isolated terminology recheck passed in 1.4 seconds, together with all 38 finalized Studio/resolver checks. Production build (including TypeScript and all 34 static pages) passed. PR CI: pending.
+
+## Final journey regression work
+
+Three new isolated browser cases attach an existing owner-provided document in English, Hong Kong Chinese and Taiwan Chinese. They exercise keyboard selection, the actual message request, server-persisted citation identity and title, reload, and 390/1440-pixel layouts with no page errors or overflow. The fixture inserts an existing document into the owned disposable database using the existing asset/document constraints. It does not test Blob upload or configure external storage; rights remain `needs_review`, and attachment creates neither approved versions nor billable deliveries.
+
+These tests exposed an existing client defect: the wire parser's known-part list omitted `citation`, so it rejected valid messages containing attachments. A regression demonstrated that rejection before the fix. The parser now accepts supported document/search-brief citations and rejects malformed citation references before rendering. Server evidence authorization and model grounding are unchanged.
+
+The social-draft browser case now loses the first save acknowledgement after the server commits, retries the same artifact, and requires the same immutable version with only one saved row. It then performs first and repeated Copy text delivery, checks clipboard content and one counted delivery, refreshes and returns to the original discussion despite a newer chat. No publish event may be emitted.
+
+The historical roadmap and Phase 12 report are reconciled with shipped features and PR #174/#175 fixes. The historical production-evidence report corrects its overstated earlier Copy text assertion: the old test established control readiness, while this phase adds actual clipboard delivery assertions. Historical owner-reported hosted acceptance remains attributed, not presented as newly performed verification.
+
+Final local verification:
+- Citation parser tests: 18 passed, including document/search-brief streaming and history reads plus malformed references. The added valid-citation test failed before the production fix.
+- Typecheck, changed-file lint and whitespace checks passed.
+- Final enabled browser suite: **11 passed in 2.3 minutes; no skips**. The JSON report guard passed. This includes all three document locales and the strengthened first/repeated clipboard assertions.
+- Production build passed, including TypeScript and all 34 static pages.
+- The previous full browser attempt passed 10 cases but hit a 30-second local Docker `exec` timeout while seeding an existing deep-link case. The complete final run above passed; no timeout was relaxed and no test was skipped.
+- Independent review identified one clipboard false-positive risk. Each copy now starts with a unique sentinel so a successful repeat cannot reuse stale clipboard content. The final eleven-case run includes this fix. No other actionable parser, fixture-transport or authorization findings were reported.
+
+Final PR CI and hosted read-only release checks are pending.
 
 ## Release boundary
 

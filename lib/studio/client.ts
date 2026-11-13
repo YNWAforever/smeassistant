@@ -379,11 +379,19 @@ export async function patchStudioConversation(
 // Streamed turn
 // ---------------------------------------------------------------------------
 
-const KNOWN_PART_KINDS = new Set(["text", "evidence", "artifact", "next_step", "warning"])
+const KNOWN_PART_KINDS = new Set(["text", "evidence", "citation", "artifact", "next_step", "warning"])
 
 /** Keeps an unknown future part kind from breaking the thread; the renderer ignores what it cannot show. */
 export function isKnownStudioPart(value: unknown): value is StudioMessagePart {
-  return isRecord(value) && typeof value.kind === "string" && KNOWN_PART_KINDS.has(value.kind)
+  if (!isRecord(value) || typeof value.kind !== "string" || !KNOWN_PART_KINDS.has(value.kind)) return false
+  if (value.kind === "citation") {
+    return Array.isArray(value.refs) && value.refs.every(ref =>
+      isRecord(ref) && typeof ref.title === "string" && typeof ref.truncated === "boolean" &&
+      ((ref.source === "document" && typeof ref.documentVersionId === "string") ||
+        (ref.source === "search_brief" && typeof ref.searchBriefId === "string")),
+    )
+  }
+  return true
 }
 
 function isStudioConversation(value: unknown): value is StudioConversation {

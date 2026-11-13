@@ -67,6 +67,20 @@ describe("parseStudioStreamEvent", () => {
     expect(parseStudioStreamEvent(JSON.stringify({ type: "done" }))).toEqual({ type: "done" })
   })
 
+  it("preserves document and search-brief citations in streamed and reloaded messages", async () => {
+    const attached: StudioMessage = { ...message, role: "user", parts: [
+      { kind: "text", text: "Use these sources." },
+      { kind: "citation", refs: [
+        { source: "document", documentVersionId: "doc-version", title: "owner-hours.txt", truncated: false },
+        { source: "search_brief", searchBriefId: "brief", title: "Approved research brief", truncated: true },
+      ] },
+    ] };
+    expect(parseStudioStreamEvent(JSON.stringify({ type: "user", message: attached }))).toEqual({ type: "user", message: attached });
+    stubFetch(() => jsonResponse({ conversation, messages: [attached], hasMore: false }));
+    const result = await readStudioConversation("workspace", conversation.id);
+    expect(result).toMatchObject({ ok: true, data: { messages: [attached] } });
+  });
+
   it("drops malformed frames instead of trusting them", () => {
     expect(parseStudioStreamEvent("{not json")).toBeNull()
     expect(parseStudioStreamEvent(JSON.stringify({ type: "status", stage: "napping" }))).toBeNull()
@@ -74,6 +88,15 @@ describe("parseStudioStreamEvent", () => {
     expect(parseStudioStreamEvent(JSON.stringify({ type: "message", message: { id: "x" }, conversation }))).toBeNull()
     expect(parseStudioStreamEvent(JSON.stringify({ type: "unknown" }))).toBeNull()
   })
+
+  it.each([
+    { kind: "citation" },
+    { kind: "citation", refs: [null] },
+    { kind: "citation", refs: [{ source: "document", title: "Hours", truncated: false }] },
+    { kind: "citation", refs: [{ source: "unknown", documentVersionId: "id", title: "Hours", truncated: false }] },
+  ])("rejects malformed citation frames without exposing them to the renderer: %j", part => {
+    expect(parseStudioStreamEvent(JSON.stringify({ type: "user", message: { ...message, parts: [part] } }))).toBeNull();
+  });
 
   it("maps an unknown server error code to the generic unavailable code", () => {
     expect(parseStudioStreamEvent(JSON.stringify({ type: "error", code: "something_new", message: "x", retryable: false }))).toMatchObject({ code: "unavailable" })
