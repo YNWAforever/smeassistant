@@ -1,6 +1,6 @@
 # Phase 15 — Shared Studio turn deadline
 
-Status: implementation, independent review, lint, strict types and all 7,600 unit/component tests passed. The production build, bundle boundary checks, 669 database integration tests and 17 enabled browser journeys passed. No Phase 15 release is claimed yet.
+Status: released and verified on 2026-11-14. [PR #181](https://github.com/YNWAforever/smeassistant/pull/181) merged as `f4eba847504215fdf284515bfe4f40288c6932dc`, with an identical reviewed/merged tree. Implementation, independent review, lint, strict types, 7,600 unit/component tests, production build, bundle boundary checks, 669 database integration tests and 17 enabled browser journeys passed.
 
 ## Behavior and ownership
 
@@ -35,7 +35,7 @@ Owned PostgreSQL verification passed: all 22 migrations applied, replay was empt
 
 Enabled Studio and contextual-assistant browser acceptance passed all 17 cases with none skipped, covering all three locales and mobile/tablet/desktop layouts. This exercised streamed responses, retained history/evidence, draft persistence, approval/export boundaries, sharing and member isolation through the updated server path.
 
-Pending: green CI, guarded merge and exact-commit read-only hosted verification. Release identities will be recorded after those gates finish.
+[PR CI](https://github.com/YNWAforever/smeassistant/actions/runs/43556741909) and [final-main CI](https://github.com/YNWAforever/smeassistant/actions/runs/43559490077) passed. Production deployment `dpl_6PRe3So2987nCFUcCBSgyw6AaUgf` serves the exact merged commit. All 36 paced read-only hosted visits passed across three locales, three widths and four surfaces, including nine keyboard checks, with no page errors or horizontal overflow. Every non-read request was blocked. GitHub deployment metadata and the actual Vercel production alias matched before and after the hosted run, and again after final-main CI passed at 05:38 UTC on 2026-11-14. This verifies read-only navigation and layout; it does not claim new hosted generation, upload, approval or export testing.
 
 ## Limits and subsequent work
 

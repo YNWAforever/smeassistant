@@ -1,6 +1,7 @@
 import "server-only";
 import { createNeonAuth } from "@neondatabase/auth/next/server";
 import type { IdentityProvider } from "./contracts";
+import { verifiedSessionIdentity } from "./session-identity";
 
 let auth: ReturnType<typeof createNeonAuth> | undefined;
 
@@ -47,19 +48,7 @@ export const neonIdentityProvider: IdentityProvider = {
       if (error.status === 401 || error.status === 403) return null;
       throw new Error("identity_session_failed");
     }
-    const user = session?.user;
-    const details = session?.session;
-    if (
-      !user || !details || user.emailVerified !== true
-      || typeof user.id !== "string" || !user.id.trim()
-      || typeof user.email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email)
-      || details.userId !== user.id
-    ) return null;
-    const expiry = details.expiresAt;
-    const expiresAt = expiry instanceof Date ? expiry.getTime()
-      : typeof expiry === "string" ? Date.parse(expiry) : NaN;
-    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
-    return { provider: "neon", subject: user.id, email: user.email, verified: true };
+    return verifiedSessionIdentity(session);
   },
   async signOut() {
     const server = getNeonAuth();

@@ -1,0 +1,31 @@
+# Phase 16 — Session reliability
+
+Status: implementation, independent review and all local verification gates passed; PR/CI and exact-commit release verification remain pending.
+
+## Evidence and scope
+
+Historical read-only walkthroughs completed 26 and 27 visits before leaving the workspace. The first destination was not captured; the second was the Taiwan Chinese sign-in page. A later isolated request reached the workspace using the same saved session, and paced 36-visit runs passed. No upstream 429, provider limit/window, prefetch count or causal explanation was captured. The historical production cause remains unconfirmed.
+
+A separate deterministic defect is confirmed in the installed, pinned Auth SDK and application page gate. Middleware treats an unsuccessful upstream session response as an absent session; the application also treated thrown configuration/transport errors as signed out. Real-SDK fixture tests reproduced sign-in redirects for terminal 429, 500 and 503 responses. This is sufficient evidence to correct the failure classification without claiming it explains the historical incidents.
+
+## Local change
+
+Ordinary protected-page validation uses the pinned SDK's public HTTP handler with the local signed cache bypassed. The gate inspects the response before deciding: confirmed absence, 401/403 and invalid/expired/unverified identities still require sign-in; other HTTP failures, malformed JSON and thrown failures return a localized, non-cacheable 503. That response supplies neither protected content nor a sign-in redirect and forwards no cookie mutation. A later healthy validation can succeed using the existing browser session.
+
+The internal validation URL contains only the cache-bypass query. Owner search text, chat identifiers, RSC query data and unrelated Authorization/Referer headers are excluded. The original request and return destination remain unchanged. Only SDK cookie responses are copied, through the Next.js cookie parser. Ordinary validation without token rotation makes one upstream request; SDK token rotation can legitimately make another to mint its signed cache. Missing tokens require no upstream call.
+
+OAuth verifier/challenge handoffs retain the SDK exchange. The owner-page branch accepts only the exact same-origin redirect with the verifier removed; inconclusive handoff results return unavailable. The canonical callback implementation is unchanged. No shared signed cache becomes authority for revocation or membership, and server identity/application membership checks remain independently enforced.
+
+## Review and verification
+
+The initial real-SDK diagnostic suite passed 10 cases and reproduced the defect. The complete local unit/component run passed 7,622 tests: 7,035 root tests across 578 files, 62 isolated media tests and 525 workspace-package tests. This includes 29 real-SDK cases covering outages, recovery, revocation replay, privacy, token rotation, cookie deletion/lifetime precedence and OAuth handoffs. Full lint passed with zero errors and 14 existing warnings; strict root and all four workspace typechecks passed. Retired-transport and ownership-boundary checks passed. A stale pair of fixture-safety assertions was updated to require the new unavailable response while still proving no fixture transport or protected-page access escapes its permitted environment.
+
+The native Next.js Turbopack production build and its TypeScript check passed, the secret scan passed across 109 public artifacts, and all 45 route JavaScript budgets passed. Owned migration verification applied all 22 migrations with an empty replay, 49 tables and zero business seeds. All 669 owned PostgreSQL integration tests across 63 files passed. All 17 enabled Studio/contextual-assistant browser journeys passed with none skipped. Those browser journeys use the owned fixture identity composition; the changed production SDK gate is established separately by the 29 real-SDK boundary tests. Release identities remain pending.
+
+Independent review found that the handler would forward owner query/referrer data and unrelated Authorization credentials; the minimal internal URL and header filtering address that finding with a real-SDK regression. The earlier raw-cookie append was also replaced by parser-backed forwarding after a test exposed the stale NextResponse cookie collection. Additional regressions found Next's parser dropping `Max-Age=0`; copying now restores deletion semantics and respects positive `Max-Age` precedence over `Expires`. Independent final read-through confirmed both corrections and reported no remaining concrete blocking finding. The reviewer inspected source without running tests or making hosted requests.
+
+## Limits and subsequent phases
+
+This change does not establish the historical production root cause, reduce all server render checks to one, or add a hard network timeout to the pinned SDK. It does not change identity provider, SDK version, schema, roles, membership or revocation policy. Fresh production mutation or paid-model testing is outside this investigation.
+
+Next phases remain actual NVDA/VoiceOver/mobile validation and controlled streaming concurrency/operational visibility. Browser emulation is not evidence of manual assistive-technology testing.
