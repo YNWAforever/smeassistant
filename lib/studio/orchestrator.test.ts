@@ -194,6 +194,75 @@ function eventTypes(log: CallLog): string[] {
   return log.events.map((event) => (event.type === "status" ? `status:${event.stage}` : event.type));
 }
 
+describe("shared Studio work deadline", () => {
+  it("does not start an expired turn", async () => {
+    const log: CallLog = { events: [], appends: [], order: [] };
+    const result = await runStudioTurn(baseInput(log, {
+      executionBudget: { remainingMs: () => 0, signal: new AbortController().signal },
+    }));
+    expect(result).toEqual({ ok: false, code: "unavailable", persisted: false });
+    expect(log.appends).toHaveLength(0);
+  });
+
+  it.each(["failure", "throw"] as const)("does not retry or start an answer after classifier expiry: %s", async kind => {
+    const log: CallLog = { events: [], appends: [], order: [] };
+    let remaining = 15_000;
+    let attempts = 0;
+    const llm = makeLlm(log);
+    llm.classify = async () => {
+      attempts += 1;
+      remaining = 0;
+      if (kind === "throw") throw new Error("timeout");
+      return { ok: false, code: "timeout", retryable: true };
+    };
+    const result = await runStudioTurn(baseInput(log, { llm,
+      executionBudget: { remainingMs: () => remaining, signal: new AbortController().signal },
+    }));
+    expect(attempts).toBe(1);
+    expect(log.order).not.toContain("llm:answer");
+    expect(log.appends.map(message => message.role)).toEqual(["user", "assistant"]);
+    expect(result).toMatchObject({ ok: false, persisted: true });
+  });
+
+  it("passes the remaining 20 seconds to a draft after classification consumes 30 seconds", async () => {
+    const log: CallLog = { events: [], appends: [], order: [] };
+    let remaining = 50_000;
+    let attempts = 0;
+    let draftRemaining = -1;
+    const llm = makeLlm(log, { classification: { intent: "draft", intentId: "draft_review_reply", actionId: ACTION_ID } });
+    const classify = llm.classify;
+    llm.classify = async messages => {
+      remaining -= 15_000;
+      attempts += 1;
+      return attempts === 1 ? { ok: false, code: "timeout", retryable: true } : classify(messages);
+    };
+    await runStudioTurn(baseInput(log, { llm,
+      executionBudget: { remainingMs: () => remaining, signal: new AbortController().signal },
+      liveAssistant: async input => { draftRemaining = input.executionBudget!.remainingMs(); return liveRun(); },
+    }));
+    expect(attempts).toBe(2);
+    expect(draftRemaining).toBe(20_000);
+  });
+
+  it("persists partial text and unknown output usage when the answer reaches the cutoff", async () => {
+    const log: CallLog = { events: [], appends: [], order: [] };
+    let remaining = 1000;
+    const llm = makeLlm(log);
+    llm.answer = async () => {
+      remaining = 0;
+      return { ok: false, code: "timeout", retryable: false, text: "Useful partial answer", usage: { inputTokens: 12, outputTokens: null } };
+    };
+    const result = await runStudioTurn(baseInput(log, { llm,
+      executionBudget: { remainingMs: () => remaining, signal: new AbortController().signal },
+    }));
+    const assistant = log.appends.find(message => message.role === "assistant");
+    expect(assistant?.content).toContain("Useful partial answer");
+    expect(assistant?.usage).toMatchObject({ inputTokens: 12, outputTokens: null });
+    expect(result).toMatchObject({ ok: false, persisted: true });
+    expect(log.events.at(-1)?.type).toBe("done");
+  });
+});
+
 describe("first-turn conversation title (v1.1)", () => {
   it("applies the classifier's title on the first turn", async () => {
     const log: CallLog = { events: [], appends: [], order: [], renames: [] };
@@ -397,6 +466,30 @@ describe("runStudioTurn", () => {
     const result = await runStudioTurn(baseInput(log, { llm }));
     expect(result.ok).toBe(true);
     expect(calls).toBe(2);
+    expect(log.appends.at(-1)?.content).toBe("Hello owner");
+  });
+
+  it.each([
+    ["failure", "failure"],
+    ["failure", "throw"],
+    ["throw", "failure"],
+    ["throw", "throw"],
+  ] as const)("bounds classifier attempts after %s then %s", async (first, second) => {
+    const log: CallLog = { events: [], appends: [], order: [] };
+    const llm = makeLlm(log);
+    const outcomes = [first, second];
+    let calls = 0;
+    llm.classify = async () => {
+      const outcome = outcomes[calls++];
+      if (outcome === "throw") throw new Error("classifier unavailable");
+      return { ok: false, code: "provider_unavailable" };
+    };
+
+    const result = await runStudioTurn(baseInput(log, { llm }));
+
+    expect(calls).toBe(2);
+    expect(result.ok).toBe(true);
+    expect(log.appends.filter((message) => message.role === "assistant")).toHaveLength(1);
     expect(log.appends.at(-1)?.content).toBe("Hello owner");
   });
 

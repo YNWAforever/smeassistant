@@ -816,6 +816,86 @@ describe("contextual answers (P4.3)", () => {
   });
 });
 
+describe("Studio shared live draft deadline", () => {
+  function sharedDeadline(consumedMs = 30_000) {
+    const controller = new AbortController();
+    const executionBudget = {
+      signal: controller.signal,
+      remainingMs: () => Math.max(0, 50_000 - consumedMs),
+      cleanupRemainingMs: () => Math.max(0, 55_000 - consumedMs),
+    };
+    return { controller, executionBudget, consume: (ms: number) => { consumedMs += ms; } };
+  }
+  const completion = () => vi.fn<NonNullable<Parameters<typeof runLiveAssistant>[0]["llmDetailed"]>>()
+    .mockResolvedValue({ ok: true, result: good });
+  const draftInput = { intentId: "draft_review_reply" as const, surface: "action" as const, context: { workspaceId: WORKSPACE_ID, actionId: ACTION_ID } };
+
+  it("leaves twenty seconds for a draft after thirty seconds of prior Studio work", async () => {
+    const state = sharedDeadline();
+    const llmDetailed = completion();
+    const result = await run({ ...draftInput, ...state, llmDetailed });
+    expect(result.state).toBe("needs_approval");
+    expect(llmDetailed).toHaveBeenCalledOnce();
+    expect(llmDetailed.mock.calls[0][1]).toMatchObject({ timeoutMs: 20_000, usageSettlementTimeoutMs: 25_000 });
+    expect(llmDetailed.mock.calls[0][1]?.executionBudget).toBe(state.executionBudget);
+    expect(state.controller.signal.aborted).toBe(false);
+  });
+
+  it("charges draft preflight time against the same deadline", async () => {
+    const state = sharedDeadline();
+    repository.aiSpend24h.mockImplementationOnce(async () => { state.consume(6000); return { globalUsd: 0, workspaceUsd: 0 }; });
+    const llmDetailed = completion();
+    await run({ ...draftInput, ...state, llmDetailed });
+    expect(llmDetailed.mock.calls[0][1]).toMatchObject({ timeoutMs: 14_000, usageSettlementTimeoutMs: 19_000 });
+  });
+
+  it.each(["time", "signal"] as const)("refuses an expired %s budget before queuing a run", async expiry => {
+    const state = sharedDeadline(expiry === "time" ? 50_000 : 30_000);
+    if (expiry === "signal") state.controller.abort();
+    const llmDetailed = completion();
+    const result = await run({ ...draftInput, ...state, llmDetailed });
+    expect(result.output).toBeUndefined();
+    expect(llmDetailed).not.toHaveBeenCalled();
+    expect(runPersistence.queue).not.toHaveBeenCalled();
+    expect(runPersistence.start).not.toHaveBeenCalled();
+  });
+
+  it("finishes a run honestly when starting it consumes the remaining work time", async () => {
+    const state = sharedDeadline();
+    runPersistence.start.mockImplementationOnce(async () => { state.consume(20_000); });
+    const llmDetailed = completion();
+    await run({ ...draftInput, ...state, llmDetailed });
+    expect(llmDetailed).not.toHaveBeenCalled();
+    expect(runPersistence.finishAssistantDraft).toHaveBeenCalledWith(expect.objectContaining({
+      result: expect.objectContaining({ ok: false, failure: expect.objectContaining({ reason: "timeout", usage: { inputTokens: 0, outputTokens: 0 } }) }),
+    }));
+  });
+
+  it("propagates the budget through reservation and records an unsent rejection", async () => {
+    const state = sharedDeadline();
+    const persistence = { ...runPersistence,
+      beginProviderAttempt: vi.fn(async () => { state.consume(20_000); }),
+      observeProviderAttempt: vi.fn(async () => {}),
+    };
+    const llmDetailed = completion();
+    const result = await run({ ...draftInput, ...state, persistence, llmDetailed });
+    expect(result.output).toBeUndefined();
+    expect(llmDetailed).not.toHaveBeenCalled();
+    expect(persistence.beginProviderAttempt).toHaveBeenCalledOnce();
+    expect(persistence.observeProviderAttempt).toHaveBeenCalledWith(expect.objectContaining({ observation: {
+      state: "rejected", reason: "deadline_before_dispatch", usage: { inputTokens: 0, outputTokens: 0 },
+    } }));
+    expect(runPersistence.finishAssistantDraft).toHaveBeenCalledOnce();
+  });
+
+  it("retains the standalone forty-five-second output and fifty-second settlement caps", async () => {
+    const llmDetailed = completion();
+    await run({ ...draftInput, llmDetailed });
+    expect(llmDetailed.mock.calls[0][1]).toMatchObject({ timeoutMs: 45_000, usageSettlementTimeoutMs: 50_000 });
+    expect(llmDetailed.mock.calls[0][1]).not.toHaveProperty("executionBudget");
+  });
+});
+
 describe("contextual answers: foreign location (R3)", () => {
   const FOREIGN = "99999999-9999-4999-8999-999999999999";
   it.each(["explain_missing_inputs", "where_to_continue"] as const)("%s refuses a location outside the workspace before reading signal rows", async (intentId) => {

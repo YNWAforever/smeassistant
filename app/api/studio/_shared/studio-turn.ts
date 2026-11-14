@@ -4,6 +4,11 @@ import { studioRepository, toStudioConversation, toStudioMessage } from "@/lib/r
 import type { StudioTurnLlm, StudioTurnStore } from "@/lib/studio/orchestrator";
 import { STUDIO_ANSWER_MAX_TOKENS, STUDIO_ANSWER_TEMPERATURE, STUDIO_ANSWER_TIMEOUT_MS, STUDIO_CLASSIFIER_MAX_TOKENS, STUDIO_CLASSIFIER_TEMPERATURE, STUDIO_CLASSIFIER_TIMEOUT_MS } from "@/lib/studio/prompt";
 import type { StudioRepository } from "@/lib/repositories/studio";
+import { withExecutionBudget, type ExecutionBudget } from "@/lib/jobs/execution-budget";
+import type { StudioDeadline } from "@/lib/studio/deadline";
+import type { StudioTurnSession } from "@/lib/studio/turn-session";
+import { withinStudioBudget } from "@/lib/studio/request-lifetime";
+import { actionRunRepository } from "@/lib/repositories/artifacts";
 
 /**
  * Production adapters for the orchestrator's injected capabilities (design §6).
@@ -14,19 +19,23 @@ import type { StudioRepository } from "@/lib/repositories/studio";
  */
 
 /** Repository rows are DB-shaped; the orchestrator speaks the wire contract. */
-export function studioTurnStore(repository: StudioRepository = studioRepository()): StudioTurnStore {
+export function studioTurnStore(repository: StudioRepository = studioRepository(), deadline?: StudioDeadline): StudioTurnStore {
+  const read = <T>(run: () => Promise<T>) => deadline
+    ? withinStudioBudget(deadline.work, () => withExecutionBudget(deadline.work, run)) : run();
   return {
     getConversation: async (args) => {
-      const row = await repository.getConversation(args);
+      const row = await read(() => repository.getConversation(args));
       return row ? toStudioConversation(row) : null;
     },
-    listMessages: async (args) => (await repository.listMessages(args)).map(toStudioMessage),
+    listMessages: async (args) => (await read(() => repository.listMessages(args))).map(toStudioMessage),
     renameConversation: async (args) => {
-      const row = await repository.renameConversation(args);
+      const row = await read(() => repository.renameConversation(args));
       return row ? toStudioConversation(row) : null;
     },
     appendMessage: async (args) => {
-      const result = await repository.appendMessage(args);
+      const result = await (deadline
+        ? withExecutionBudget(args.role === "assistant" ? deadline.finalization : deadline.work, () => repository.appendMessage(args))
+        : repository.appendMessage(args));
       return { message: toStudioMessage(result.message), conversation: toStudioConversation(result.conversation) };
     },
   };
@@ -45,13 +54,27 @@ const ANSWER_OPTIONS = {
   timeoutMs: STUDIO_ANSWER_TIMEOUT_MS,
 } as const;
 
-export function studioTurnLlm(): StudioTurnLlm {
+export function studioTurnLlm(executionBudget?: ExecutionBudget): StudioTurnLlm {
   return {
-    classify: (messages: LLMChatMessage[]) => llmChatDetailed(messages, CLASSIFIER_OPTIONS),
+    classify: (messages: LLMChatMessage[]) => llmChatDetailed(messages, executionBudget ? { ...CLASSIFIER_OPTIONS, executionBudget } : CLASSIFIER_OPTIONS),
     // A non-streaming fallback returns `streamed: false`; the orchestrator still
     // emits the complete text as the final message, never as deltas.
     answer: (messages: LLMChatMessage[], onDelta?: (delta: string) => void) =>
-      llmChatStreamDetailed(messages, ANSWER_OPTIONS, onDelta ?? (() => {})),
+      llmChatStreamDetailed(messages, executionBudget ? { ...ANSWER_OPTIONS, executionBudget } : ANSWER_OPTIONS, onDelta ?? (() => {})),
+  };
+}
+
+/** All draft accounting and terminal writes share the lock-owning session. */
+export function studioDraftPersistence(session: StudioTurnSession, deadline: StudioDeadline) {
+  const repository = actionRunRepository(session.transaction);
+  const scoped = <Args extends unknown[], Result>(budget: ExecutionBudget, run: (...args: Args) => Promise<Result>) =>
+    (...args: Args) => withExecutionBudget(budget, () => run(...args));
+  return {
+    queue: scoped(deadline.work, repository.queue),
+    start: scoped(deadline.work, repository.start),
+    beginProviderAttempt: scoped(deadline.work, repository.beginProviderAttempt),
+    observeProviderAttempt: scoped(deadline.finalization, repository.observeProviderAttempt),
+    finishAssistantDraft: scoped(deadline.finalization, repository.finishAssistantDraft),
   };
 }
 
