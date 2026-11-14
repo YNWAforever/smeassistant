@@ -1,7 +1,7 @@
 "use client"
 
 import { ArrowUp, Mic, MicOff, Square } from "lucide-react"
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
 
 import { Button } from "@/components/ui/button"
 import type { PrototypeLocale } from "@/lib/copy"
@@ -46,6 +46,7 @@ export function StudioComposer({
   blockedNote,
   onClearBlocked,
   focusKey,
+  dictationContext = "",
   maxLength = STUDIO_MESSAGE_MAX,
 }: {
   locale: PrototypeLocale
@@ -58,12 +59,15 @@ export function StudioComposer({
   blockedNote?: string | null
   onClearBlocked?: () => void
   focusKey?: number
+  /** Conversation/location/new-chat identity, independent of focus restoration. */
+  dictationContext?: string
   maxLength?: number
 }) {
   const t = studioText(locale)
   const textarea = useRef<HTMLTextAreaElement>(null)
   const draft = useRef(value)
   const recognition = useRef<StudioSpeechRecognition | null>(null)
+  const stopping = useRef(false)
   // The microphone appears only where speech recognition exists. The server
   // snapshot is false so the server markup and the hydration render agree;
   // React then re-reads the client snapshot.
@@ -79,22 +83,32 @@ export function StudioComposer({
     node.style.height = `${Math.min(node.scrollHeight, 208)}px`
   }, [value])
 
-  useEffect(() => {
-    draft.current = value
-  }, [value])
-
-  useEffect(() => () => {
-    recognition.current?.abort()
+  const cancelVoice = useCallback(() => {
+    const active = recognition.current
+    // Fence callbacks before abort(), which may itself dispatch terminal events.
     recognition.current = null
+    stopping.current = false
+    active?.abort()
+    setListening(false)
   }, [])
 
-  // A new turn or a read-only conversation must not keep the microphone open.
-  useEffect(() => {
-    if (!disabled && !streaming) return
-    const active = recognition.current
-    recognition.current = null
-    active?.stop()
-  }, [disabled, streaming])
+  useLayoutEffect(() => {
+    // Input and transcript handlers update this ref synchronously. A different
+    // controlled value therefore replaces the draft owned by the recognizer.
+    if (draft.current !== value) cancelVoice()
+    draft.current = value
+  }, [value, cancelVoice])
+
+  // Cleanup runs before the new context can receive browser callbacks, and on
+  // unmount. Ordinary focus restoration deliberately does not end dictation.
+  useLayoutEffect(() => () => cancelVoice(), [dictationContext, locale, disabled, cancelVoice])
+
+  // An idle draft owns its recognizer until a turn starts. Fence it while
+  // leaving idle; an explicit recognizer started during streaming may survive
+  // completion when the caller keeps the composer enabled.
+  useLayoutEffect(() => () => {
+    if (!streaming) cancelVoice()
+  }, [streaming, cancelVoice])
 
   useEffect(() => {
     if (focusKey === undefined) return
@@ -105,22 +119,26 @@ export function StudioComposer({
   const canSend = !streaming && !disabled && value.trim().length > 0 && !tooLong
   const submit = () => {
     if (!canSend) return
-    if (listening) stopVoice()
+    cancelVoice()
     onSend()
   }
 
   function stopVoice() {
     const active = recognition.current
-    recognition.current = null
+    // stop() may deliver one final result before end. Keep ownership until the
+    // draft/context changes, another recognizer starts, or this one terminates.
+    stopping.current = true
     active?.stop()
     setListening(false)
   }
 
   function startVoice() {
+    if (disabled) return
     if (listening) {
       stopVoice()
       return
     }
+    cancelVoice()
     const Recognition = speechRecognitionConstructor()
     if (!Recognition) {
       setVoiceError("failed")
@@ -131,19 +149,24 @@ export function StudioComposer({
     next.continuous = true
     next.interimResults = false
     next.onresult = (event) => {
+      if (recognition.current !== next) return
       const transcript = finalTranscript(event)
       if (!transcript) return
       draft.current = appendTranscript(draft.current, transcript)
       onChange(draft.current)
     }
     next.onerror = (event) => {
+      if (recognition.current !== next) return
       recognition.current = null
+      stopping.current = false
       setListening(false)
       if (event.error === "not-allowed" || event.error === "service-not-allowed") setVoiceError("denied")
       else if (event.error !== "aborted" && event.error !== "no-speech") setVoiceError("failed")
     }
     next.onend = () => {
-      if (recognition.current === next) recognition.current = null
+      if (recognition.current !== next) return
+      recognition.current = null
+      stopping.current = false
       setListening(false)
     }
     recognition.current = next
@@ -180,7 +203,11 @@ export function StudioComposer({
           disabled={disabled}
           aria-invalid={tooLong || undefined}
           aria-describedby="studio-composer-hint"
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => {
+            if (stopping.current) cancelVoice()
+            draft.current = event.target.value
+            onChange(event.target.value)
+          }}
           onKeyDown={(event) => {
             if (event.key !== "Enter" || event.shiftKey) return
             // `isComposing` covers IME candidate selection; sending on that

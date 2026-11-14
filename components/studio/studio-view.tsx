@@ -142,6 +142,7 @@ export function StudioView({
   // permanent third column competing with the conversation.
   const [contextOpen, setContextOpen] = useState(false)
   const [focusKey, setFocusKey] = useState(0)
+  const [newChatKey, setNewChatKey] = useState(0)
 
   const abortRef = useRef<AbortController | null>(null)
   const moreSummaryRef = useRef<HTMLElement>(null)
@@ -417,6 +418,8 @@ export function StudioView({
   function newConversation() {
     if (streaming || sending) return
     beginOperation()
+    // Starting over also replaces an unsaved draft whose activeId is still null.
+    setNewChatKey((key) => key + 1)
     setActiveId(null)
     setMessages([])
     setHasMore(false)
@@ -652,6 +655,7 @@ export function StudioView({
             blockedNote={blockedNote}
             onClearBlocked={aiBlocked ? () => setAiBlocked(null) : undefined}
             focusKey={focusKey}
+            dictationContext={JSON.stringify([workspaceId, locationSlug, activeId, newChatKey])}
           />
         </section>
 

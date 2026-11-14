@@ -1,7 +1,7 @@
 "use client"
 
 import { X } from "lucide-react"
-import { useEffect, useId, useRef, useState, type RefObject } from "react"
+import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react"
 
 import { useStudioOverlay } from "./use-studio-overlay"
 
@@ -45,7 +45,30 @@ export function StudioShareDialog({
   const [role, setRole] = useState<StudioConversationMemberRole>("editor")
 
   const dialogRef = useRef<HTMLElement>(null)
+  const candidateRef = useRef<HTMLSelectElement>(null)
+  const memberButtons = useRef(new Map<string, HTMLButtonElement>())
+  const mutationFocus = useRef<{ trigger: HTMLButtonElement; kind: "add" | "remove"; index: number; accepted: boolean } | null>(null)
   useStudioOverlay({ active: true, rootRef: dialogRef, initialFocusRef: closeRef, returnFocusRef, onClose })
+
+  // Resolve focus after the refreshed rows and enabled controls have committed.
+  // A user who moved to another control while waiting keeps that focus.
+  useLayoutEffect(() => {
+    if (busy) return
+    const pending = mutationFocus.current
+    if (!pending) return
+    mutationFocus.current = null
+    if (document.activeElement !== document.body && document.activeElement !== pending.trigger) return
+    const buttons = (data?.members ?? []).flatMap(member => {
+      const button = memberButtons.current.get(member.userId)
+      return button ? [button] : []
+    })
+    const target = !pending.accepted && pending.trigger.isConnected
+      ? pending.trigger
+      : pending.kind === "remove"
+        ? buttons[Math.min(pending.index, buttons.length - 1)] ?? candidateRef.current ?? closeRef.current
+        : candidateRef.current ?? closeRef.current
+    target?.focus({ preventScroll: true })
+  }, [busy, data])
 
   async function reload(): Promise<void> {
     const result = await listStudioConversationMembers(workspaceId, conversationId)
@@ -79,29 +102,42 @@ export function StudioShareDialog({
     return () => { active = false }
   }, [workspaceId, conversationId])
 
-  async function add(): Promise<void> {
+  async function add(trigger: HTMLButtonElement): Promise<void> {
     if (!candidateId || busy) return
+    const focus = document.activeElement === trigger ? { trigger, kind: "add" as const, index: 0, accepted: false } : null
+    mutationFocus.current = focus
     setBusy(true)
-    const result = await addStudioConversationMember(workspaceId, conversationId, candidateId, role)
-    setBusy(false)
-    if (!result.ok) {
-      setFailed(true)
-      return
+    try {
+      const result = await addStudioConversationMember(workspaceId, conversationId, candidateId, role)
+      if (!result.ok) {
+        setFailed(true)
+        return
+      }
+      if (focus) focus.accepted = true
+      setCandidateId("")
+      await reload()
+    } finally {
+      setBusy(false)
     }
-    setCandidateId("")
-    await reload()
   }
 
-  async function remove(userId: string): Promise<void> {
+  async function remove(userId: string, trigger: HTMLButtonElement): Promise<void> {
     if (busy) return
+    const index = data?.members.findIndex(member => member.userId === userId) ?? 0
+    const focus = document.activeElement === trigger ? { trigger, kind: "remove" as const, index: Math.max(0, index), accepted: false } : null
+    mutationFocus.current = focus
     setBusy(true)
-    const result = await removeStudioConversationMember(workspaceId, conversationId, userId)
-    setBusy(false)
-    if (!result.ok) {
-      setFailed(true)
-      return
+    try {
+      const result = await removeStudioConversationMember(workspaceId, conversationId, userId)
+      if (!result.ok) {
+        setFailed(true)
+        return
+      }
+      if (focus) focus.accepted = true
+      await reload()
+    } finally {
+      setBusy(false)
     }
-    await reload()
   }
 
   const candidates = data?.candidates ?? []
@@ -127,7 +163,22 @@ export function StudioShareDialog({
                 {data?.members.map((member) => (
                   <li key={member.userId}>
                     <span><strong>{member.email}</strong><small>{member.role === "viewer" ? t.share.roleViewer : t.share.roleEditor}</small></span>
-                    {data.canManage && <Button type="button" size="sm" variant="ghost" onClick={() => void remove(member.userId)} disabled={busy}>{t.share.remove}</Button>}
+                    {data.canManage && (
+                      <Button
+                        ref={button => {
+                          if (button) memberButtons.current.set(member.userId, button)
+                          else memberButtons.current.delete(member.userId)
+                        }}
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`${t.share.remove}: ${member.email}`}
+                        onClick={event => void remove(member.userId, event.currentTarget)}
+                        disabled={busy}
+                      >
+                        {t.share.remove}
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -136,15 +187,15 @@ export function StudioShareDialog({
               <section aria-label={t.share.candidates}>
                 <h3>{t.share.candidates}</h3>
                 <div className="studio-share-add">
-                  <select value={candidateId} onChange={(event) => setCandidateId(event.target.value)} aria-label={t.share.candidates} disabled={busy}>
+                  <select ref={candidateRef} value={candidateId} onChange={(event) => setCandidateId(event.target.value)} aria-label={t.share.candidates} disabled={busy}>
                     <option value="">{t.share.candidates}</option>
                     {candidates.map((candidate) => <option key={candidate.userId} value={candidate.userId}>{candidate.email}</option>)}
                   </select>
-                  <select value={role} onChange={(event) => setRole(event.target.value === "viewer" ? "viewer" : "editor")} aria-label={t.share.roleEditor} disabled={busy}>
+                  <select value={role} onChange={(event) => setRole(event.target.value === "viewer" ? "viewer" : "editor")} aria-label={t.share.permission} disabled={busy}>
                     <option value="editor">{t.share.roleEditor}</option>
                     <option value="viewer">{t.share.roleViewer}</option>
                   </select>
-                  <Button type="button" size="sm" onClick={() => void add()} disabled={!candidateId || busy}>{t.share.add}</Button>
+                  <Button type="button" size="sm" onClick={event => void add(event.currentTarget)} disabled={!candidateId || busy}>{t.share.add}</Button>
                 </div>
               </section>
             )}
