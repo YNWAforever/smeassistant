@@ -120,9 +120,9 @@ export interface LocationFields {name:string;address:string|null;district:string
 export interface ClaimAuditEvent {workspace_id:string|null;location_id?:string|null;actor_type:string;actor_id?:string|null;event:string;entity_type?:string|null;entity_id?:string|null;payload:Record<string,unknown>}
 
 /** Best-effort audit persistence after the business mutation has succeeded. */
-export async function recordClaimAuditEvent(input:ClaimAuditEvent):Promise<void> {
+export async function recordClaimAuditEvent(input:ClaimAuditEvent, executor?:Pick<Pool,"query">):Promise<void> {
  try {
-  await getPool().query("INSERT INTO audit_events(workspace_id,location_id,actor_type,actor_id,event,entity_type,entity_id,payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",[input.workspace_id,input.location_id??null,input.actor_type,input.actor_id??null,input.event,input.entity_type??null,input.entity_id??null,input.payload]);
+  await (executor ?? getPool()).query("INSERT INTO audit_events(workspace_id,location_id,actor_type,actor_id,event,entity_type,entity_id,payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",[input.workspace_id,input.location_id??null,input.actor_type,input.actor_id??null,input.event,input.entity_type??null,input.entity_id??null,input.payload]);
  } catch { console.error("[workspace/audit] event not recorded",{category:"audit_insert_failed",event:input.event}); }
 }
 

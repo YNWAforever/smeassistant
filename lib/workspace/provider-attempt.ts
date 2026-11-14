@@ -18,8 +18,25 @@ export async function invokeProviderAttempt(input: {
   options: LLMOptions;
   call: (options: LLMOptions) => Promise<LLMOutcome>;
 }): Promise<LLMOutcome> {
+  const budget = input.options.executionBudget;
+  const expired = () => Boolean(budget && (budget.signal.aborted || budget.remainingMs() <= 0));
+  const unsent: LLMOutcome = { ok: false, code: "timeout", retryable: false, usage: { inputTokens: 0, outputTokens: 0 } };
+  // No reservation or network side effect is admitted after the work cutoff.
+  if (expired()) return unsent;
+  const optionsAtDispatch = (): LLMOptions => {
+    if (!budget) return input.options;
+    const remaining = Math.max(0, budget.remainingMs());
+    return { ...input.options,
+      timeoutMs: Math.min(input.options.timeoutMs ?? 20_000, remaining),
+      usageSettlementTimeoutMs: Math.min(input.options.usageSettlementTimeoutMs ?? input.options.timeoutMs ?? 20_000,
+        budget.cleanupRemainingMs?.() ?? remaining),
+    };
+  };
   const recorder = recorderOf(input.persistence);
-  if (!recorder) return input.call(input.options);
+  if (!recorder) {
+    const options = optionsAtDispatch();
+    return expired() || (budget && (options.timeoutMs ?? 0) <= 0) ? unsent : input.call(options);
+  }
   const attribution = { ...input.attribution, attemptId: randomUUID() };
   // Must commit before any network effect. A failure cannot spend then lose
   // the existence/identity of the request.
@@ -29,9 +46,20 @@ export async function invokeProviderAttempt(input: {
     observationAttempted = true;
     await recorder.observeProviderAttempt({ ...attribution, observation, finishedAt: new Date() });
   };
+  const options = optionsAtDispatch();
+  if (expired() || (budget && (options.timeoutMs ?? 0) <= 0)) {
+    // The committed attempt is known not to have reached the provider. Zero is
+    // evidence here, unlike an aborted request whose provider usage is unknown.
+    try {
+      await observe({ state: "rejected", usage: { inputTokens: 0, outputTokens: 0 }, reason: "deadline_before_dispatch" });
+    } catch {
+      return { ...unsent, ok: false, code: "usage_record_failed", retryable: false, usagePending: true };
+    }
+    return unsent;
+  }
   let outcome: LLMOutcome;
   try {
-    outcome = await input.call({ ...input.options, onUsageObservation: observe });
+    outcome = await input.call({ ...options, onUsageObservation: observe });
   } catch {
     await observe({ state: "unknown", usage: { inputTokens: null, outputTokens: null }, reason: "network_error" });
     return { ok: false, code: "network_error", retryable: false, usagePending: true };

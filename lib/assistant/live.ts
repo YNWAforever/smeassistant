@@ -9,6 +9,7 @@ import { runErrorLabel } from "./draft-failure";
 import { blockingReviewWarnings, DRAFT_GROUNDING_VERSION, normalizeMerchantReviewOutput, scopeReviewReplyFacts, unconfirmedDraftBusinessFacts } from "@/lib/agents/draft-grounding";
 import { unusableExistingReviewQuestion } from "@/lib/agents/review-source";
 import { invokeProviderAttempt } from "@/lib/workspace/provider-attempt";
+import type { ExecutionBudget } from "@/lib/jobs/execution-budget";
 import { isReviewRevisionIntent, type AssistantArtifact, type AssistantIntentId, type AssistantSurface, type DemoAssistantRunResponse, type EvidenceReference, type ReviewRevisionIntentId } from "@/lib/pocket-assistant/contracts";
 import { buildActionOverview, type ActionOverview, type ActionRow } from "@/lib/workspace/overview";
 import { assetRepository } from "@/lib/repositories/assets";
@@ -66,6 +67,8 @@ export interface LiveRunInput {
   budgetEnv?: Record<string, string | undefined>;
   now?: () => Date;
   deferUsageSettlement?: (work: Promise<unknown>) => void;
+  /** Optional caller-owned deadline, including work already spent before this draft. */
+  executionBudget?: ExecutionBudget;
   /**
    * P4.3: whether answers may carry a `nextStep` link. Off (the default) strips
    * it from every answer, so the response is what it was before P4.3.
@@ -399,7 +402,9 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
   // P3.5a: the AI spend budget, immediately before the model call.
   const budget = await checkAiBudget(() => db.aiSpend24h(input.context.workspaceId), { entry: "assistant_draft" }, input.budgetEnv);
   if (!budget.allowed) throw new AiBudgetRefusal(budget.scope);
-  if(Date.now()-started>=50_000) return completed(fallbackIntentFor(intent),input,ctx,[runErrorLabel(input.locale,"timeout")]);
+  const executionBudget = input.executionBudget;
+  if (executionBudget ? executionBudget.signal.aborted || executionBudget.remainingMs() <= 0 : Date.now()-started >= 50_000)
+    return completed(fallbackIntentFor(intent),input,ctx,[runErrorLabel(input.locale,"timeout")]);
   const prompt = agent.buildPrompt(agentCtx);
   const persistence = input.persistence ?? actionRunRepository();
   const attribution = {actorId:input.membership.userId,locale:input.locale};
@@ -407,15 +412,22 @@ async function draft(intent: DraftIntent, input: LiveRunInput, db: LiveAssistant
     input:{source:"assistant",intent,surface:input.surface,locale:input.locale,context:{...input.context,locationId:ctx.locationId},brand_revision_id:agentCtx.brand.revisionId ?? null,grounding_policy_version:DRAFT_GROUNDING_VERSION},
     promptVersion:agent.promptVersion,model:process.env.LLM_MODEL || null,now:(input.now ?? (()=>new Date()))()});
   await persistence.start({runId,...attribution});
-  const timeoutMs = Math.min(AGENT_LLM_OPTIONS.timeoutMs, 55_000 - (Date.now()-started) - 5_000);
+  const timeoutMs = Math.min(AGENT_LLM_OPTIONS.timeoutMs, executionBudget
+    ? executionBudget.signal.aborted ? 0 : executionBudget.remainingMs()
+    : 55_000 - (Date.now()-started) - 5_000);
   let outcome: LLMOutcome;
   try {
-    if (timeoutMs <= 0) outcome={ok:false,code:"timeout",retryable:true};
+    if (timeoutMs <= 0) outcome = executionBudget
+      ? { ok: false, code: "timeout", retryable: false, usage: { inputTokens: 0, outputTokens: 0 } }
+      : { ok: false, code: "timeout", retryable: true };
     else outcome=await invokeProviderAttempt({
       persistence,attribution:{...attribution,runId,workspaceId:input.context.workspaceId},
       model:process.env.LLM_MODEL || null,
       options:{...AGENT_LLM_OPTIONS,timeoutMs,sessionId:runId,
-        usageSettlementTimeoutMs:Math.min(timeoutMs+5_000,55_000-(Date.now()-started)),
+        usageSettlementTimeoutMs:Math.min(timeoutMs+5_000, executionBudget
+          ? executionBudget.cleanupRemainingMs?.() ?? executionBudget.remainingMs()
+          : 55_000-(Date.now()-started)),
+        ...(executionBudget ? { executionBudget } : {}),
         deferUsageSettlement:input.deferUsageSettlement},
       call:async options=>{
         if(input.llm){const legacy=await input.llm(prompt,options);return legacy?{ok:true,result:legacy}:{ok:false,code:"no_model_output",retryable:false};}

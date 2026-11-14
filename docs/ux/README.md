@@ -22,6 +22,7 @@ The redesign of the SME scanner workspace as **Kinnso OS** (decided 2026-10-19).
 | 12 | Owner IA v2: one next step, one Kinnso chat | [PHASE-12-OWNER-IA-REPORT.md](PHASE-12-OWNER-IA-REPORT.md) |
 | 13 | Owner journey continuity and evidence | [PHASE-13-OWNER-JOURNEY.md](PHASE-13-OWNER-JOURNEY.md) |
 | 14 | Streaming recovery, keyboard focus and history reading position | [PHASE-14-STREAMING-ACCESSIBILITY.md](PHASE-14-STREAMING-ACCESSIBILITY.md) |
+| 15 | Shared Studio turn deadline and durable finalization | [PHASE-15-STUDIO-DEADLINE.md](PHASE-15-STUDIO-DEADLINE.md) |
 
 [CHANGELOG.md](CHANGELOG.md) summarises every phase in plain language.
 

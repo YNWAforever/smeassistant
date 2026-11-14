@@ -1,5 +1,6 @@
 import { logPauseRefusal, pauseState } from "./budgets/pause";
 import type { ProviderUsageObservation } from "./workspace/provider-usage";
+import type { ExecutionBudget } from "./jobs/execution-budget";
 
 // Centralized LLM gateway client.
 //
@@ -91,8 +92,9 @@ async function providerErrorFields(resp: Response): Promise<{ providerCode?: str
   }
 }
 
-async function logProviderError(resp: Response, model: string, baseUrl: string): Promise<void> {
+async function logProviderError(resp: Response, model: string, baseUrl: string, signal?: AbortSignal): Promise<void> {
   const diagnostics = process.env.NODE_ENV === "test" ? {} : { model, provider: providerHost(baseUrl), ...(await providerErrorFields(resp)) };
+  if (signal?.aborted) return;
   console.error("[llm] API error", { status: resp.status, ...diagnostics });
 }
 
@@ -102,6 +104,8 @@ export interface LLMOptions {
   /** Request strict JSON output. Off by default — not every gateway model supports it. */
   jsonMode?: boolean;
   timeoutMs?: number;
+  /** Caller-owned shared work deadline; cleanup remainder bounds usage settlement. */
+  executionBudget?: ExecutionBudget;
   /**
    * Failures are logged without any provider text on every call: only the HTTP
    * status, or the thrown error's class name. A provider error body can echo
@@ -150,6 +154,143 @@ function readUsage(data: unknown): LLMUsage {
   };
 }
 
+/** Never dispose the caller's budget or let an ignored fetch abort hold the turn open. */
+function requestDeadline(timeoutMs: number, budget?: ExecutionBudget) {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  let rejectAbort!: (error: Error) => void;
+  const interrupted = new Promise<never>((_, reject) => { rejectAbort = reject; });
+  // The signal can already be aborted before the first wait is registered.
+  void interrupted.catch(() => {});
+  const reject = () => rejectAbort(new DOMException("Request deadline exceeded", "AbortError"));
+  controller.signal.addEventListener("abort", reject, { once: true });
+  budget?.signal.addEventListener("abort", abort, { once: true });
+  const remaining = Math.min(timeoutMs, budget?.remainingMs() ?? timeoutMs);
+  const timer = setTimeout(abort, Math.max(0, remaining));
+  if (remaining <= 0 || budget?.signal.aborted) abort();
+  const check = () => {
+    if (budget && (budget.signal.aborted || budget.remainingMs() <= 0)) abort();
+    if (controller.signal.aborted) throw new DOMException("Request deadline exceeded", "AbortError");
+  };
+  return {
+    signal: controller.signal,
+    check,
+    async wait<T>(work: Promise<T>): Promise<T> {
+      const result = await Promise.race([work, interrupted]);
+      check();
+      return result;
+    },
+    dispose() {
+      clearTimeout(timer);
+      budget?.signal.removeEventListener("abort", abort);
+      controller.signal.removeEventListener("abort", reject);
+    },
+    abort,
+  };
+}
+
+function cancelBody(body: ReadableStream<Uint8Array> | null | undefined): void {
+  try { void body?.cancel().catch(() => {}); } catch { /* best-effort transport cleanup */ }
+}
+
+async function deadlineFetch(request: (signal: AbortSignal) => Promise<Response>, deadline: ReturnType<typeof requestDeadline>): Promise<Response> {
+  deadline.check();
+  const pending = request(deadline.signal);
+  void pending.then(response => { if (deadline.signal.aborted) cancelBody(response.body); }, () => {});
+  return deadline.wait(pending);
+}
+
+/** Opt-in tracked transport: work abort stops I/O, while admitted accounting uses the final reserve. */
+async function budgetedTrackedCompletion(request: (signal: AbortSignal) => Promise<Response>, opts: LLMOptions, budget: ExecutionBudget): Promise<LLMOutcome> {
+  const timedOut: LLMOutcome = { ok: false, code: "timeout", retryable: false, usagePending: true };
+  const remaining = budget.remainingMs();
+  const finalRemaining = () => Math.max(0, budget.cleanupRemainingMs?.() ?? budget.remainingMs());
+  if (budget.signal.aborted || remaining <= 0) return timedOut;
+  const outputMs = Math.min(opts.timeoutMs ?? 20_000, remaining);
+  // Leave the unknown-observation allowance INSIDE the original final deadline.
+  const collectionMs = Math.max(0, Math.min(
+    Math.max(outputMs, Math.min(opts.usageSettlementTimeoutMs ?? outputMs, 55_000)),
+    remaining, finalRemaining() - Math.min(1000, finalRemaining()),
+  ));
+  const deadline = requestDeadline(collectionMs, budget);
+  let late = false;
+  let providerRequestId: string | undefined;
+  let response: Response | undefined;
+  let observationStarted = false;
+  const observe = async (value: ProviderUsageObservation, limitMs = finalRemaining()): Promise<void> => {
+    const allowance = Math.min(limitMs, finalRemaining());
+    if (allowance <= 0) throw new Error("usage_record_timeout");
+    observationStarted = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        opts.onUsageObservation!(value),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("usage_record_timeout")), allowance); }),
+      ]);
+      if (finalRemaining() <= 0) throw new Error("usage_record_timeout");
+    } finally { clearTimeout(timer); }
+  };
+  const attribution = () => providerRequestId ? { providerRequestId } : {};
+  const settlement = (async (): Promise<LLMOutcome> => {
+    try {
+      response = await deadlineFetch(request, deadline);
+      const headerId = response.headers?.get("x-request-id");
+      if (headerId && /^[\w.:-]{1,200}$/.test(headerId)) providerRequestId = headerId;
+      if (!response.ok) {
+        const status = response.status;
+        const code = status === 401 || status === 403 ? "provider_auth_failed" : status === 429 ? "provider_rate_limited" : "provider_unavailable";
+        await observe({ state: status >= 500 ? "unknown" : "rejected", usage: { inputTokens: null, outputTokens: null }, reason: code, late, ...attribution() });
+        const retry = response.headers?.get("retry-after");
+        return { ok: false, code, status, retryable: status === 429,
+          ...(status >= 500 ? { usagePending: true } : {}),
+          ...(status === 429 && retry && /^\d+$/.test(retry) && Number(retry) <= 3600 ? { retryAfterSeconds: Number(retry) } : {}) };
+      }
+      let data: unknown;
+      try { data = await deadline.wait(response.json()); }
+      catch (error) {
+        if (deadline.signal.aborted) throw error;
+        await observe({ state: "unknown", usage: { inputTokens: null, outputTokens: null }, reason: "invalid_provider_response", late, ...attribution() });
+        return { ok: false, code: "invalid_provider_response", retryable: false, usagePending: true };
+      }
+      const id = (data as { id?: unknown } | null)?.id;
+      if (typeof id === "string" && /^[\w.:-]{1,200}$/.test(id)) providerRequestId = id;
+      const usage = readUsage(data);
+      await observe({ state: "reported", usage, late, ...attribution() });
+      const content = (data as { choices?: Array<{ message?: { content?: unknown } }> } | null)?.choices?.[0]?.message?.content;
+      return typeof content !== "string" ? { ok: false, code: "invalid_provider_response", retryable: false, usage }
+        : content.trim() ? { ok: true, result: { text: content.trim(), usage } }
+          : { ok: false, code: "no_model_output", retryable: false, usage };
+    } catch {
+      // An already-started observation belongs to the caller's DB lifetime;
+      // never launch a conflicting second write when its acknowledgement stalls.
+      if (observationStarted) return { ok: false, code: "usage_record_failed", retryable: false, usagePending: true };
+      const timeout = deadline.signal.aborted;
+      try {
+        await observe({ state: "unknown", usage: { inputTokens: null, outputTokens: null },
+          reason: timeout ? "settlement_timeout" : "network_error", late: late || timeout, ...attribution() }, 1000);
+      } catch { return { ok: false, code: "usage_record_failed", retryable: false, usagePending: true }; }
+      return timeout ? timedOut : { ok: false, code: "network_error", retryable: false, usagePending: true };
+    } finally {
+      deadline.abort();
+      deadline.dispose();
+      cancelBody(response?.body);
+    }
+  })();
+  opts.deferUsageSettlement?.(settlement.then(() => undefined));
+  let outputTimer: ReturnType<typeof setTimeout> | undefined;
+  let abortOutput: () => void = () => {};
+  const outputEnd = new Promise<LLMOutcome>(resolve => {
+    abortOutput = () => { late = true; resolve(timedOut); };
+    outputTimer = setTimeout(abortOutput, Math.max(0, outputMs));
+    budget.signal.addEventListener("abort", abortOutput, { once: true });
+    if (budget.signal.aborted) abortOutput();
+  });
+  try {
+    const outcome = await Promise.race([settlement, outputEnd]);
+    return budget.signal.aborted || budget.remainingMs() <= 0 ? timedOut : outcome;
+  } finally { clearTimeout(outputTimer); budget.signal.removeEventListener("abort", abortOutput); }
+}
+
 /**
  * Tracked drafting keeps the output deadline distinct from a bounded,
  * post-response usage settlement. No late text is exposed to the caller.
@@ -157,6 +298,7 @@ function readUsage(data: unknown): LLMUsage {
  * reinterpreted as zero or permission to make another request.
  */
 async function trackedCompletion(request: (signal: AbortSignal) => Promise<Response>, opts: LLMOptions): Promise<LLMOutcome> {
+  if (opts.executionBudget) return budgetedTrackedCompletion(request, opts, opts.executionBudget);
   const controller = new AbortController();
   const outputMs = opts.timeoutMs ?? 20_000;
   const settlementMs = Math.max(outputMs, Math.min(opts.usageSettlementTimeoutMs ?? outputMs, 55_000));
@@ -278,20 +420,17 @@ export async function llmCompleteDetailed(prompt: string, opts: LLMOptions = {})
   });
   if (opts.onUsageObservation) return trackedCompletion(request, opts);
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 20000);
-  let abort: () => void = () => {};
-  const interrupted = new Promise<never>((_resolve, reject) => {
-    abort = () => reject(new DOMException("Request deadline exceeded", "AbortError"));
-    controller.signal.addEventListener("abort", abort, { once: true });
-  });
+  const controller = requestDeadline(opts.timeoutMs ?? 20000, opts.executionBudget);
+  let response: Response | undefined;
 
   try {
-    const resp = await Promise.race([request(controller.signal), interrupted]);
+    const resp = response = await deadlineFetch(request, controller);
 
     if (!resp.ok) {
       // The body is never read: it can echo the prompt.
-      await logProviderError(resp, model, baseUrl);
+      const diagnostics = logProviderError(resp, model, baseUrl, opts.executionBudget ? controller.signal : undefined);
+      if (opts.executionBudget) await controller.wait(diagnostics);
+      else await diagnostics;
       const status = resp.status;
       const rawRetry = resp.headers?.get("retry-after");
       const retrySeconds = rawRetry && /^\d+$/.test(rawRetry) ? Number(rawRetry) : rawRetry ? Math.ceil((Date.parse(rawRetry) - Date.now()) / 1000) : NaN;
@@ -303,7 +442,7 @@ export async function llmCompleteDetailed(prompt: string, opts: LLMOptions = {})
     }
 
     let data: unknown;
-    try { data = await Promise.race([resp.json(), interrupted]); }
+    try { data = await controller.wait(resp.json()); }
     catch (error) {
       if (controller.signal.aborted) throw error;
       return { ok: false, code: "invalid_provider_response", retryable: false };
@@ -332,8 +471,8 @@ export async function llmCompleteDetailed(prompt: string, opts: LLMOptions = {})
     console.error("[llm] request failed", { error: name });
     return { ok: false, code: controller.signal.aborted || name === "AbortError" ? "timeout" : "network_error", retryable: true };
   } finally {
-    clearTimeout(timeout);
-    controller.signal.removeEventListener("abort", abort);
+    controller.dispose();
+    if (opts.executionBudget) { controller.abort(); cancelBody(response?.body); }
   }
 }
 
@@ -410,19 +549,16 @@ export async function llmChatDetailed(messages: LLMChatMessage[], opts: LLMOptio
   });
   if (opts.onUsageObservation) return trackedCompletion(request, opts);
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 20000);
-  let abort: () => void = () => {};
-  const interrupted = new Promise<never>((_resolve, reject) => {
-    abort = () => reject(new DOMException("Request deadline exceeded", "AbortError"));
-    controller.signal.addEventListener("abort", abort, { once: true });
-  });
+  const controller = requestDeadline(opts.timeoutMs ?? 20000, opts.executionBudget);
+  let response: Response | undefined;
 
   try {
-    const resp = await Promise.race([request(controller.signal), interrupted]);
+    const resp = response = await deadlineFetch(request, controller);
     if (!resp.ok) {
       // The body is never read: it can echo the prompt.
-      await logProviderError(resp, model, baseUrl);
+      const diagnostics = logProviderError(resp, model, baseUrl, opts.executionBudget ? controller.signal : undefined);
+      if (opts.executionBudget) await controller.wait(diagnostics);
+      else await diagnostics;
       const status = resp.status;
       const rawRetry = resp.headers?.get("retry-after");
       const retrySeconds = rawRetry && /^\d+$/.test(rawRetry) ? Number(rawRetry) : rawRetry ? Math.ceil((Date.parse(rawRetry) - Date.now()) / 1000) : NaN;
@@ -436,7 +572,7 @@ export async function llmChatDetailed(messages: LLMChatMessage[], opts: LLMOptio
     }
 
     let data: unknown;
-    try { data = await Promise.race([resp.json(), interrupted]); }
+    try { data = await controller.wait(resp.json()); }
     catch (error) {
       if (controller.signal.aborted) throw error;
       return { ok: false, code: "invalid_provider_response", retryable: false };
@@ -454,8 +590,8 @@ export async function llmChatDetailed(messages: LLMChatMessage[], opts: LLMOptio
     console.error("[llm] request failed", { error: name });
     return { ok: false, code: controller.signal.aborted || name === "AbortError" ? "timeout" : "network_error", retryable: true };
   } finally {
-    clearTimeout(timeout);
-    controller.signal.removeEventListener("abort", abort);
+    controller.dispose();
+    if (opts.executionBudget) { controller.abort(); cancelBody(response?.body); }
   }
 }
 
@@ -535,14 +671,30 @@ export async function llmChatStreamDetailed(
     return { ok: false, code: "provider_unconfigured", retryable: false, streamed: true };
   }
 
-  const controller = new AbortController();
   const timeoutMs = Math.min(opts.timeoutMs ?? 20_000, MAX_TIMEOUT_MS);
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  const timeoutFailure = (): LLMStreamOutcome => ({ ok: false, code: "timeout", retryable: false, usagePending: true, streamed: true });
+  const controller = requestDeadline(timeoutMs, opts.executionBudget);
+  let response: Response | undefined;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  let text = "";
+  let usage: LLMUsage = { inputTokens: null, outputTokens: null };
+  let sawToken = false;
+  let transportClosed = false;
+  const closeTransport = () => {
+    if (transportClosed) return;
+    transportClosed = true;
+    controller.abort();
+    if (reader) { try { void reader.cancel().catch(() => {}); } catch { /* best-effort cleanup */ } }
+    else cancelBody(response?.body);
+  };
+  const timeoutFailure = (): LLMStreamOutcome => ({ ok: false, code: "timeout", retryable: false, usagePending: true, streamed: true,
+    ...(opts.executionBudget ? { ...(text ? { text } : {}), usage } : {}),
+  });
 
   // The one non-streaming retry, only while nothing has been shown to the owner.
   const fallback = async (): Promise<LLMStreamOutcome> => {
-    clearTimeout(timeout);
+    if (opts.executionBudget && (controller.signal.aborted || opts.executionBudget.signal.aborted || opts.executionBudget.remainingMs() <= 0)) return timeoutFailure();
+    controller.dispose();
+    if (opts.executionBudget) closeTransport();
     const outcome = await llmChatDetailed(messages, { ...opts, timeoutMs });
     return outcome.ok
       ? { ok: true, result: outcome.result, streamed: false }
@@ -552,33 +704,34 @@ export async function llmChatStreamDetailed(
   try {
     let resp: Response;
     try {
-      resp = await fetch(`${baseUrl}/chat/completions`, {
+      const request = (signal: AbortSignal) => fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers: chatHeaders(apiKey, usingOpenCodeBase, opts),
         body: JSON.stringify(chatBody(model, messages, opts, usingOpenCodeBase, true)),
-        signal: controller.signal,
+        signal,
       });
+      resp = response = opts.executionBudget ? await deadlineFetch(request, controller) : await request(controller.signal);
     } catch (error) {
       if (controller.signal.aborted) return timeoutFailure();
       void error;
       return await fallback();
     }
     if (!resp.ok) {
-      await logProviderError(resp, model, baseUrl);
+      const diagnostics = logProviderError(resp, model, baseUrl, opts.executionBudget ? controller.signal : undefined);
+      if (opts.executionBudget) await controller.wait(diagnostics);
+      else await diagnostics;
       return await fallback();
     }
     const body = resp.body;
     if (!body) return await fallback();
 
-    const reader = body.getReader();
+    reader = body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
-    let text = "";
-    let usage: LLMUsage = { inputTokens: null, outputTokens: null };
-    let sawToken = false;
     let finished = false;
 
     const consume = (line: string) => {
+      if (opts.executionBudget) controller.check();
       const frame = parseStreamFrame(line);
       if (!frame) return;
       if (frame.done) { finished = true; return; }
@@ -592,7 +745,8 @@ export async function llmChatStreamDetailed(
 
     try {
       while (!finished) {
-        const { done, value } = await reader.read();
+        if (opts.executionBudget) controller.check();
+        const { done, value } = opts.executionBudget ? await controller.wait(reader.read()) : await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         let index = buffer.indexOf("\n");
@@ -616,7 +770,11 @@ export async function llmChatStreamDetailed(
     const trimmed = text.trim();
     if (!trimmed) return sawToken ? { ok: false, code: "no_model_output", retryable: false, usage, streamed: true } : await fallback();
     return { ok: true, result: { text: trimmed, usage }, streamed: true };
+  } catch (error) {
+    if (controller.signal.aborted) return timeoutFailure();
+    throw error;
   } finally {
-    clearTimeout(timeout);
+    controller.dispose();
+    if (opts.executionBudget) closeTransport();
   }
 }

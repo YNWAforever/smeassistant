@@ -8,6 +8,27 @@ describe("one cancellable monotonic work budget",()=>{
     now=55_000; expect(budget.remainingMs()).toBe(0); expect(budget.signal.aborted).toBe(true); expect(budget.cleanupRemainingMs()).toBe(5000);
     now=60_000; expect(budget.cleanupRemainingMs()).toBe(0); budget.dispose();
   });
+  it("uses the original absolute cutoff after earlier stages consume time", async () => {
+    vi.useFakeTimers();
+    let now = 12_000;
+    const budget = createExecutionBudget({ deadlineMs: 50_000, reserveMs: 5000, now: () => now });
+    expect(budget.remainingMs()).toBe(38_000);
+    expect(budget.cleanupRemainingMs()).toBe(43_000);
+    now = 50_000;
+    await vi.advanceTimersByTimeAsync(38_000);
+    expect(budget.signal.aborted).toBe(true);
+    expect(budget.remainingMs()).toBe(0);
+    expect(budget.cleanupRemainingMs()).toBe(5000);
+    budget.dispose();
+  });
+  it("starts an expired absolute budget aborted without a fresh allowance", () => {
+    vi.useFakeTimers();
+    const budget = createExecutionBudget({ deadlineMs: 10, reserveMs: 0, now: () => 20 });
+    expect(budget.signal.aborted).toBe(true);
+    expect(budget.remainingMs()).toBe(0);
+    expect(budget.cleanupRemainingMs()).toBe(0);
+    budget.dispose();
+  });
   it("keeps async requests isolated and carries the same budget through awaited steps",async()=>{
     const a=createExecutionBudget(),b=createExecutionBudget();
     await Promise.all([withExecutionBudget(a,async()=>{await Promise.resolve();expect(currentExecutionBudget()).toBe(a);}),withExecutionBudget(b,async()=>{await Promise.resolve();expect(currentExecutionBudget()).toBe(b);})]);

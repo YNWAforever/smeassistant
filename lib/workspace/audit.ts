@@ -73,7 +73,7 @@ export function ipHashFor(req: Request): string | null {
 }
 
 /** Best-effort: a failed audit insert is logged, never thrown, so it cannot undo the mutation it describes. */
-export async function recordNeonEvent(input: AuditEventInput): Promise<void> {
+export async function recordNeonEvent(input: AuditEventInput, executor?: Parameters<typeof recordClaimAuditEvent>[1]): Promise<void> {
   const payload: Record<string, unknown> = { locale: input.locale ?? null, ...(input.ipHash ? { ip_hash: input.ipHash } : {}), ...(input.payload ?? {}) };
   try {
     const row = {
@@ -86,7 +86,8 @@ export async function recordNeonEvent(input: AuditEventInput): Promise<void> {
       entity_id: input.entityId ?? null,
       payload,
     };
-    await recordClaimAuditEvent(row);
+    if (executor) await recordClaimAuditEvent(row, executor);
+    else await recordClaimAuditEvent(row);
   } catch {
     console.error("[workspace/audit] event not recorded", { category: "audit_insert_failed", event: input.event });
   }

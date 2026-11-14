@@ -4,9 +4,13 @@ export interface ExecutionBudget { remainingMs(): number; signal: AbortSignal; c
 export class BudgetExhausted extends Error { constructor() { super("execution_budget_exhausted"); this.name = "BudgetExhausted"; } }
 interface ExecutionContext { budget: ExecutionBudget; pool?: Pool }
 const context = new AsyncLocalStorage<ExecutionContext>();
-export function createExecutionBudget({ durationMs = 55_000, reserveMs = 5000, statementLimitMs, now = () => performance.now() }: { durationMs?: number; reserveMs?: number; statementLimitMs?: number; now?: () => number } = {}) {
-  const deadline = now() + durationMs, controller = new AbortController();
-  const timer = setTimeout(()=>controller.abort(new BudgetExhausted()),durationMs); timer.unref?.();
+export function createExecutionBudget({ durationMs = 55_000, reserveMs = 5000, deadlineMs, statementLimitMs, now = () => performance.now() }: { durationMs?: number; reserveMs?: number; deadlineMs?: number; statementLimitMs?: number; now?: () => number } = {}) {
+  // An absolute monotonic cutoff lets nested stages share the original clock.
+  // Existing callers keep the same duration and reserve defaults.
+  const deadline = deadlineMs ?? now() + durationMs, controller = new AbortController();
+  const remaining = Math.max(0, deadline - now());
+  const timer = setTimeout(()=>controller.abort(new BudgetExhausted()),remaining); timer.unref?.();
+  if (remaining === 0) controller.abort(new BudgetExhausted());
   return {
     statementLimitMs,
     signal: controller.signal,

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { auth, authorizeLike, LOCATION_ID, WORKSPACE_ID } from "@/app/api/actions/_shared/test-db";
 import type { StudioConversation, StudioMessage, StudioStreamEvent } from "@/lib/studio/types";
+import type { LiveRunInput } from "@/lib/assistant/live";
 
 /**
  * POST /api/studio/conversations/[id]/messages (design §7, §9).
@@ -23,6 +24,7 @@ class StudioRepositoryError extends Error {
 }
 void StudioRepositoryError;
 
+const retained = vi.hoisted(() => [] as Promise<unknown>[]);
 const mocks = vi.hoisted(() => ({
   authorizeWorkspaceRequest: vi.fn(),
   enforceRateLimit: vi.fn(),
@@ -32,12 +34,19 @@ const mocks = vi.hoisted(() => ({
   studioRepository: vi.fn(),
   buildStudioBriefing: vi.fn(),
   runStudioTurn: vi.fn(),
+  runLiveAssistant: vi.fn(),
+  observeProviderAttempt: vi.fn(),
   acquireStudioTurnLock: vi.fn(),
   recordNeonEvent: vi.fn(),
+  executor: { query: vi.fn() },
   listConversationDocuments: vi.fn(),
   findSearchBrief: vi.fn(),
 }));
 
+vi.mock("@vercel/functions", async importOriginal => ({
+  ...(await importOriginal<typeof import("@vercel/functions")>()),
+  waitUntil: (work: Promise<unknown>) => { retained.push(work); },
+}));
 vi.mock("@/lib/auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/auth")>()),
   authorizeWorkspaceRequest: (...args: unknown[]) => mocks.authorizeWorkspaceRequest(...args),
@@ -49,15 +58,21 @@ vi.mock("@/lib/security/rate-limit", async (importOriginal) => ({
 vi.mock("@/lib/budgets/ai", () => ({ checkAiBudget: (...args: unknown[]) => mocks.checkAiBudget(...args) }));
 vi.mock("@/lib/repositories/artifacts", () => ({
   artifactRepository: () => ({ aiSpend24h: (...args: unknown[]) => mocks.aiSpend24h(...args) }),
+  actionRunRepository: () => ({ queue: vi.fn(), start: vi.fn(), beginProviderAttempt: vi.fn(),
+    observeProviderAttempt: (...args: unknown[]) => mocks.observeProviderAttempt(...args), finishAssistantDraft: vi.fn() }),
 }));
 vi.mock("@/lib/repositories/studio", () => ({
   studioRepository: (...args: unknown[]) => mocks.studioRepository(...args),
   toStudioConversation: (row: { id: string; status: string }) => ({ id: row.id, status: row.status, title: "", locationId: null, createdAt: "2026-11-08T00:00:00Z", updatedAt: "2026-11-08T00:00:00Z", lastMessageAt: "2026-11-08T00:00:00Z" }),
   toStudioMessage: (row: unknown) => row,
 }));
+vi.mock("@/lib/assistant/live", () => ({ runLiveAssistant: (...args: unknown[]) => mocks.runLiveAssistant(...args) }));
 vi.mock("@/lib/studio/context", () => ({ buildStudioBriefing: (...args: unknown[]) => mocks.buildStudioBriefing(...args) }));
 vi.mock("@/lib/studio/orchestrator", () => ({ runStudioTurn: (...args: unknown[]) => mocks.runStudioTurn(...args) }));
-vi.mock("@/lib/studio/turn-lock", () => ({ acquireStudioTurnLock: (...args: unknown[]) => mocks.acquireStudioTurnLock(...args) }));
+vi.mock("@/lib/studio/turn-session", () => ({ acquireStudioTurnSession: async (id: string) => {
+  const release = await mocks.acquireStudioTurnLock(id);
+  return release ? { release, executor: mocks.executor, transaction: vi.fn() } : null;
+} }));
 vi.mock("@/lib/workspace/audit", () => ({
   recordNeonEvent: (...args: unknown[]) => mocks.recordNeonEvent(...args),
   ipHashFor: () => "ip-hash-fixture",
@@ -93,6 +108,12 @@ const userMessage: StudioMessage = { id: "message-1", conversationId: CONVERSATI
 const assistantMessage: StudioMessage = { id: "message-2", conversationId: CONVERSATION_ID, seq: 2, role: "assistant", content: "Grounded answer", parts: [{ kind: "text", text: "Grounded answer" }], intent: "explain_priority", createdAt: "2026-11-08T00:00:01Z" };
 
 const briefingStub = { briefing: {}, systemBriefing: "BRIEFING", contextSummary: {}, promptChips: [], evidenceCatalogue: [], chips: [] };
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(done => { resolve = done; });
+  return { promise, resolve };
+}
 
 const body = (overrides: Record<string, unknown> = {}) => ({ workspaceId: WORKSPACE_ID, text: "What should I do first?", ...overrides });
 
@@ -137,7 +158,9 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await Promise.all(retained.splice(0));
+  vi.useRealTimers();
   vi.unstubAllEnvs();
 });
 
@@ -432,6 +455,7 @@ describe("the SSE turn", () => {
     const release = vi.fn(async () => {});
     mocks.acquireStudioTurnLock.mockResolvedValue(release);
     await frames(await send(body()));
+    await Promise.all(retained);
     expect(release).toHaveBeenCalledTimes(1);
   });
 
@@ -442,7 +466,9 @@ describe("the SSE turn", () => {
     const turnFinished = new Promise<void>((resolve) => { finishTurn = resolve; });
     let locked = false;
     const persist = vi.fn();
-    const release = vi.fn(async () => { locked = false; });
+    let finishRelease!: () => void;
+    const released = new Promise<void>(resolve => { finishRelease = resolve; });
+    const release = vi.fn(async () => { locked = false; finishRelease(); });
     mocks.acquireStudioTurnLock.mockImplementation(async () => {
       if (locked) return null;
       locked = true;
@@ -479,6 +505,7 @@ describe("the SSE turn", () => {
     } finally {
       finishProvider();
       await turnFinished;
+      await released; // Route owns release after the orchestrator and audit settle.
     }
     expect(release).toHaveBeenCalledTimes(1);
     expect(persist).toHaveBeenCalledTimes(outcome === "success" ? 1 : 0);
@@ -486,9 +513,96 @@ describe("the SSE turn", () => {
     const next = await send(body());
     expect(next.status).toBe(200);
     await frames(next);
+    await Promise.all(retained);
     expect(mocks.runStudioTurn).toHaveBeenCalledTimes(2);
     expect(release).toHaveBeenCalledTimes(2);
     expect(mocks.recordNeonEvent).toHaveBeenCalledTimes(outcome === "success" ? 2 : 1);
+  });
+
+  it("bounds a noncooperative auth preflight and fences its late result", async () => {
+    vi.useFakeTimers();
+    const entered = deferred<void>();
+    const identity = deferred<unknown>();
+    mocks.authorizeWorkspaceRequest.mockImplementationOnce(() => { entered.resolve(); return identity.promise; });
+    const pending = send(body());
+    await entered.promise;
+    await vi.advanceTimersByTimeAsync(50_000);
+    const response = await pending;
+    expect(response.status).toBe(503);
+    identity.resolve({ ok: true });
+    await response.json();
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.acquireStudioTurnLock).not.toHaveBeenCalled();
+    expect(mocks.runStudioTurn).not.toHaveBeenCalled();
+  });
+
+  it("charges briefing time against the provider's original work deadline", async () => {
+    vi.useFakeTimers();
+    mocks.buildStudioBriefing.mockImplementationOnce(async () => {
+      await vi.advanceTimersByTimeAsync(12_000);
+      return briefingStub;
+    });
+    let remaining = -1;
+    mocks.runStudioTurn.mockImplementationOnce(async (input: { executionBudget: { remainingMs(): number } }) => {
+      remaining = input.executionBudget.remainingMs();
+      return { ok: false, persisted: false, code: "unavailable" };
+    });
+    await frames(await send(body()));
+    expect(remaining).toBe(38_000);
+  });
+
+  it("holds the session through usage arriving after terminal message and audit", async () => {
+    const usage = deferred<void>();
+    const released = deferred<void>();
+    const order: string[] = [];
+    const release = vi.fn(async () => { order.push("release"); released.resolve(); });
+    mocks.acquireStudioTurnLock.mockResolvedValueOnce(release);
+    mocks.recordNeonEvent.mockImplementationOnce(async () => { order.push("audit"); });
+    mocks.observeProviderAttempt.mockImplementationOnce(async () => {
+      expect(release).not.toHaveBeenCalled();
+      order.push("usage");
+    });
+    mocks.runLiveAssistant.mockImplementationOnce(async (input: {
+      deferUsageSettlement(work: Promise<unknown>): void;
+      persistence: { observeProviderAttempt(input: unknown): Promise<void> };
+    }) => {
+      input.deferUsageSettlement(usage.promise.then(() => input.persistence.observeProviderAttempt({})));
+      return {};
+    });
+    mocks.runStudioTurn.mockImplementationOnce(async (input: {
+      liveAssistant(input: LiveRunInput): Promise<unknown>;
+      membership: LiveRunInput["membership"];
+      emit(event: StudioStreamEvent): void;
+    }) => {
+      await input.liveAssistant({ intentId: "explain_priority", surface: "studio", locale: "en",
+        context: { workspaceId: WORKSPACE_ID }, membership: input.membership });
+      input.emit({ type: "done" });
+      return { ok: true, intent: "explain_priority", turn: "explain", artifact: false };
+    });
+    await frames(await send(body()));
+    expect(order).toEqual(["audit"]);
+    expect(release).not.toHaveBeenCalled();
+    usage.resolve();
+    await released.promise;
+    expect(order).toEqual(["audit", "usage", "release"]);
+  });
+
+  it("closes delivery and releases resources at 55 seconds even when audit never settles", async () => {
+    vi.useFakeTimers();
+    const entered = deferred<void>();
+    const audit = deferred<void>();
+    const release = vi.fn(async () => {});
+    mocks.acquireStudioTurnLock.mockResolvedValueOnce(release);
+    mocks.recordNeonEvent.mockImplementationOnce(() => { entered.resolve(); return audit.promise; });
+    const response = await send(body());
+    await entered.promise;
+    const delivered = frames(response);
+    await vi.advanceTimersByTimeAsync(50_000);
+    expect(release).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect((await delivered).filter(event => event.type === "done")).toHaveLength(1);
+    expect(release).toHaveBeenCalledTimes(1);
+    audit.resolve();
   });
 
   it("pins the studio_message rate-limit policy at 60 turns an hour", async () => {

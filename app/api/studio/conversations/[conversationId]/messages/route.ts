@@ -11,7 +11,10 @@ import { isRetryableStudioError, studioErrorMessage } from "@/lib/studio/errors"
 import { conversationStudioEnabled } from "@/lib/studio/flag";
 import { runStudioTurn } from "@/lib/studio/orchestrator";
 import type { StudioEvidenceContext } from "@/lib/studio/prompt";
-import { acquireStudioTurnLock } from "@/lib/studio/turn-lock";
+import { acquireStudioTurnSession } from "@/lib/studio/turn-session";
+import { runStudioRequest, type StudioRequestLifetime } from "@/lib/studio/request-lifetime";
+import { BudgetExhausted, withExecutionBudget } from "@/lib/jobs/execution-budget";
+import { runLiveAssistant } from "@/lib/assistant/live";
 import { STUDIO_MESSAGE_MAX, type StudioCitationRef, type StudioErrorCode, type StudioStreamEvent } from "@/lib/studio/types";
 import { ipHashFor, recordNeonEvent } from "@/lib/workspace/audit";
 import { ConversationDocumentError, listConversationDocuments } from "@/lib/workspace/conversation-documents";
@@ -24,7 +27,7 @@ import {
   studioDisabledResponse,
   studioError,
 } from "../../../_shared/studio-route";
-import { studioCost, studioModel, studioTurnLlm, studioTurnStore } from "../../../_shared/studio-turn";
+import { studioCost, studioDraftPersistence, studioModel, studioTurnLlm, studioTurnStore } from "../../../_shared/studio-turn";
 
 /**
  * POST /api/studio/conversations/[conversationId]/messages (design §7).
@@ -58,21 +61,26 @@ function jsonStatus(code: StudioErrorCode): Response {
   return studioError(code);
 }
 
-export async function POST(
+export function POST(
   request: Request,
   { params }: { params: Promise<{ conversationId: string }> },
 ): Promise<Response> {
+  return runStudioRequest(lifetime => handlePost(request, params, lifetime), () => studioError("unavailable"));
+}
+
+async function handlePost(request: Request, params: Promise<{ conversationId: string }>, lifetime: StudioRequestLifetime): Promise<Response> {
+  const { deadline } = lifetime;
   if (!conversationStudioEnabled()) return studioDisabledResponse();
 
-  const { conversationId: rawId } = await params;
+  const { conversationId: rawId } = await lifetime.work(() => params);
   const conversationId = optionalUuid(rawId);
   if (!conversationId) return studioError("invalid_input");
 
   let payload: unknown;
   try {
-    payload = await request.json();
-  } catch {
-    return studioError("invalid_input");
+    payload = await lifetime.work(() => request.json());
+  } catch (error) {
+    return studioError(error instanceof BudgetExhausted ? "unavailable" : "invalid_input");
   }
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return studioError("invalid_input");
   const body = payload as Record<string, unknown>;
@@ -102,23 +110,23 @@ export async function POST(
   }
   if (documentVersionIds.length + searchBriefIds.length > 5) return studioError("invalid_input");
 
-  const auth = await authorizationOrUnavailable(() => authorizeWorkspaceRequest({ id: workspaceId }));
+  const auth = await lifetime.work(() => authorizationOrUnavailable(() => authorizeWorkspaceRequest({ id: workspaceId })));
   if (!auth) return studioError("unavailable");
   if (!auth.ok) return authFailure(auth);
   const membership = auth.membership;
   if (locationId && !inLocationScope(membership, locationId)) return studioError("not_found");
 
-  const decision = await enforceRateLimit({ req: request, scope: "studio_message", identifiers: [membership.userId], failClosed: true });
+  const decision = await lifetime.work(() => enforceRateLimit({ req: request, scope: "studio_message", identifiers: [membership.userId], failClosed: true }));
   if (!decision.allowed) return rateLimitedResponse(decision.retryAfterSeconds);
 
-  const budget = await checkAiBudget(() => artifactRepository().aiSpend24h(membership.workspaceId), { entry: "assistant_draft" });
+  const budget = await lifetime.work(() => checkAiBudget(() => artifactRepository().aiSpend24h(membership.workspaceId), { entry: "assistant_draft" }));
   if (!budget.allowed) return budgetFailure(budget);
 
   let repository: ReturnType<typeof studioRepository>;
   let conversation: Awaited<ReturnType<ReturnType<typeof studioRepository>["getConversation"]>>;
   try {
     repository = studioRepository();
-    conversation = await repository.getConversation({ workspaceId: membership.workspaceId, actorId: membership.userId, conversationId });
+    conversation = await lifetime.work(() => repository.getConversation({ workspaceId: membership.workspaceId, actorId: membership.userId, conversationId }));
   } catch {
     console.error("[api/studio/messages] failed", { category: "conversation_read_failed" });
     return jsonStatus("unavailable");
@@ -187,7 +195,7 @@ export async function POST(
   let evidenceRefs: StudioCitationRef[] = [];
   if (evidenceRequests.length) {
     try {
-      const loaded = await loadEvidence(evidenceRequests);
+      const loaded = await lifetime.work(() => loadEvidence(evidenceRequests));
       evidenceRefs = loaded.map((context) => context.source === "document"
         ? { source: "document", documentVersionId: context.id, title: context.title, truncated: context.truncated }
         : { source: "search_brief", searchBriefId: context.id, title: context.title, truncated: context.truncated });
@@ -199,25 +207,23 @@ export async function POST(
     }
   }
 
-  let release: Awaited<ReturnType<typeof acquireStudioTurnLock>>;
+  let session: Awaited<ReturnType<typeof acquireStudioTurnSession>>;
   try {
-    release = await acquireStudioTurnLock(conversationId);
+    session = await acquireStudioTurnSession(conversationId, deadline);
   } catch {
     console.error("[api/studio/messages] failed", { category: "turn_lock_unavailable" });
     return jsonStatus("unavailable");
   }
-  if (!release) return jsonStatus("conversation_busy");
-
-  let released = false;
-  const releaseOnce = async (): Promise<void> => {
-    if (released) return;
-    released = true;
-    try { await release!(); } catch { /* the turn outcome already decided the response */ }
-  };
+  if (!session) return jsonStatus("conversation_busy");
+  const turnSession = session;
+  let releasing: Promise<void> | undefined;
+  const releaseOnce = (): Promise<void> => releasing ??= turnSession.release().catch(() => {});
+  lifetime.onFinally(releaseOnce);
+  repository = studioRepository(turnSession.executor, turnSession.transaction);
 
   let briefing: Awaited<ReturnType<typeof buildStudioBriefing>>;
   try {
-    briefing = await buildStudioBriefing({ membership, locale, locationId: effectiveLocationId });
+    briefing = await lifetime.work(() => buildStudioBriefing({ membership, locale, locationId: effectiveLocationId }));
   } catch (error) {
     await releaseOnce();
     if (error instanceof AssistantAccessError) return studioError(error.code);
@@ -228,9 +234,12 @@ export async function POST(
   const encoder = new TextEncoder();
   let closed = false;
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
+    start(controller) {
+      const turn = async () => {
+      let terminalSent = false;
       const emit = (event: StudioStreamEvent): void => {
         if (closed) return;
+        if (event.type === "done") terminalSent = true;
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
         } catch {
@@ -238,6 +247,15 @@ export async function POST(
           closed = true;
         }
       };
+      const closeAtDeadline = () => {
+        if (!terminalSent) {
+          emit({ type: "error", code: "unavailable", message: studioErrorMessage(locale, "unavailable"), retryable: true });
+          emit({ type: "done" });
+        }
+        closed = true;
+        try { controller.close(); } catch { /* delivery already closed */ }
+      };
+      deadline.finalization.signal.addEventListener("abort", closeAtDeadline, { once: true });
       try {
         const result = await runStudioTurn({
           membership,
@@ -245,23 +263,30 @@ export async function POST(
           conversationId,
           text,
           locationId: effectiveLocationId,
-          db: studioTurnStore(repository),
+          db: studioTurnStore(repository, deadline),
           briefing,
           evidenceRefs,
           loadEvidence: async (refs) => {
             const missing = refs.filter((ref) => !evidenceCache.has(evidenceKey(ref)));
-            if (missing.length) await loadEvidence(missing);
+            if (missing.length) await lifetime.work(() => loadEvidence(missing));
             return refs.map((ref) => evidenceCache.get(evidenceKey(ref))).filter((context): context is StudioEvidenceContext => Boolean(context));
           },
-          llm: studioTurnLlm(),
+          llm: studioTurnLlm(deadline.work),
+          executionBudget: deadline.work,
+          liveAssistant: input => runLiveAssistant({ ...input,
+            executionBudget: deadline.work,
+            persistence: studioDraftPersistence(turnSession, deadline),
+            deferUsageSettlement: work => lifetime.completeWith(work),
+          }),
           emit,
-          lock: async () => releaseOnce,
+          // The route retains the real session through audit and cleanup.
+          lock: async () => async () => {},
           cost: studioCost,
           model: studioModel(),
         });
 
         if (result.ok || result.persisted) {
-          await recordNeonEvent({
+          await withExecutionBudget(deadline.finalization, () => recordNeonEvent({
             workspaceId: membership.workspaceId,
             locationId: effectiveLocationId,
             actorType: "user",
@@ -278,7 +303,7 @@ export async function POST(
               artifact: result.ok ? Boolean(result.artifact) : false,
               turn: result.turn ?? "chat",
             },
-          });
+          }, turnSession.executor));
         }
 
         if (!result.ok && !result.persisted) {
@@ -291,10 +316,15 @@ export async function POST(
         emit({ type: "error", code: "unavailable", message: studioErrorMessage(locale, "unavailable"), retryable: true });
         emit({ type: "done" });
       } finally {
-        await releaseOnce();
+        // The lifetime drains deferred usage before releasing the real session.
+        deadline.finalization.signal.removeEventListener("abort", closeAtDeadline);
         closed = true;
         try { controller.close(); } catch { /* already closed */ }
       }
+      };
+      const completion = turn();
+      lifetime.completeWith(completion);
+      return completion;
     },
     cancel() {
       // Disconnect stops delivery, not the durable turn. Its finally paths own

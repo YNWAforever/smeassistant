@@ -1,4 +1,5 @@
 import type { Membership } from "@/lib/auth";
+import type { ExecutionBudget } from "@/lib/jobs/execution-budget";
 import { AssistantAccessError } from "@/lib/assistant/errors";
 import { runLiveAssistant, type LiveRunInput } from "@/lib/assistant/live";
 import { fallbackIntentFor } from "@/lib/assistant/templates";
@@ -113,6 +114,8 @@ export interface StudioTurnInput {
   loadEvidence?: (refs: StudioCitationRef[]) => Promise<StudioEvidenceContext[]>;
   llm: StudioTurnLlm;
   liveAssistant?: StudioTurnLiveAssistant;
+  /** Shared route-origin work cutoff; persistence uses the route's reserved lifetime. */
+  executionBudget?: ExecutionBudget;
   emit: StudioTurnEmit;
   /** The route acquires the advisory lock before SSE; the orchestrator releases it in `finally`. */
   lock?: () => Promise<StudioTurnRelease | null>;
@@ -125,6 +128,10 @@ export interface StudioTurnInput {
 }
 
 const HISTORY_MESSAGE_MAX = 600;
+
+function workExpired(input: StudioTurnInput): boolean {
+  return Boolean(input.executionBudget && (input.executionBudget.signal.aborted || input.executionBudget.remainingMs() <= 0));
+}
 
 function budgetCode(decision: Extract<AiBudgetDecision, { allowed: false }>): StudioErrorCode {
   switch (decision.scope) {
@@ -213,6 +220,7 @@ export async function runStudioTurn(input: StudioTurnInput): Promise<StudioTurnR
   }
 
   try {
+    if (workExpired(input)) return { ok: false, code: "unavailable", persisted: false };
     if (input.budget) {
       const decision = await input.budget();
       if (!decision.allowed) return { ok: false, code: budgetCode(decision), persisted: false };
@@ -259,6 +267,7 @@ export async function runStudioTurn(input: StudioTurnInput): Promise<StudioTurnR
     const userParts: StudioMessagePart[] = [{ kind: "text", text }];
     if (input.evidenceRefs?.length) userParts.push({ kind: "citation", refs: input.evidenceRefs });
 
+    if (workExpired(input)) return { ok: false, code: "unavailable", persisted: false };
     let userMessage: StudioMessage;
     try {
       userMessage = (await db.appendMessage({
@@ -303,11 +312,14 @@ export async function runStudioTurn(input: StudioTurnInput): Promise<StudioTurnR
     // failure must not silently lose the conversation title/intent. Retry once
     // before the documented grounded-answer fallback.
     let classifierOutcome: Awaited<ReturnType<StudioTurnLlm["classify"]>> | null = null;
-    try {
-      classifierOutcome = await input.llm.classify(classifierMessages);
-      if (!classifierOutcome.ok) classifierOutcome = await input.llm.classify(classifierMessages);
-    } catch {
-      try { classifierOutcome = await input.llm.classify(classifierMessages); } catch { classifierOutcome = null; }
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      if (workExpired(input)) break;
+      try {
+        classifierOutcome = await input.llm.classify(classifierMessages);
+      } catch {
+        classifierOutcome = null;
+      }
+      if (classifierOutcome?.ok) break;
     }
     if (classifierOutcome?.ok) classification = parseStudioClassification(classifierOutcome.result.text, allowlist);
 
@@ -415,7 +427,9 @@ async function executeAnswer(args: AnswerInput): Promise<StudioTurnResult> {
   });
   let outcome: LLMStreamOutcome;
   try {
-    outcome = await input.llm.answer(messages, (delta) => emitter.sendDelta(delta));
+    outcome = workExpired(input)
+      ? { ok: false, code: "timeout", retryable: false }
+      : await input.llm.answer(messages, (delta) => emitter.sendDelta(delta));
   } catch {
     outcome = { ok: false, code: "network_error", retryable: true };
   }
@@ -509,6 +523,7 @@ function liveContext(args: LiveInput): LiveRunInput["context"] {
 async function executeLive(args: LiveInput): Promise<StudioTurnResult> {
   const { input, emitter, classification, copy, locale } = args;
   const live = input.liveAssistant ?? runLiveAssistant;
+  if (workExpired(input)) return storedFailure(args, "ai_unavailable", copy.errors.ai_unavailable);
   await emitter.send({ type: "status", stage: "drafting" });
 
   try {
@@ -519,6 +534,7 @@ async function executeLive(args: LiveInput): Promise<StudioTurnResult> {
       context: liveContext(args),
       membership: input.membership,
       contextual: true,
+      ...(input.executionBudget ? { executionBudget: input.executionBudget } : {}),
     });
     const parts = liveParts(result, classification, input.briefing.briefing);
     return persistAndEmit(args, {
@@ -558,6 +574,7 @@ async function refusalFallback(args: LiveInput): Promise<StudioTurnResult> {
       context: { workspaceId: input.membership.workspaceId, ...(input.locationId ? { locationId: input.locationId } : {}) },
       membership: input.membership,
       contextual: true,
+      ...(input.executionBudget ? { executionBudget: input.executionBudget } : {}),
     });
     const notice = copy.notices.viewer;
     const content = `${fallback.answer}\n\n${notice}`;
