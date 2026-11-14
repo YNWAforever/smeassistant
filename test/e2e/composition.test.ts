@@ -15,7 +15,7 @@ describe('fixture authentication cannot escape local test composition',()=>{
   if(mode==='production')vi.stubEnv('NODE_ENV','production');else{vi.stubEnv('APP_ORIGIN','https://external.example');state.host='external.example';}
   const url=mode==='production'?'http://localhost:3000':'https://external.example';
   expect((await GET(new Request(`${url}/api/auth/verify?token=forged`),{params:Promise.resolve({path:['verify']})})).status).toBe(503);
-  const gate=await proxy(new NextRequest(`${url}/en/owner/select-workspace`,{headers:{cookie:'sme_local_fixture_session=forged'}}));expect(gate.status).toBe(307);expect(gate.headers.get('location')).toContain('/owner/sign-in');
+  const gate=await proxy(new NextRequest(`${url}/en/owner/select-workspace`,{headers:{cookie:'sme_local_fixture_session=forged'}}));expect(gate.status).toBe(503);expect(gate.headers.get('location')).toBeNull();expect(gate.headers.get('x-middleware-next')).toBeNull();expect(gate.headers.get('set-cookie')).toBeNull();
   await expect(getUser()).rejects.toThrow('fixture_identity_forbidden');
   expect(fetch).not.toHaveBeenCalled();
  });

@@ -15,13 +15,14 @@ import {
 const auth = vi.hoisted(() => ({ allowed: false, fail: false, validate: vi.fn() }));
 vi.mock("@/lib/identity/neon", () => ({ getNeonAuth: () => {
   if (auth.fail) throw new Error("config invalid");
-  return { middleware: () => async (request: NextRequest) => {
+  return { handler: () => ({ GET: async (request: Request) => {
     auth.validate(request);
     const { NextResponse } = await import("next/server");
-    const response = auth.allowed ? NextResponse.next() : NextResponse.redirect(new URL("/auth/sign-in", request.url));
+    const session = auth.allowed ? { user: { id: "fixture", email: "fixture@example.test", emailVerified: true }, session: { userId: "fixture", expiresAt: new Date(Date.now() + 60_000).toISOString() } } : null;
+    const response = NextResponse.json(session);
     response.cookies.set("__Secure-neon-auth.session_token", "rotated");
     return response;
-  } };
+  } }) };
 } }));
 import { proxy } from "@/proxy";
 
@@ -162,7 +163,7 @@ describe("proxy()", () => {
     expect(response.headers.get("location")).toBe(
       "https://app.test/en/owner/sign-in?returnTo=%2Fen%2Fowner%2Fkam-man-house%2Factions%3Fstate%3Dopen",
     );
-    expect(auth.validate).toHaveBeenCalledOnce();
+    expect(auth.validate).not.toHaveBeenCalled();
   });
 
   it("lets a signed-in user through and forwards refreshed auth cookies", async () => {
@@ -179,15 +180,19 @@ describe("proxy()", () => {
     expect(auth.validate).not.toHaveBeenCalled();
   });
 
-  it("treats an auth error as signed out", async () => {
+  it("returns unavailable for an auth configuration error without redirecting", async () => {
     auth.fail = true;
     const response = await proxy(req("/en/owner/onboarding"));
-    expect(response.status).toBe(307);
+    expect(response.status).toBe(503);
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBeNull();
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("set-cookie")).toBeNull();
   });
 
   it("fails closed on protected pages when Auth config is absent, keeping public pages public", async () => {
     auth.fail = true;
-    expect((await proxy(req("/en/owner/select-workspace"))).status).toBe(307);
+    expect((await proxy(req("/en/owner/select-workspace"))).status).toBe(503);
     expect((await proxy(req("/en/scan"))).status).toBe(200);
     expect((await proxy(req("/en/owner/sign-in"))).status).toBe(200);
   });
