@@ -116,7 +116,8 @@ export function StudioMessageThread({
 
   return (
     <div className="studio-thread-region">
-      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{streaming || pending ? stageLabel : ""}</div>
+      {/* A final message clears pending before the stream terminator arrives. */}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{pending ? stageLabel : ""}</div>
       <div ref={thread} onScroll={rememberPosition} tabIndex={-1} className="studio-thread" role="log" aria-live="polite" aria-relevant="additions" aria-label={t.header.title} aria-busy={streaming || undefined}>
         {hasMore && (
           <div className="studio-thread-earlier">

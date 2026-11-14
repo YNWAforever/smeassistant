@@ -71,7 +71,66 @@ test.describe("Conversation Studio", () => {
   test.skip(!STUDIO_ENABLED, "requires CONVERSATION_STUDIO_ENABLED=true in the acceptance app env plus migration 0021");
 
   for (const locale of ["en", "zh-HK", "zh-TW"] as const) {
-    test(`keeps keyboard focus through sheets and streamed completion (${locale}, mobile/tablet/desktop)`, async ({ page, merchant, environment }) => {
+    test(`keeps sharing names and mutation focus usable (${locale}, mobile and desktop)`, async ({ page, merchant, environment }) => {
+      await signIn(page, environment, merchant);
+      const copy = studioText(locale);
+      for (const width of [390, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        const created = await page.request.post("/api/studio/conversations", { data: { workspaceId: merchant.workspaceId, locationId: merchant.locationId } });
+        expect(created.status()).toBe(201);
+        const { conversation } = await created.json();
+        const candidateId = randomUUID();
+        const member = (userId: string, email: string, role: "editor" | "viewer" = "editor") => ({ conversation_id: conversation.id, workspace_id: merchant.workspaceId, user_id: userId, user_email: email, role, added_by: randomUUID(), created_at: new Date().toISOString() });
+        let members = [member(randomUUID(), "first-focus@example.test"), member(randomUUID(), "last-focus@example.test")];
+        const pattern = `**/api/studio/conversations/${conversation.id}/members*`;
+        // Local UI fixtures exercise browser focus; actual sharing authorization
+        // and persistence remain covered by the separate real API acceptance.
+        await page.route(pattern, async route => {
+          const request = route.request();
+          if (request.method() === "DELETE") {
+            const userId = new URL(request.url()).searchParams.get("userId");
+            members = members.filter(item => item.user_id !== userId);
+            await route.fulfill({ json: { removed: true } });
+          } else if (request.method() === "POST") {
+            const added = member(candidateId, "candidate-focus@example.test", "viewer");
+            members = [...members, added];
+            await route.fulfill({ status: 201, json: { member: added } });
+          } else {
+            await route.fulfill({ json: { members, candidates: members.some(item => item.user_id === candidateId) ? [] : [{ userId: candidateId, email: "candidate-focus@example.test", workspaceRole: "manager" }], canManage: true, accessRole: "owner" } });
+          }
+        });
+        try {
+          await page.goto(`/${locale}/owner/${merchant.slug}/conversation?location=primary&chat=${conversation.id}`);
+          await waitForHydration(page);
+          await page.locator(".studio-more-toggle").click();
+          await page.getByRole("button", { name: copy.share.action, exact: true }).click();
+          const dialog = page.getByRole("dialog", { name: copy.share.title });
+          const first = dialog.getByRole("button", { name: `${copy.share.remove}: first-focus@example.test`, exact: true });
+          const last = dialog.getByRole("button", { name: `${copy.share.remove}: last-focus@example.test`, exact: true });
+          await expect(first).toBeVisible();
+          await first.focus(); await page.keyboard.press("Enter");
+          await expect(first).toHaveCount(0);
+          await expect(last).toBeFocused();
+          await page.keyboard.press("Enter");
+          await expect(last).toHaveCount(0);
+          const candidate = dialog.getByRole("combobox", { name: copy.share.candidates });
+          await expect(candidate).toBeFocused();
+          await candidate.selectOption(candidateId);
+          const permission = dialog.getByRole("combobox", { name: copy.share.permission });
+          await permission.selectOption("viewer");
+          await expect(permission).toHaveAccessibleName(copy.share.permission);
+          await dialog.getByRole("button", { name: copy.share.add, exact: true }).focus();
+          await page.keyboard.press("Enter");
+          await expect(candidate).toHaveCount(0);
+          await expect(dialog.getByRole("button", { name: copy.share.close })).toBeFocused();
+          await expect(dialog.getByRole("button", { name: `${copy.share.remove}: candidate-focus@example.test` })).toBeVisible();
+        } finally {
+          await page.unroute(pattern);
+        }
+      }
+    });
+
+    test(`keeps keyboard focus through sheets and streamed completion (${locale}, mobile/tablet/desktop)`,  async ({ page, merchant, environment }) => {
       await signIn(page, environment, merchant);
       const copy = studioText(locale);
       const errors: string[] = [];
@@ -158,7 +217,7 @@ test.describe("Conversation Studio", () => {
           await page.keyboard.press("Enter");
           const share = page.getByRole("dialog", { name: copy.share.title });
           const close = share.getByRole("button", { name: copy.share.close });
-          const role = share.getByRole("combobox", { name: copy.share.roleEditor });
+          const role = share.getByRole("combobox", { name: copy.share.permission });
           await expect(close).toBeFocused();
           await expect(role).toBeVisible();
           await page.keyboard.press("Tab");

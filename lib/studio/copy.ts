@@ -142,6 +142,7 @@ export type StudioCopy = {
     hint: string
     members: string
     candidates: string
+    permission: string
     roleEditor: string
     roleViewer: string
     add: string
@@ -180,6 +181,7 @@ const en: StudioCopy = {
     hint: "Only the creator can add or remove members.",
     members: "Members",
     candidates: "Add a teammate",
+    permission: "Conversation permission",
     roleEditor: "Can continue",
     roleViewer: "Can view",
     add: "Share",
@@ -357,6 +359,7 @@ const zhHK: StudioCopy = {
     hint: "只有建立者可以加入或移除成員。",
     members: "成員",
     candidates: "加入團隊成員",
+    permission: "對話權限",
     roleEditor: "可以繼續對話",
     roleViewer: "只可查看",
     add: "分享",
@@ -534,6 +537,7 @@ const zhTW: StudioCopy = {
     hint: "只有建立者可以加入或移除成員。",
     members: "成員",
     candidates: "加入團隊成員",
+    permission: "對話權限",
     roleEditor: "可以繼續對話",
     roleViewer: "只可查看",
     add: "分享",

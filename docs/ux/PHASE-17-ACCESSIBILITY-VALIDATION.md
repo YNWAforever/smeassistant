@@ -2,6 +2,8 @@
 
 Status: preparation only. No NVDA, VoiceOver or real-device results are claimed. Automated keyboard and responsive checks from prior releases do not substitute for this phase.
 
+The [automated accessibility follow-up](PHASE-17-AUTOMATED-ACCESSIBILITY.md) records reproduced keyboard-focus, accessible-name, dictation ownership and progress-text defects. Those checks do not change the manual status or acceptance criteria below.
+
 ## Test environments
 
 Record exact OS, browser, screen-reader version, device, viewport/zoom, input mode, locale, deployed commit and test date for each run. Primary combinations are Windows with NVDA and a supported browser, macOS/iOS with VoiceOver and Safari, and a real touch device with its software keyboard. The current agent tools cannot establish these manual observations; an equipped tester must execute them.

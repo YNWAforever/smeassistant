@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react"
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("next/navigation", () => ({
@@ -659,6 +658,65 @@ describe("StudioView interrupted-stream navigation", () => {
     expect(screen.getByText("Second discussion remains selected.")).toBeInTheDocument()
     expect(screen.queryByText("Late first discussion answer.")).not.toBeInTheDocument()
     expect(new URL(window.location.href).searchParams.get("chat")).toBe(conversationB.id)
+  })
+})
+
+describe("StudioView dictation context ownership", () => {
+  it.each(["new", "location", "select"] as const)("cancels dictation on %s without accepting a late transcript", async (navigation) => {
+    class Recognition {
+      static instances: Recognition[] = []
+      lang = ""; continuous = false; interimResults = false
+      onresult: ((event: import("@/lib/studio/speech").StudioSpeechEvent) => void) | null = null
+      onerror: ((event: import("@/lib/studio/speech").StudioSpeechErrorEvent) => void) | null = null
+      onend: (() => void) | null = null
+      start = vi.fn(); stop = vi.fn(); abort = vi.fn()
+      constructor() { Recognition.instances.push(this) }
+    }
+    vi.stubGlobal("SpeechRecognition", Recognition)
+    let finishRead!: (response: Response) => void
+    installFetch((url) => url.includes(conversationB.id)
+      ? new Promise<Response>(resolve => { finishRead = resolve })
+      : jsonResponse({ conversations: [] }))
+    render(<StudioView {...baseProps({ conversations: [conversationA, conversationB], activeConversationId: navigation === "new" ? null : conversationA.id })} />)
+    fireEvent.click(await screen.findByRole("button", { name: t.composer.voiceStart }))
+    const recognition = Recognition.instances[0]
+    if (navigation === "new") fireEvent.click(screen.getAllByRole("button", { name: t.rail.newChat })[0])
+    if (navigation === "location") fireEvent.change(screen.getByRole("combobox", { name: t.context.location }), { target: { value: "yik-yam" } })
+    if (navigation === "select") fireEvent.click(screen.getByRole("button", { name: conversationB.title }))
+    expect(recognition.abort).toHaveBeenCalledOnce()
+    const emit = () => recognition.onresult?.({ resultIndex: 0, results: { length: 1, 0: { isFinal: true, 0: { transcript: "Wrong context" } } } })
+    act(emit)
+    expect(composer()).toHaveValue("")
+    if (navigation === "select") {
+      expect(composer()).toBeDisabled()
+      await act(async () => finishRead(jsonResponse({ conversation: conversationB, messages: [], hasMore: false })))
+      act(emit)
+      expect(composer()).toBeEnabled()
+      expect(composer()).toHaveValue("")
+    }
+    expect(screen.getByRole("button", { name: t.composer.voiceStart })).toHaveAttribute("aria-pressed", "false")
+  })
+})
+
+describe("StudioView terminal progress", () => {
+  it.each(["en", "zh-HK", "zh-TW"] as const)("does not restart reading after the final message while done is held (%s)", async (locale) => {
+    const copy = studioText(locale)
+    const stream = controlledSse()
+    installFetch(() => stream.response)
+    render(<StudioView {...baseProps({ locale, conversations: [conversationA], activeConversationId: conversationA.id })} />)
+    fireEvent.change(screen.getByLabelText(copy.composer.label), { target: { value: "A question" } })
+    fireEvent.click(screen.getByRole("button", { name: copy.composer.send }))
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(copy.status.reading))
+    await act(async () => stream.push({ type: "status", stage: "finishing" }))
+    await act(async () => stream.push({ type: "message", message: assistantMessage(2, "Final reply"), conversation: conversationA }))
+    expect(screen.getByText("Final reply")).toBeInTheDocument()
+    expect(screen.getByRole("status")).toBeEmptyDOMElement()
+    // Final receipt is not terminal stream success: keep Stop/recovery semantics.
+    expect(screen.getByRole("log")).toHaveAttribute("aria-busy", "true")
+    expect(screen.getByRole("button", { name: copy.composer.stop })).toBeInTheDocument()
+    await act(async () => stream.push({ type: "done" }))
+    await waitFor(() => expect(screen.getByRole("log")).not.toHaveAttribute("aria-busy"))
+    expect(screen.getByRole("button", { name: copy.composer.send })).toBeInTheDocument()
   })
 })
 

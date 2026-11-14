@@ -25,6 +25,7 @@ The redesign of the SME scanner workspace as **Kinnso OS** (decided 2026-10-19).
 | 15 | Shared Studio turn deadline and durable finalization | [PHASE-15-STUDIO-DEADLINE.md](PHASE-15-STUDIO-DEADLINE.md) |
 | 16 | Session reliability | [PHASE-16-SESSION-RELIABILITY.md](PHASE-16-SESSION-RELIABILITY.md) |
 | 17 | Manual accessibility validation — planned, not tested | [PHASE-17-ACCESSIBILITY-VALIDATION.md](PHASE-17-ACCESSIBILITY-VALIDATION.md) |
+| 17A | Automated sharing focus, dictation ownership and progress text | [PHASE-17-AUTOMATED-ACCESSIBILITY.md](PHASE-17-AUTOMATED-ACCESSIBILITY.md) |
 | 18 | Controlled streaming resilience | [PHASE-18-STREAMING-RESILIENCE-PLAN.md](PHASE-18-STREAMING-RESILIENCE-PLAN.md) |
 
 [CHANGELOG.md](CHANGELOG.md) summarises every phase in plain language.
