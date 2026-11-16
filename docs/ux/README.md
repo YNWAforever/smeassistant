@@ -27,6 +27,7 @@ The redesign of the SME scanner workspace as **Kinnso OS** (decided 2026-10-19).
 | 17 | Manual accessibility validation — planned, not tested | [PHASE-17-ACCESSIBILITY-VALIDATION.md](PHASE-17-ACCESSIBILITY-VALIDATION.md) |
 | 17A | Automated sharing focus, dictation ownership and progress text | [PHASE-17-AUTOMATED-ACCESSIBILITY.md](PHASE-17-AUTOMATED-ACCESSIBILITY.md) |
 | 18 | Controlled streaming resilience | [PHASE-18-STREAMING-RESILIENCE-PLAN.md](PHASE-18-STREAMING-RESILIENCE-PLAN.md) |
+| 19 | Streaming load characterisation and operational visibility — planned, not started | [PHASE-19-LOAD-VISIBILITY-PLAN.md](PHASE-19-LOAD-VISIBILITY-PLAN.md) |
 
 [CHANGELOG.md](CHANGELOG.md) summarises every phase in plain language.
 
