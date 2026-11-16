@@ -32,8 +32,9 @@ export default defineConfig({
     // while *.integration.test.ts files use the dedicated SQL configuration.
     include: ["components/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}", "lib/**/*.test.{ts,tsx}", "app/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}", "scripts/**/*.test.{ts,tsx}"],
     // Playwright owns e2e/; packages/* run their own vitest via `pnpm -r test`;
-    // *.integration.test.ts needs Docker and belongs to vitest.integration.config.ts.
-    exclude: [...configDefaults.exclude, "e2e/**", ".next/**", "packages/**", "docs/**", "**/*.integration.test.ts"],
+    // *.integration.test.ts needs Docker and belongs to vitest.integration.config.ts;
+    // test/load is the opt-in Phase 19 load harness (vitest.load.config.ts).
+    exclude: [...configDefaults.exclude, "e2e/**", ".next/**", "packages/**", "docs/**", "test/load/**", "**/*.integration.test.ts"],
     setupFiles: ["tests/setup.ts"],
   },
 });

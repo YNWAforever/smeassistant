@@ -1,6 +1,6 @@
 # Phase 19 — Streaming load characterisation and operational visibility
 
-Status: **plan approved; P19.0 inventory started 2026-11-16.** No load run, capacity number or diagnostics change is claimed by this document. It authorises no production load, no paid provider call, no schema change and no hosted setting change on its own.
+Status: **plan approved; P19.0 inventory done; P19.1 harness built and run twice locally (2026-11-16), release pending.** P19.2 is not started. No capacity number is claimed by this document. It authorises no production load, no paid provider call, no schema change and no hosted setting change on its own.
 
 ## Why this phase
 
@@ -63,11 +63,11 @@ Success is a falsifiable statement such as "on machine M with fixture provider P
 
 ### P19.1 — Deterministic load harness (opt-in)
 
-- New harness (location to be decided in the PR: `test/load/` or `scripts/load/`) driven by one command, closed by an env flag, **not included in default `pnpm test` or CI**.
-- Reuse the owned PostgreSQL fixture and the Phase 18 seams; local identity/briefing/provider fixtures; fresh single-connection pools per session.
-- Bounded concurrency ladder (e.g. 1 → 2 → 4 → 8; stop when the machine, not the product, becomes the bottleneck) with fixed iteration counts, a warmup run and barrier/timer control. No arbitrary sleeps for ordering.
-- Emit a JSON artifact with per-level counts, latency samples and invariant outcomes; fail the run on any invariant violation rather than on latency numbers.
-- Exit: harness runs from a clean checkout on this machine; a second run gives the same invariant outcomes (latency may vary and is reported, not asserted).
+- Harness: `test/load/studio-turn-load.test.ts`, run by `vitest.load.config.ts` via `pnpm load:studio`. It is closed by a dedicated config rather than an env flag, because `pnpm test`/CI use `vitest.config.ts`, which now excludes `test/load/**` (verified: the default suite reports no test files there). This is the recorded deviation from the "env flag" wording.
+- Reuses the owned PostgreSQL fixture and the Phase 18 seams; typed local identity/briefing/provider fixtures; the real messages POST, request lifetime, orchestrator, turn session and persistence. The rate limiter is stubbed allowed so the run isolates the turn path; its own policy is covered separately.
+- Bounded ladder `1 → 2 → 4 → 8` with a one-turn warm-up, one same-conversation contention schedule (8 contenders), fixed fixture delay and no ordering sleeps. It writes `work/phase-19/load/studio-load-*.json` (gitignored) and fails on any invariant violation; latency is recorded, never asserted.
+- Local result (2026-11-16): two runs produced identical invariants — all 15 ladder turns admitted, exactly `classify,answer` each, correct rows/audits per conversation, and 1 admitted / 7 `conversation_busy` / 0 refused dispatches in contention. Recorded first-chunk p50 rose 206 → 379 ms and completion p50 264 → 462 ms from concurrency 1 to 8 on a 12-CPU/32 GB Windows machine with the 15 ms fixture delay. These are local fixture observations, not service-level objectives.
+- Exit: met — the harness runs from a clean checkout on this machine and the second run gave the same invariant outcomes.
 
 ### P19.2 — Characterisation and honest report
 
