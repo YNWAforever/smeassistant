@@ -53,8 +53,8 @@ No conversation/workspace id, message text, answer, evidence label or client add
 
 ## CI runtime and P19.4 decision
 
-- Four successful `verify` jobs in this phase took **34.7, 36.5, 36.6 and 38.0 minutes**; later runs with slow first steps reached the previous 45-minute limit with merchant acceptance still running (observed end-to-end 40–47 minutes).
-- Five attempts were cancelled by that limit with **no test failure**, each passing on a plain rerun of the same commit. This is recorded as hosted-runner flakiness plus an undersized job limit, not a reason to weaken a gate.
+- Four successful `verify` jobs in this phase took **34.7, 36.5, 36.6 and 38.0 minutes**; later runs with slow first steps ran 40–59 minutes end-to-end (the final-main `verify` for this handoff PR took about 59 minutes), and some reached the previous 45-minute limit with merchant acceptance still running.
+- Four attempts were cancelled by that limit with **no test failure**: three passed on a plain rerun of the same commit, and the fourth (this handoff PR) passed after the timeout headroom change. This is recorded as hosted-runner flakiness plus an undersized job limit, not a reason to weaken a gate.
 - **P19.4 decision: add no new CI case; raise `verify` `timeout-minutes` from 45 to 60 only.** The load ladder stays opt-in because it needs a Docker PostgreSQL fixture and the heavy turn path, and the composition gaps it checks are already covered by cheaper existing gates: `turn-session`/`turn-lock`/orchestrator/route unit tests, `request-lifetime`/`deadline`, and the two Phase 18 resilience integration cases. P19.2 found no product invariant failure to justify a new scheduled guardrail. The timeout change adds headroom for the observed runtime; tests, scoping and failure conditions are unchanged. Existing gates, browser cases and JS budgets are unchanged.
 
 ## Limits — what this phase does not show

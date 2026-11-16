@@ -92,7 +92,7 @@ Success is a falsifiable statement such as "on machine M with fixture provider P
 ### P19.4 — Guardrails and CI
 
 - **Decision: add no new CI case.** The ladder needs a Docker PostgreSQL fixture and the heavy turn path, so it is not fast or deterministic on hosted CI. The composition gaps it checks are already covered by cheaper gates: `turn-session`/`turn-lock`/orchestrator/route unit tests, `request-lifetime`/`deadline`, and the two Phase 18 resilience integration cases. P19.2 found no product invariant failure (only a harness defect, fixed), so there is no evidence for a new scheduled guardrail.
-- Recorded CI baseline: four successful `verify` jobs this phase took 34.7, 36.5, 36.6 and 38.0 minutes; later runs reached the previous 45-minute job limit with merchant acceptance still running (observed end-to-end 40–47 minutes). Five attempts were cancelled by that limit with no test failure; each passed on a plain rerun of the same commit, so no test or scope was weakened. The only CI change is raising the `verify` `timeout-minutes` from 45 to 60 for headroom.
+- Recorded CI baseline: four successful `verify` jobs this phase took 34.7, 36.5, 36.6 and 38.0 minutes; later runs with slow first steps ran 40–59 minutes end-to-end and some reached the previous 45-minute job limit with merchant acceptance still running. Four attempts were cancelled by that limit with no test failure; three passed on a plain rerun of the same commit and the fourth passed after the timeout headroom change, so no test or scope was weakened. The only CI change is raising the `verify` `timeout-minutes` from 45 to 60 for headroom.
 - Existing browser cases, JS budgets and integration suite are unchanged.
 - Exit: met — CI runtime recorded; no existing gate weakened or skipped.
 
