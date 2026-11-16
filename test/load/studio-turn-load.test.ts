@@ -106,9 +106,27 @@ import { POST } from "@/app/api/studio/conversations/[conversationId]/messages/r
 import { studioRepository } from "@/lib/repositories/studio";
 import { withTransaction } from "@/lib/db/transaction";
 
-const LEVELS = [1, 2, 4, 8] as const;
 const CONTENDERS = 8;
 const PARTIAL = "Fixture partial. ";
+/** Statuses the turn path uses for a deliberate pre-stream refusal (not corruption). */
+const REFUSAL_STATUSES = new Set([409, 429, 503]);
+const MAX_LEVEL = 64;
+
+/** `LOAD_LEVELS=1,2,4,8,16` overrides the ladder; `LOAD_REPEATS=1..3` repeats each level. */
+function parseLevels(raw: string): number[] {
+  const levels = raw.split(",").map(value => Number(value.trim()));
+  if (!levels.length || levels.length > 8) throw new Error("invalid_load_levels");
+  if (levels.some(value => !Number.isInteger(value) || value < 1 || value > MAX_LEVEL)) throw new Error("invalid_load_levels");
+  if (new Set(levels).size !== levels.length) throw new Error("duplicate_load_level");
+  return levels;
+}
+const LEVELS = parseLevels(process.env.LOAD_LEVELS ?? "1,2,4,8");
+const REPEATS = (() => {
+  const value = Number(process.env.LOAD_REPEATS ?? "1");
+  if (!Number.isInteger(value) || value < 1 || value > 3) throw new Error("invalid_load_repeats");
+  return value;
+})();
+const STOP_ON_FAILURE = (process.env.LOAD_STOP_ON_FAILURE ?? "1") !== "0";
 
 type InvariantFailure = { phase: string; detail: string };
 type Latency = { firstChunkMs: number; completionMs: number };
@@ -137,6 +155,8 @@ describe("Studio turn load harness (opt-in, owned fixture)", () => {
   const failures: InvariantFailure[] = [];
   const ladder: Array<Record<string, unknown>> = [];
   let contention: Record<string, unknown> = {};
+  let boundary: { firstNonAdmittedLevel: number | null; reason: string | null; capReached: boolean } = { firstNonAdmittedLevel: null, reason: null, capReached: false };
+  let maxConnections: number | null = null;
   let reportPath = "";
   let startedAt = "";
 
@@ -148,6 +168,7 @@ describe("Studio turn load harness (opt-in, owned fixture)", () => {
     startedAt = new Date().toISOString();
     fixture = await startNeonDatabaseFixture("test");
     owner = new Pool({ connectionString: fixture.databaseUrl });
+    maxConnections = Number((await owner.query("SHOW max_connections")).rows[0].max_connections);
     await owner.query("CREATE ROLE sme_app_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS");
     await applyMigrations(owner);
     await owner.query("CREATE ROLE studio_load LOGIN PASSWORD 'fixture' IN ROLE sme_app_runtime");
@@ -201,20 +222,23 @@ describe("Studio turn load harness (opt-in, owned fixture)", () => {
     fs.mkdirSync(directory, { recursive: true });
     reportPath = path.join(directory, `studio-load-${startedAt.replaceAll(":", "-")}.json`);
     const report = {
-      harness: "P19.1 Studio turn load harness",
+      harness: "Phase 19 Studio turn load harness",
       startedAt,
       finishedAt: new Date().toISOString(),
       claim: "Environment-scoped fixture record only. Not production capacity, throughput or latency evidence.",
+      config: { levels: LEVELS, repeats: REPEATS, stopOnFailure: STOP_ON_FAILURE, maxLevel: MAX_LEVEL, contenders: CONTENDERS },
       environment: {
         node: process.version,
         platform: `${process.platform} ${process.arch}`,
         cpus: os.cpus().length,
         totalMemoryGb: Math.round(os.totalmem() / 1024 ** 3),
         postgres: "owned postgres:16 fixture on loopback",
+        postgresMaxConnections: maxConnections,
         provider: "typed local LLM fixture (remote transport replaced)",
         auth: "typed local membership fixture (no HTTP Auth)",
         answerDelayMs: state.answerDelayMs,
       },
+      boundary,
       ladder,
       contention,
       invariantsPassed: failures.length === 0,
@@ -269,7 +293,14 @@ describe("Studio turn load harness (opt-in, owned fixture)", () => {
     const delivery = status === 200
       ? await readStream(response, start)
       : { text: "", latency: { firstChunkMs: performance.now() - start, completionMs: performance.now() - start } };
-    return { conversationId, script: value, status, delivery };
+    const refusalBody = status === 200 ? undefined : (await response.text()).replace(/\s+/g, " ").slice(0, 200);
+    return { conversationId, script: value, status, delivery, refusalBody };
+  }
+
+  async function conversationWrites(conversationId: string) {
+    const messages = (await runtime.query("SELECT count(*)::int AS n FROM studio_messages WHERE conversation_id=$1", [conversationId])).rows[0].n;
+    const audits = (await runtime.query("SELECT count(*)::int AS n FROM audit_events WHERE event='assistant.run' AND entity_id=$1", [conversationId])).rows[0].n;
+    return { messages, audits };
   }
 
   async function assertConversation(phase: string, conversationId: string, expected: Script[]) {
@@ -294,19 +325,57 @@ describe("Studio turn load harness (opt-in, owned fixture)", () => {
     await assertConversation("warmup", warmup.conversationId, [warmup.script]);
     await Promise.allSettled(state.retained); state.retained.length = 0;
 
+    let firstNonAdmitted: number | null = null;
+    let boundaryReason: string | null = null;
     for (const concurrency of LEVELS) {
-      const turns = await Promise.all(Array.from({ length: concurrency }, (_, index) => runTurn(`ladder-${concurrency}-${index}`)));
-      const samples: Latency[] = [];
-      for (const [index, turn] of turns.entries()) {
-        check(turn.status === 200, `level ${concurrency}`, `turn ${index} status ${turn.status}`);
-        check(turn.delivery.text.includes(turn.script.text.slice(PARTIAL.length)), `level ${concurrency}`, `turn ${index} answer missing`);
-        check(turn.script.calls.join(",") === "classify,answer", `level ${concurrency}`, `turn ${index} dispatches ${turn.script.calls.join(",")}`);
-        samples.push(turn.delivery.latency);
+      const levelSamples: Latency[] = [];
+      const refusals: Array<{ repeat: number; index: number; status: number; body?: string }> = [];
+      const levelFailures: string[] = [];
+      const failuresBeforeLevel = failures.length;
+      let admitted = 0, refused = 0;
+      for (let repeat = 0; repeat < REPEATS; repeat += 1) {
+        const turns = await Promise.all(Array.from({ length: concurrency }, (_, index) => runTurn(`ladder-${concurrency}-${repeat}-${String(index).padStart(3, "0")}`)));
+        for (const [index, turn] of turns.entries()) {
+          if (turn.status === 200) {
+            admitted += 1;
+            if (!turn.delivery.text.includes(turn.script.text.slice(PARTIAL.length))) levelFailures.push(`turn ${index} answer missing`);
+            if (turn.script.calls.join(",") !== "classify,answer") levelFailures.push(`turn ${index} dispatches ${turn.script.calls.join(",")}`);
+            levelSamples.push(turn.delivery.latency);
+          } else if (REFUSAL_STATUSES.has(turn.status)) {
+            refused += 1;
+            refusals.push({ repeat, index, status: turn.status, body: turn.refusalBody });
+            // A deliberate pre-stream refusal must leave no message or audit row.
+            const writes = await conversationWrites(turn.conversationId);
+            if (writes.messages !== 0 || writes.audits !== 0) levelFailures.push(`refused turn ${index} wrote messages=${writes.messages} audits=${writes.audits}`);
+            if (turn.script.calls.length !== 0) levelFailures.push(`refused turn ${index} dispatched ${turn.script.calls.join(",")}`);
+          } else {
+            levelFailures.push(`turn ${index} unexpected status ${turn.status} ${turn.refusalBody ?? ""}`.trim());
+          }
+        }
+        await Promise.allSettled(state.retained).then(results => {
+          const rejected = results.filter(result => result.status === "rejected").length;
+          if (rejected) levelFailures.push(`repeat ${repeat} retained finalization rejected ${rejected}`);
+        }); state.retained.length = 0;
+        for (const [index, turn] of turns.entries()) {
+          if (turn.status === 200) await assertConversation(`level ${concurrency} repeat ${repeat} turn ${index}`, turn.conversationId, [turn.script]);
+        }
+        if (levelFailures.length && STOP_ON_FAILURE) break;
       }
-      await Promise.allSettled(state.retained); state.retained.length = 0;
-      for (const [index, turn] of turns.entries()) await assertConversation(`level ${concurrency} turn ${index}`, turn.conversationId, [turn.script]);
-      ladder.push({ concurrency, admitted: turns.filter(turn => turn.status === 200).length, refused: turns.filter(turn => turn.status !== 200).length, ...latencySummary(samples) });
+      for (const detail of levelFailures) check(false, `level ${concurrency}`, detail);
+      const refusalCounts: Record<string, number> = {};
+      for (const refusal of refusals) refusalCounts[String(refusal.status)] = (refusalCounts[String(refusal.status)] ?? 0) + 1;
+      let dbConnectionsAfter: number | null = null;
+      try {
+        dbConnectionsAfter = Number((await runtime.query("SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = current_database()")).rows[0].n);
+      } catch { dbConnectionsAfter = null; }
+      ladder.push({ concurrency, repeats: REPEATS, admitted, refused, refusalStatuses: [...new Set(refusals.map(refusal => refusal.status))], refusalCounts, dbConnectionsAfter, refusalSamples: refusals.slice(0, 3), ...latencySummary(levelSamples), failures: levelFailures });
+      if (firstNonAdmitted === null && (refused > 0 || failures.length > failuresBeforeLevel)) {
+        firstNonAdmitted = concurrency;
+        boundaryReason = refused > 0 ? `pre-stream refusal ${[...new Set(refusals.map(refusal => refusal.status))].join(",")}` : "invariant failure";
+      }
+      if (STOP_ON_FAILURE && (refused > 0 || failures.length > failuresBeforeLevel)) break;
     }
+    boundary = { firstNonAdmittedLevel: firstNonAdmitted, reason: boundaryReason, capReached: firstNonAdmitted === null && LEVELS.at(-1) === MAX_LEVEL };
 
     // Same-conversation contention: exactly one turn may own the session; every
     // contender is refused before dispatch, and the lock is reusable afterwards.
@@ -357,7 +426,7 @@ describe("Studio turn load harness (opt-in, owned fixture)", () => {
     contention = { contenders: CONTENDERS, admitted: 1, refused: refused.filter(response => response.status === 409).length, dispatchesForAdmittedTurn: heldScript.calls.length, refusedDispatches: contenderKeys.reduce((sum, key) => sum + state.scripts.get(key)!.calls.length, 0), admittedCompletionMs: Math.round(admittedCompletionMs) };
 
     writeReport();
-    console.log(JSON.stringify({ report: reportPath, invariantsPassed: failures.length === 0, failures, ladder: ladder.map(level => ({ concurrency: level.concurrency, admitted: level.admitted, refused: level.refused })) }));
+    console.log(JSON.stringify({ report: reportPath, config: { levels: LEVELS, repeats: REPEATS }, boundary, invariantsPassed: failures.length === 0, failures, ladder: ladder.map(level => ({ concurrency: level.concurrency, admitted: level.admitted, refused: level.refused })) }));
     expect(failures).toEqual([]);
   });
 });
