@@ -348,6 +348,25 @@ describe("pre-stream failures are JSON with the assistant route's status mapping
     expect(mocks.runStudioTurn).not.toHaveBeenCalled();
   });
 
+  it("logs a content-free contention refusal without identifiers or text", async () => {
+    const info = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      mocks.acquireStudioTurnLock.mockResolvedValue(null);
+      const res = await send(body({ text: SECRET_TEXT }));
+      expect(res.status).toBe(409);
+      const line = info.mock.calls.find(call => call[0] === "[api/studio/messages] refused");
+      expect(line).toBeTruthy();
+      expect(line?.[1]).toMatchObject({ category: "conversation_busy" });
+      expect(typeof (line?.[1] as Record<string, unknown>).waitedMs).toBe("number");
+      const serialized = JSON.stringify(line);
+      expect(serialized).not.toContain(SECRET_TEXT);
+      expect(serialized).not.toContain(CONVERSATION_ID);
+      expect(serialized).not.toContain(WORKSPACE_ID);
+    } finally {
+      info.mockRestore();
+    }
+  });
+
   it("returns 503 when the lock or the briefing cannot be read, releasing nothing twice", async () => {
     mocks.acquireStudioTurnLock.mockRejectedValue(new Error("pool exhausted"));
     const noLock = await send(body());
@@ -373,6 +392,47 @@ describe("pre-stream failures are JSON with the assistant route's status mapping
 });
 
 describe("the SSE turn", () => {
+  it("logs a content-free turn signal with timings and no identifiers", async () => {
+    const info = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      await frames(await send(body({ text: SECRET_TEXT })));
+      const line = info.mock.calls.find(call => call[0] === "[api/studio/messages] turn");
+      expect(line).toBeTruthy();
+      const signal = line?.[1] as Record<string, unknown>;
+      expect(signal).toMatchObject({ outcome: "answered", disconnected: false });
+      expect(typeof signal.firstEventMs).toBe("number");
+      expect(typeof signal.completionMs).toBe("number");
+      const serialized = JSON.stringify(line);
+      expect(serialized).not.toContain(SECRET_TEXT);
+      expect(serialized).not.toContain(CONVERSATION_ID);
+      expect(serialized).not.toContain(WORKSPACE_ID);
+    } finally {
+      info.mockRestore();
+    }
+  });
+
+  it("marks a cancelled stream as disconnected while the durable turn still completes", async () => {
+    const info = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      let release: () => void = () => {};
+      const gate = new Promise<void>((resolve) => { release = resolve; });
+      mocks.runStudioTurn.mockImplementation(async (input: { emit: (event: StudioStreamEvent) => Promise<void> | void }) => {
+        await gate;
+        await input.emit({ type: "done" });
+        return { ok: true, persisted: true };
+      });
+      const res = await send(body());
+      await res.body!.cancel();
+      release();
+      await Promise.all(retained.splice(0));
+      const line = info.mock.calls.find(call => call[0] === "[api/studio/messages] turn");
+      expect(line).toBeTruthy();
+      expect(line?.[1]).toMatchObject({ outcome: "answered", disconnected: true });
+    } finally {
+      info.mockRestore();
+    }
+  });
+
   it("sends text/event-stream headers and the documented frame order", async () => {
     const res = await send(body());
     expect(res.status).toBe(200);
