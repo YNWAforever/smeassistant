@@ -1,6 +1,6 @@
 # Phase 19 — Streaming load characterisation and operational visibility
 
-Status: **plan approved; P19.0 inventory done; P19.1 harness released (PR #186); P19.2 characterisation done locally (2026-11-16), release pending; P19.3 not started.** No capacity number is claimed by this document. It authorises no production load, no paid provider call, no schema change and no hosted setting change on its own.
+Status: **plan approved; P19.0 inventory done; P19.1 harness released (PR #186); P19.2 characterisation released (PR #187); P19.3 runtime turn signals done locally (2026-11-16), release pending; P19.4 decision drafted, not released.** No capacity number is claimed by this document. It authorises no production load, no paid provider call, no schema change and no hosted setting change on its own.
 
 ## Why this phase
 
@@ -83,10 +83,11 @@ Success is a falsifiable statement such as "on machine M with fixture provider P
 
 ### P19.3 — Operational visibility from evidence
 
-- Add only the diagnostics P19.2 shows are missing and needed, content-free: e.g. contention/refusal counts by category, first-delta latency samples, disconnect/finalization outcomes, pending attempts.
-- Prefer existing audit events/logs; if persistence is approved, ship an additive migration with the §1.3.7 rules and separate review.
-- Extend the read-only usage report only for data that exists and is useful; keep message text and business content out of every signal.
-- Exit: tests and [studio usage docs](../operations/studio-usage.md) updated for any new field; no message content in logs or reports.
+- P19.2 showed four gaps: contested 409 refusals, first-stream-event latency, disconnect/deadline outcomes and pre-stream failure duration had no signal; only the `turn_lock_unavailable` failure category was logged.
+- Implemented the minimum, content-free diagnostics in the messages route: a `refused` line (`category`, `waitedMs`) when a contender loses the session race, and one `turn` line per admitted turn (`outcome`, `firstEventMs`, `completionMs`, `disconnected`, optional enumerated `code`). No conversation/workspace id, text, answer, evidence label or client address is logged.
+- No persistence change. Decision 3's default applies: the proven gaps are runtime observations, not persisted rows, so the read-only usage report is unchanged and no additive migration was needed. `failedTurns`, `unknownCostMessages` and adjacency latency remain the persisted view; `firstEventMs` is stream start, deliberately distinct from adjacency latency.
+- Thresholds remain owner-derived; P19.2 gives local fixture observations, not a production SLO, so no alert threshold is set in code or docs.
+- Exit: met — route tests cover the answered `turn` line, the contended `refused` line and `disconnected: true` after a cancelled stream, and assert that no secret text or identifiers appear. [studio usage docs](../operations/studio-usage.md) documents the fields and their limits.
 
 ### P19.4 — Guardrails and CI
 

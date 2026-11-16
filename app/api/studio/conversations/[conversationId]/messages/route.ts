@@ -70,6 +70,8 @@ export function POST(
 
 async function handlePost(request: Request, params: Promise<{ conversationId: string }>, lifetime: StudioRequestLifetime): Promise<Response> {
   const { deadline } = lifetime;
+  // Timings are measured from POST entry so the signals include preflight work.
+  const startedAt = performance.now();
   if (!conversationStudioEnabled()) return studioDisabledResponse();
 
   const { conversationId: rawId } = await lifetime.work(() => params);
@@ -214,7 +216,12 @@ async function handlePost(request: Request, params: Promise<{ conversationId: st
     console.error("[api/studio/messages] failed", { category: "turn_lock_unavailable" });
     return jsonStatus("unavailable");
   }
-  if (!session) return jsonStatus("conversation_busy");
+  if (!session) {
+    // Content-free contention signal: the winner keeps the turn; this contender
+    // is refused before any provider dispatch or write.
+    console.log("[api/studio/messages] refused", { category: "conversation_busy", waitedMs: Math.round(performance.now() - startedAt) });
+    return jsonStatus("conversation_busy");
+  }
   const turnSession = session;
   let releasing: Promise<void> | undefined;
   const releaseOnce = (): Promise<void> => releasing ??= turnSession.release().catch(() => {});
@@ -233,17 +240,23 @@ async function handlePost(request: Request, params: Promise<{ conversationId: st
 
   const encoder = new TextEncoder();
   let closed = false;
+  let clientGone = false;
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       const turn = async () => {
       let terminalSent = false;
+      let firstEventMs: number | null = null;
+      let outcome: "answered" | "persisted" | "failed" = "failed";
+      let failureCode: StudioErrorCode | undefined;
       const emit = (event: StudioStreamEvent): void => {
         if (closed) return;
         if (event.type === "done") terminalSent = true;
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+          firstEventMs ??= performance.now() - startedAt;
         } catch {
           // The client went away mid-turn; keep the turn durable and close quietly.
+          clientGone = true;
           closed = true;
         }
       };
@@ -285,6 +298,9 @@ async function handlePost(request: Request, params: Promise<{ conversationId: st
           model: studioModel(),
         });
 
+        outcome = result.ok ? "answered" : result.persisted ? "persisted" : "failed";
+        if (!result.ok && !result.persisted) failureCode = result.code;
+
         if (result.ok || result.persisted) {
           await withExecutionBudget(deadline.finalization, () => recordNeonEvent({
             workspaceId: membership.workspaceId,
@@ -320,6 +336,15 @@ async function handlePost(request: Request, params: Promise<{ conversationId: st
         deadline.finalization.signal.removeEventListener("abort", closeAtDeadline);
         closed = true;
         try { controller.close(); } catch { /* already closed */ }
+        // Content-free turn signal: enumerated values and timings only, never the
+        // text, identifiers, evidence labels or client address.
+        console.log("[api/studio/messages] turn", {
+          outcome,
+          firstEventMs: firstEventMs === null ? null : Math.round(firstEventMs),
+          completionMs: Math.round(performance.now() - startedAt),
+          disconnected: clientGone,
+          ...(failureCode ? { code: failureCode } : {}),
+        });
       }
       };
       const completion = turn();
@@ -329,6 +354,7 @@ async function handlePost(request: Request, params: Promise<{ conversationId: st
     cancel() {
       // Disconnect stops delivery, not the durable turn. Its finally paths own
       // the lock until model work and message persistence have settled.
+      clientGone = true;
       closed = true;
     },
   });

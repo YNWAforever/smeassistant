@@ -43,6 +43,30 @@ Exit codes: `0` report printed and no budget breached; `1` query failed; `2` `DA
 - Intended use is a scheduled operator job (not the web runtime): run the command, keep the JSON for the record, and alert on exit code `3`.
 
 
+## Runtime turn signals (P19.3)
+
+The messages route emits two content-free structured lines for signals the read-only report cannot derive from stored rows. They are runtime logs, not database rows, and contain no conversation id, workspace id, message text, answer, evidence label or client address.
+
+```text
+[api/studio/messages] refused { category: "conversation_busy", waitedMs }
+[api/studio/messages] turn    { outcome, firstEventMs, completionMs, disconnected, code? }
+```
+
+| Field | Meaning |
+|---|---|
+| `refused.category` | `conversation_busy`: a same-conversation contender lost the session race and was answered 409 before any dispatch. |
+| `refused.waitedMs` | POST entry to the refusal response. |
+| `turn.outcome` | `answered` (streamed and persisted), `persisted` (written but the delivery deadline closed first), `failed` (nothing written). |
+| `turn.firstEventMs` | POST entry to the first streamed SSE event, or `null` when no event was delivered. |
+| `turn.completionMs` | POST entry to the turn's finally block. |
+| `turn.disconnected` | The client cancelled the stream before delivery ended. The durable turn still completes. |
+| `turn.code` | Enumerated failure code, present only when `outcome` is `failed`. |
+
+- `firstEventMs` is stream start (status frame), **not** model time and **not** the same metric as `latencyMs` (stored user→assistant adjacency); do not compare them.
+- The pre-stream `503 unavailable` failure keeps its separate `failed { category: "turn_lock_unavailable" }` line, as do the other pre-stream categories.
+- Aggregation is a log query (counts, percentiles over `turn.*`); there is no SQL export and no per-message dimension.
+- No thresholds are set from these signals yet: P19.2 produced local fixture observations, not a production SLO.
+
 ## Metrics
 
 | Field | Meaning |
