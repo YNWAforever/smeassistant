@@ -1,6 +1,6 @@
 # Phase 19 — Streaming load characterisation and operational visibility
 
-Status: **plan approved; P19.0 inventory done; P19.1 harness built and run twice locally (2026-11-16), release pending.** P19.2 is not started. No capacity number is claimed by this document. It authorises no production load, no paid provider call, no schema change and no hosted setting change on its own.
+Status: **plan approved; P19.0 inventory done; P19.1 harness released (PR #186); P19.2 characterisation done locally (2026-11-16), release pending; P19.3 not started.** No capacity number is claimed by this document. It authorises no production load, no paid provider call, no schema change and no hosted setting change on its own.
 
 ## Why this phase
 
@@ -71,10 +71,15 @@ Success is a falsifiable statement such as "on machine M with fixture provider P
 
 ### P19.2 — Characterisation and honest report
 
-- Run the ladder, record exact Node/pnpm/PostgreSQL versions, CPU/RAM, pool settings, fixture delays and iteration counts.
-- Report the highest level where every invariant held and the first observed failure/refusal boundary; keep raw JSON as evidence.
-- State explicitly what the result does **not** show (production throughput, hosted Neon limits, remote provider behaviour, sustained-load durability).
-- Exit: a results section in this phase report with the environment block and raw evidence path.
+- The ladder is configurable without editing the harness: `LOAD_LEVELS=1,2,4,8,16,32,64`, `LOAD_REPEATS=1..3`, `LOAD_STOP_ON_FAILURE=0|1`. The record includes the configuration, PostgreSQL `max_connections`, per-level refusal statuses/counts and the residual connection count.
+- Result (2026-11-16, local fixture; raw JSON in `work/phase-19/load/`, summary in `work/phase-19/P19.2-RESULTS.md`):
+  - Levels **1–32 admitted every turn with zero refusals** in every run (1/1, 2/2, 4/4, 8/8, 16/16, 32/32; repeats=1). Recorded first-chunk p50 rose 205 → 1,444 ms and completion p50 258 → 1,764 ms from 1 → 32.
+  - First non-admitted level: **48** (42/48 admitted, 6 refused) in a targeted run. At **64**, 43/64 admitted in one run and 105/128 admitted across two repeats in another, so roughly a third were refused.
+  - Every refusal was a **pre-stream `503 unavailable`** with category `turn_lock_unavailable`; one `429` (budget check) appeared once. Refused turns wrote no message or audit row and dispatched no provider call, so the contention-safety invariants held at every level, including 64.
+  - The owned fixture runs PostgreSQL `max_connections=100`; refusals appear once 48–64 concurrent turns each hold a session connection, so the boundary is consistent with the **local fixture's connection ceiling**, not an application-capacity limit. The harness cannot separate the two yet, and this is recorded as a limit.
+- Honest report: the highest fully admitted level on this machine is **32**; the first refusal is between 32 and 48, caused by a local fixture resource bound. This is **not** production capacity, hosted Neon behaviour, remote provider behaviour, sustained-load durability or the effect of real HTTP Auth/network.
+- Harness defect found during characterisation and fixed before recording: the first extended run used fixture keys `ladder-16-0-1 … -15`, where `…-1` is a substring of `…-10`; the fixture correlator therefore rejected turns 10–15 as uncorrelated. Keys are now zero-padded, and the defective run is kept only as evidence of the defect, not as a boundary.
+- Exit: met — results, environment block and raw evidence paths are recorded here and in `work/phase-19/P19.2-RESULTS.md`.
 
 ### P19.3 — Operational visibility from evidence
 
