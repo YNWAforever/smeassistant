@@ -10,7 +10,7 @@ Status: **complete as scoped on 2026-11-17.** The load harness is released and o
 | P19.1 opt-in load harness | [#186](https://github.com/YNWAforever/smeassistant/pull/186) | `003e88ca` | `dpl_2rLg75LRq3qa2mf25CWmvU6F2fCE` | harness, load config, default-suite exclusion, `pnpm load:studio` |
 | P19.2 characterisation | [#187](https://github.com/YNWAforever/smeassistant/pull/187) | `a691dee5` | `dpl_4d6mS9UNjdYJRSGonBPijysNU4CR` | configurable ladder, refusal/boundary diagnostics, recorded result |
 | P19.3 runtime turn signals | [#188](https://github.com/YNWAforever/smeassistant/pull/188) | `36e98225` | `dpl_CyZTt9YCHpXhZK4z7Cb4R2FPNo9w` | two content-free log lines, route tests, usage docs |
-| P19.4/P19.5 decision + report | this PR | — | — | this report, plan status, README row (docs only) |
+| P19.4/P19.5 decision + report | this PR | — | — | this report, plan status, README row, `verify` timeout headroom (45 → 60 minutes) |
 
 Every code release passed the full guarded process: reviewed head merged with an identical tree, PR CI green, final-main CI green, exact-commit production deployment and alias, and a fresh **36-visit read-only** production matrix (3 locales × 3 widths × 4 surfaces) with **nine keyboard checks** and non-read methods blocked. P19.2 and P19.3 were docs/test/runtime-log changes; P19.1 and P19.2 were test/config/doc only.
 
@@ -53,9 +53,9 @@ No conversation/workspace id, message text, answer, evidence label or client add
 
 ## CI runtime and P19.4 decision
 
-- Four successful `verify` jobs in this phase took **34.7, 36.5, 36.6 and 38.0 minutes** against the workflow's 45-minute job limit; merchant acceptance is the long step.
-- Three attempts were cancelled by that limit (P19.2 PR attempt 1, P19.3 PR attempt 1, P19.3 final-main attempt 1) with **no test failure**, and each passed on a plain rerun of the same commit. This is recorded as hosted-runner flakiness, not a reason to weaken a gate; the retry is operator-visible and bounded.
-- **P19.4 decision: add no new CI case.** The load ladder is not fast or deterministic in CI (it needs a Docker PostgreSQL fixture and a heavy turn path), and the composition gaps it checks are already covered by cheaper existing gates: `turn-session`/`turn-lock`/orchestrator/route unit tests, `request-lifetime`/`deadline`, and the two Phase 18 resilience integration cases. P19.2 found no product invariant failure to justify a new scheduled guardrail. Existing gates, browser cases and JS budgets are unchanged.
+- Four successful `verify` jobs in this phase took **34.7, 36.5, 36.6 and 38.0 minutes**; later runs with slow first steps reached the previous 45-minute limit with merchant acceptance still running (observed end-to-end 40–47 minutes).
+- Five attempts were cancelled by that limit with **no test failure**, each passing on a plain rerun of the same commit. This is recorded as hosted-runner flakiness plus an undersized job limit, not a reason to weaken a gate.
+- **P19.4 decision: add no new CI case; raise `verify` `timeout-minutes` from 45 to 60 only.** The load ladder stays opt-in because it needs a Docker PostgreSQL fixture and the heavy turn path, and the composition gaps it checks are already covered by cheaper existing gates: `turn-session`/`turn-lock`/orchestrator/route unit tests, `request-lifetime`/`deadline`, and the two Phase 18 resilience integration cases. P19.2 found no product invariant failure to justify a new scheduled guardrail. The timeout change adds headroom for the observed runtime; tests, scoping and failure conditions are unchanged. Existing gates, browser cases and JS budgets are unchanged.
 
 ## Limits — what this phase does not show
 

@@ -55,7 +55,10 @@ jobs:
 
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Observed verify runtime is 34.7-47 minutes (merchant acceptance is the long
+    # step); the previous 45-minute limit cancelled otherwise-passing runs.
+    # Tests, scoping and failure conditions are unchanged.
+    timeout-minutes: 60
     env:
       SCAN_SOURCES: fixture
       VITEST_MAX_WORKERS: 1
