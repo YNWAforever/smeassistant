@@ -1,6 +1,6 @@
 # Phase 19 — Streaming load characterisation and operational visibility
 
-Status: **plan approved; P19.0 inventory done; P19.1 harness released (PR #186); P19.2 characterisation released (PR #187); P19.3 runtime turn signals done locally (2026-11-16), release pending; P19.4 decision drafted, not released.** No capacity number is claimed by this document. It authorises no production load, no paid provider call, no schema change and no hosted setting change on its own.
+Status: **complete 2026-11-17 — P19.0–P19.5 done; P19.4 recorded as a no-code decision.** Final report: [PHASE-19-REPORT.md](PHASE-19-REPORT.md). No capacity number is claimed by this document. It authorises no production load, no paid provider call, no schema change and no hosted setting change on its own.
 
 ## Why this phase
 
@@ -91,15 +91,16 @@ Success is a falsifiable statement such as "on machine M with fixture provider P
 
 ### P19.4 — Guardrails and CI
 
-- Add one **fast, deterministic** scheduled case to CI only if it exercises a real composition gap; keep the heavier ladder opt-in and out of default gates.
-- Confirm the existing 20 enabled browser cases, JS budgets and integration suite remain green and cost unchanged beyond minor runtime.
-- Exit: CI runtime impact recorded; no existing gate weakened or skipped.
+- **Decision: add no new CI case.** The ladder needs a Docker PostgreSQL fixture and the heavy turn path, so it is not fast or deterministic on hosted CI. The composition gaps it checks are already covered by cheaper gates: `turn-session`/`turn-lock`/orchestrator/route unit tests, `request-lifetime`/`deadline`, and the two Phase 18 resilience integration cases. P19.2 found no product invariant failure (only a harness defect, fixed), so there is no evidence for a new scheduled guardrail.
+- Recorded CI baseline: four successful `verify` jobs this phase took 34.7, 36.5, 36.6 and 38.0 minutes against the 45-minute job limit. Three attempts were cancelled by that limit in merchant acceptance with no test failure; each passed on a plain rerun of the same commit, so no gate was weakened or skipped and the retry is recorded as hosted-runner flakiness.
+- Existing browser cases, JS budgets and integration suite are unchanged.
+- Exit: met — CI runtime recorded; no existing gate weakened or skipped.
 
 ### P19.5 — Release and handoff
 
-- Standard guarded process: reviewed PR, required CI, exact-commit merge and deployment, fresh read-only hosted matrix, release record.
-- Phase report records environment, results, limits, diagnostics decisions and the unchanged manual-accessibility status.
-- Exit: release identity and read-only hosted proof recorded; manual NVDA/VoiceOver/device/microphone status still explicitly **Not tested**.
+- Standard guarded process applied to P19.1, P19.2 and P19.3: reviewed PRs, required CI, exact-commit merges with identical trees, exact deployments and fresh 36-visit read-only hosted matrices (nine keyboard checks each).
+- [PHASE-19-REPORT.md](PHASE-19-REPORT.md) records environment, results, limits, diagnostics decisions, CI baseline, open owner decisions and the unchanged manual-accessibility status. All release identities and deployment ids are in that report; the plan docs and README row are updated.
+- Exit: met — release identities and read-only hosted proofs recorded; manual NVDA/VoiceOver/device/microphone status remains explicitly **Not tested**.
 
 ## P19.0 — Inventory record (started 2026-11-16)
 
