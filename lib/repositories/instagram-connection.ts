@@ -38,6 +38,15 @@ export interface InstagramAccountRef {
   username: string;
 }
 
+/** The sealed row the publish token helper needs (never sent to the browser). */
+export interface InstagramTokenRow {
+  id: string;
+  accountRef: string | null;
+  accessTokenEncrypted: string;
+  scopes: string[];
+  expiresAt: string | null;
+}
+
 /** Parses the `account_ref` JSON written by the connection route. */
 export function parseInstagramAccountRef(value: string | null | undefined): InstagramAccountRef | null {
   if (!value) return null;
@@ -112,6 +121,44 @@ export function instagramConnectionRepository(pool?: Pick<Pool, "query" | "conne
             SET status='expired', updated_at=now()
           WHERE workspace_id=$1 AND id=$2 AND provider='instagram' AND status='active'`,
         [workspaceId, id],
+      );
+    },
+
+    /**
+     * The workspace's one `active` Instagram row, sealed tokens included. Used
+     * by the publish token helper; the read model above stays display-only.
+     */
+    async activeConnection(workspaceId: string): Promise<InstagramTokenRow | null> {
+      const result = await database().query<InstagramTokenRow>(
+        `SELECT id, account_ref AS "accountRef", access_token_encrypted AS "accessTokenEncrypted",
+                scopes, expires_at::text AS "expiresAt"
+           FROM oauth_connections
+          WHERE workspace_id=$1 AND provider='instagram' AND status='active'
+          LIMIT 1`,
+        [workspaceId],
+      );
+      return result.rows[0] ?? null;
+    },
+
+    /** Re-seals a refreshed long-lived token under the workspace lock. */
+    async storeRefreshedToken(input: { workspaceId: string; connectionId: string; accessTokenEncrypted: string; expiresAt: string | null }): Promise<boolean> {
+      const updated = await database().query(
+        `UPDATE oauth_connections
+            SET access_token_encrypted=$3, expires_at=$4, updated_at=now()
+          WHERE workspace_id=$1 AND id=$2 AND provider='instagram' AND status='active'
+          RETURNING id`,
+        [input.workspaceId, input.connectionId, input.accessTokenEncrypted, input.expiresAt],
+      );
+      return updated.rows.length > 0;
+    },
+
+    /** Marks an unusable credential so the page asks the owner to reconnect. */
+    async markConnectionExpired(connectionId: string): Promise<void> {
+      await database().query(
+        `UPDATE oauth_connections
+            SET status='expired', updated_at=now()
+          WHERE id=$1 AND provider='instagram' AND status='active'`,
+        [connectionId],
       );
     },
 
