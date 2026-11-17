@@ -1,6 +1,6 @@
 # Phase 17 — Manual accessibility validation plan
 
-Status: preparation only. No NVDA, VoiceOver or real-device results are claimed. Automated keyboard and responsive checks from prior releases do not substitute for this phase. The tester-ready execution procedure, environment matrix, per-journey scripts and evidence template live in the [manual accessibility runbook](PHASE-17-MANUAL-RUNBOOK.md), which starts every item as **Not tested** against the `a1af46cc` baseline.
+Status: preparation only. No NVDA, VoiceOver or real-device results are claimed. Automated keyboard and responsive checks from prior releases do not substitute for this phase. The tester-ready execution procedure, environment matrix, per-journey scripts and evidence template live in the [manual accessibility runbook](PHASE-17-MANUAL-RUNBOOK.md); execution is recorded in the [manual accessibility results record](PHASE-17-MANUAL-RESULTS.md), which starts every item as **Not tested** against the `b7e0d391` baseline.
 
 The [automated accessibility follow-up](PHASE-17-AUTOMATED-ACCESSIBILITY.md) records reproduced keyboard-focus, accessible-name, dictation ownership and progress-text defects. Those checks do not change the manual status or acceptance criteria below.
 
