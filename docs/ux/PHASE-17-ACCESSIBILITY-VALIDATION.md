@@ -1,12 +1,12 @@
 # Phase 17 — Manual accessibility validation plan
 
-Status: preparation only. No NVDA, VoiceOver or real-device results are claimed. Automated keyboard and responsive checks from prior releases do not substitute for this phase.
+Status: preparation only. No NVDA, VoiceOver or real-device results are claimed. Automated keyboard and responsive checks from prior releases do not substitute for this phase. The tester-ready execution procedure, environment matrix, per-journey scripts and evidence template live in the [manual accessibility runbook](PHASE-17-MANUAL-RUNBOOK.md), which starts every item as **Not tested** against the `a1af46cc` baseline.
 
 The [automated accessibility follow-up](PHASE-17-AUTOMATED-ACCESSIBILITY.md) records reproduced keyboard-focus, accessible-name, dictation ownership and progress-text defects. Those checks do not change the manual status or acceptance criteria below.
 
 ## Test environments
 
-Record exact OS, browser, screen-reader version, device, viewport/zoom, input mode, locale, deployed commit and test date for each run. Primary combinations are Windows with NVDA and a supported browser, macOS/iOS with VoiceOver and Safari, and a real touch device with its software keyboard. The current agent tools cannot establish these manual observations; an equipped tester must execute them.
+Record exact OS, browser, screen-reader version, device, viewport/zoom, input mode, locale, deployed commit and test date for each run. Primary combinations are Windows with NVDA and a supported browser, macOS/iOS with VoiceOver and Safari, and a real touch device with its software keyboard. The current agent tools cannot establish these manual observations; an equipped tester must execute them using the [runbook's environment matrix and journey scripts](PHASE-17-MANUAL-RUNBOOK.md).
 
 Use an authorized isolated test workspace for any turn, upload, share, approval or export. Read-only production checks must remain read-only. Fixture-generated content is sufficient; model spend is not required for accessibility validation.
 
@@ -27,6 +27,6 @@ Use an authorized isolated test workspace for any turn, upload, share, approval 
 
 ## Reporting and fixes
 
-For each item record Pass, Fail or Not tested, reproduction steps, expected/observed behavior and relevant assistive-technology settings. Avoid screenshots or recordings containing business/customer material. Prioritize blockers to completing the journey, then misleading or excessive announcements, then presentation issues. Add focused automated regressions for defects that automation can represent, while retaining the manual retest evidence.
+For each item record Pass, Fail or Not tested, reproduction steps, expected/observed behavior and relevant assistive-technology settings. Use the [runbook's evidence template](PHASE-17-MANUAL-RUNBOOK.md#5-evidence-record-template) and keep records free of business/customer material: redacted notes only, and screenshots (if unavoidable) cropped to the control and stored outside the repository. Prioritize blockers to completing the journey, then misleading or excessive announcements, then presentation issues. Add focused automated regressions for defects that automation can represent, while retaining the manual retest evidence.
 
-Release acceptance requires actual execution of the supported combinations, recorded limitations and no unresolved blocker to the core journey. Unavailable hardware or testers remain explicitly Not tested; no completion or compliance certification follows from this plan.
+Release acceptance requires actual execution of the supported combinations, recorded limitations and no unresolved blocker to the core journey. Unavailable hardware or testers remain explicitly Not tested; no completion or compliance certification follows from this plan. The [runbook](PHASE-17-MANUAL-RUNBOOK.md) defines the required combinations and the acceptance boundary.

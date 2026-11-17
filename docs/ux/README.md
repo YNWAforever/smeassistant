@@ -24,7 +24,7 @@ The redesign of the SME scanner workspace as **Kinnso OS** (decided 2026-10-19).
 | 14 | Streaming recovery, keyboard focus and history reading position | [PHASE-14-STREAMING-ACCESSIBILITY.md](PHASE-14-STREAMING-ACCESSIBILITY.md) |
 | 15 | Shared Studio turn deadline and durable finalization | [PHASE-15-STUDIO-DEADLINE.md](PHASE-15-STUDIO-DEADLINE.md) |
 | 16 | Session reliability | [PHASE-16-SESSION-RELIABILITY.md](PHASE-16-SESSION-RELIABILITY.md) |
-| 17 | Manual accessibility validation — planned, not tested | [PHASE-17-ACCESSIBILITY-VALIDATION.md](PHASE-17-ACCESSIBILITY-VALIDATION.md) |
+| 17 | Manual accessibility validation — planned, not tested; tester runbook prepared 2026-11-17 | [PHASE-17-ACCESSIBILITY-VALIDATION.md](PHASE-17-ACCESSIBILITY-VALIDATION.md) · [runbook](PHASE-17-MANUAL-RUNBOOK.md) |
 | 17A | Automated sharing focus, dictation ownership and progress text | [PHASE-17-AUTOMATED-ACCESSIBILITY.md](PHASE-17-AUTOMATED-ACCESSIBILITY.md) |
 | 18 | Controlled streaming resilience | [PHASE-18-STREAMING-RESILIENCE-PLAN.md](PHASE-18-STREAMING-RESILIENCE-PLAN.md) |
 | 19 | Streaming load characterisation and operational visibility — done 2026-11-17 (P19.4 recorded as a no-code CI decision; manual accessibility still Not tested) | [PHASE-19-LOAD-VISIBILITY-PLAN.md](PHASE-19-LOAD-VISIBILITY-PLAN.md) · [report](PHASE-19-REPORT.md) |
