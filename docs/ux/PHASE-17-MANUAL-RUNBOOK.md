@@ -2,7 +2,7 @@
 
 Status: **preparation only.** No NVDA, VoiceOver, TalkBack, real-device or microphone observation is recorded here, and none is claimed. Every journey below starts as **Not tested** until an equipped tester executes it and records the result. Automated keyboard, DOM/focus and responsive checks from earlier releases do not substitute for this runbook.
 
-Baseline for execution: production `https://smeassistant.vercel.app` serving commit **`a1af46cca5143e60e821f619cfdde4160582d1ad`** (main, 2026-11-17). Re-check the deployment before starting; if the alias serves a different commit, record the commit actually tested and treat this runbook's baseline as superseded.
+Baseline for execution: production `https://smeassistant.vercel.app` serving commit **`b7e0d3917c81104a2de0ac519055b71551bf7802`** when this runbook and [results record](PHASE-17-MANUAL-RESULTS.md) were prepared (main, 2026-11-17; docs-only changes since then do not alter application behavior). Re-check the deployment before starting; record the commit actually served. Testing a different commit is allowed — record it and keep treating this runbook's expected observations as the criteria.
 
 ## 1. Required and optional combinations
 
@@ -133,7 +133,7 @@ Expected: labels, status messages and error text remain understandable in each l
 
 ## 5. Evidence record template
 
-Copy one block per executed combination into the results record (a new file, not this runbook), and one row per journey:
+Copy one block per executed combination into the [results record](PHASE-17-MANUAL-RESULTS.md) (not this runbook), and one row per journey. The results record is pre-seeded with every combination and journey as **Not tested** so a run only changes what was observed:
 
 ```text
 Combination: C1  |  Tester: ____  |  Date/time: ____
@@ -161,4 +161,4 @@ Summary table for the results record:
 
 ## 6. Acceptance boundary
 
-The phase can move from **Not tested** only when the required combinations have been executed and recorded as above, every failure is triaged with a reproduction, and no unresolved blocker remains in the core journey. Unavailable hardware or testers stay explicitly **Not tested**. No WCAG conformance or compliance certification follows from this runbook, and automated tests remain the regression net for the observations that automation can represent.
+The phase can move from **Not tested** only when the required combinations have been executed and recorded in the [results record](PHASE-17-MANUAL-RESULTS.md), every failure is triaged with a reproduction, and no unresolved blocker remains in the core journey. Unavailable hardware or testers stay explicitly **Not tested**. No WCAG conformance or compliance certification follows from this runbook, and automated tests remain the regression net for the observations that automation can represent.
