@@ -6,7 +6,7 @@ Status: **complete 2026-11-17 — P19.0–P19.5 done; P19.4 recorded as a no-cod
 
 Two records leave the same follow-up open:
 
-- The [Conversation Studio roadmap](../implementation/owner-platform-v1/CONVERSATION-STUDIO-V1.1-ROADMAP.md) lists a **streaming load test** as outstanding under "Verification boundaries and remaining work" and "Test/a11y depth".
+- At planning time the [Conversation Studio roadmap](../implementation/owner-platform-v1/CONVERSATION-STUDIO-V1.1-ROADMAP.md) listed a **streaming load test** as outstanding under "Verification boundaries and remaining work" and "Test/a11y depth" (since addressed by this phase, and reconciled in that roadmap on 2026-11-17).
 - [Phase 18](PHASE-18-STREAMING-RESILIENCE-PLAN.md) proved session/request composition under two deterministic owned-PostgreSQL schedules, but states it "establishes no production capacity claim" and lists signals the current usage report cannot show: rejected contenders, first-token latency, disconnects, session-release duration and pending provider attempts.
 
 There is no streaming load-test harness or load-tooling dependency in the repository today. The existing assets this phase builds on are the owned PostgreSQL fixture (`test/integration/neon-database.ts`), the two Phase 18 composition cases (`test/integration/studio-resilience.integration.test.ts`: "retains a disconnected answer's real lock while an independent conversation completes, then recovers" and "destroys the real session at final cutoff and fences a held accounting transaction without converting unknown usage to zero"), the read-only [studio usage report](../operations/studio-usage.md), and the enabled browser/CI gates.
