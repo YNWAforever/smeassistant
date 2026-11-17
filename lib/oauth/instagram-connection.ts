@@ -97,6 +97,11 @@ function apiVersion(): string {
   return process.env.INSTAGRAM_API_VERSION?.trim() || DEFAULT_API_VERSION;
 }
 
+/** The Graph version every Instagram call uses; exported for the publish client. */
+export function instagramApiVersion(): string {
+  return apiVersion();
+}
+
 /**
  * Signing key for `state`, derived from the token encryption key with an
  * Instagram-specific domain label rather than reusing it directly. Same

@@ -1,6 +1,6 @@
 # Phase 20 — Instagram publishing and insights (proposed scope)
 
-Status: **P20.1 implemented behind flags; live verification Not tested.** The account connection (OAuth start/callback, long-lived token storage, owner-only disconnect, Business → Integrations UI, flags, unconfigured-environment behaviour) is implemented behind `INSTAGRAM_OAUTH_ENABLED`, which ships unset. No Meta app, credentials or App Review approvals exist yet, so no live consent, publish or insight call has been executed and every live acceptance item remains **Not tested**. Direct publishing stays disabled under guardrail 6 ("Never auto-publish") until P20.2 ships behind its own flag and the owner explicitly authorizes a publish.
+Status: **P20.1 connection and P20.2a publish primitives implemented behind flags; live verification Not tested.** The account connection (OAuth start/callback, long-lived token storage, owner-only disconnect, Business → Integrations UI, flags, unconfigured-environment behaviour) shipped in P20.1 behind `INSTAGRAM_OAUTH_ENABLED`. P20.2a added the Graph publish protocol client, the publish token-refresh helper, publish eligibility and `INSTAGRAM_PUBLISH_ENABLED` (all unset); it has no route or UI, so nothing can publish. No Meta app, credentials or App Review approvals exist yet, so no live consent, publish or insight call has been executed and every live acceptance item remains **Not tested**. Direct publishing stays disabled under guardrail 6 ("Never auto-publish") until P20.2b ships the delivery routes and the owner explicitly authorizes a publish.
 
 Baseline: application code `eaa1e13a` on `main` (2026-11-17). Requested by the owner on 2026-11-18: post to a connected Instagram account and read that account's insights from the product.
 
@@ -58,8 +58,8 @@ Until P1–P7 exist, the implementation can be built and tested against an injec
 
 ### 4.2 Publishing
 
-- Reuses the existing delivery model: approved `output_versions` row → `deliveries` row with `mode='publish'`, `channel='instagram'`, unique `idempotency_key`. No new approval mechanism, no new scheduling.
-- `POST /api/deliveries/[deliveryId]/publish-instagram` (owner or in-scope manager, per the existing delivery authorization model):
+- Reuses the existing delivery model: approved `output_versions` row → `deliveries` row with `mode='publish'`, `channel='instagram'`, unique `idempotency_key`. No new approval mechanism, no new scheduling. **P20.2b prerequisite discovered in P20.2a:** `begin_publish_output_version` hardcodes `channel='google_business'` and the review-response eligibility checks, so an additive migration (hand-applied after `db:verify`, following the migration rulebook) must add the Instagram path; P20.2a is therefore transport/helper/eligibility only and cannot create a delivery.
+- `POST /api/versions/[versionId]/publish-instagram` (owner or in-scope manager, per the existing delivery authorization model; mirrors the existing version publish route rather than inventing a delivery-first route):
   1. re-verify the version is the currently approved immutable version;
   2. create a media container (`image_url` publicly fetchable, caption) for a single feed image;
   3. poll container status with bounded attempts;
@@ -107,11 +107,15 @@ Each sub-phase is its own reviewed PR with targeted tests, typecheck, lint, docs
 |---|---|---|
 | P20.1 Connection | OAuth start/callback, state signing, token storage/refresh, connect + disconnect UI in Business → Integrations, flags, unconfigured-environment behavior | Fixture consent (fake transport) unit tests; token-crypto round trips; unauthenticated hosted route fails closed; live consent **Not tested** until P1–P8 exist |
 | P20.2 Publishing (single feed image) | Delivery publish route + UI, container → publish pipeline, receipt, reconcile, idempotency, limits, failure taxonomy | Fake-transport suite incl. duplicate-retry and permission-denied paths; live publish only with owner present on a test professional account |
+| P20.2a Publish primitives (implemented) | Graph publish client (container → status → media_publish → read-back), publish token-refresh helper, publish eligibility, `INSTAGRAM_PUBLISH_ENABLED`; no route, UI or delivery write | Unit suites with fake transport: protocol shape, error taxonomy, token refresh/expiry, eligibility; nothing callable, flag off |
+| P20.2b Delivery path (next) | Additive migration extending the publish SQL to `channel='instagram'`, version publish route, reconcile route, limits, UI + copy | Route/UI fake-transport suites; live publish only with owner present on a test professional account |
 | P20.3 Insights | Pull route, storage, UI, unavailable reasons for account and per-media metrics | Fixture suite incl. missing-permission and expired-token cases; live pull only after P5/P7 |
 | P20.4 Hardening | Token refresh edge cases, disconnect cleanup, rate-limit refusal UX, audit coverage, runbook | Targeted suites; review of failure paths |
 | P20.5 Acceptance and release | Owner-run live acceptance record, docs update (integration runbook, DEPLOY env section, this plan → report), release verification | Recorded account type, API version, permission list, timestamps, receipt ids; anything not executed stays **Not tested** |
 
 **P20.1 implementation record (behind `INSTAGRAM_OAUTH_ENABLED`, default off).** Modules: [`lib/oauth/instagram-connection.ts`](../../../lib/oauth/instagram-connection.ts) (flag/config, state signing, consent URL, code → long-lived exchange, permission check, account resolution, refresh), [`lib/repositories/instagram-connection.ts`](../../../lib/repositories/instagram-connection.ts) (read/replace/refresh/expire/revoke on `oauth_connections`, no schema change), routes under `app/api/oauth/instagram/` and `app/api/workspaces/[workspaceId]/instagram-connection/`. The card sits in Business → Integrations beside the existing public-handle form, which is unchanged and still powers scan-time public evidence. The Graph version is pinned by `INSTAGRAM_API_VERSION` (default `v23.0`). Tests inject a fake Meta transport; CI needs no Meta credentials and every live item stays **Not tested**.
+
+**P20.2a implementation record (behind `INSTAGRAM_PUBLISH_ENABLED`, default off).** Modules: [`lib/oauth/instagram-graph.ts`](../../../lib/oauth/instagram-graph.ts) (create container, bounded status read, media_publish, read-back; content-free `InstagramGraphError` taxonomy including `already_published`), [`lib/publishing/instagram-connection.ts`](../../../lib/publishing/instagram-connection.ts) (publish token helper: refresh under lock, one retry on unauthorized, expire on failure), [`lib/publishing/instagram-eligibility.ts`](../../../lib/publishing/instagram-eligibility.ts) (approved current version, feed-post templates only, public HTTPS image URL, 2,200-character caption), and the repository token methods in [`lib/repositories/instagram-connection.ts`](../../../lib/repositories/instagram-connection.ts). Nothing exposes these over HTTP yet and no delivery is written, so there is no publish path to misuse; P20.2b adds the migration, routes, limits and UI.
 
 ## 8. Verification and acceptance
 
@@ -136,9 +140,9 @@ Open owner decisions:
 
 1. First publish surface: single feed image (recommended) versus carousel/reel/story.
 2. Insights cadence: on-demand only (recommended) versus a separately approved scheduled pull.
-3. Media URL strategy: signed asset URL versus dedicated public upload path.
+3. Media URL strategy: signed asset URL versus dedicated public upload path. P20.2a's eligibility accepts an owner-supplied public HTTPS image URL for the first slice (private/credentialed hosts refused); the signed-asset path is deferred to a later owner decision.
 4. Owner for P1–P7 (business verification and App Review screencast) and target dates.
-5. Who may publish: owner only, or owner plus in-scope manager (recommended, with audit).
+5. Who may publish: owner only, or owner plus in-scope manager (recommended, with audit). P20.2b plans to implement owner or in-scope manager through the existing delivery authorization model; the flag stays off regardless.
 6. Insight retention period and deletion on disconnect (recommended: 12 months, deleted/archived on disconnect).
 
 ## 10. Non-goals
