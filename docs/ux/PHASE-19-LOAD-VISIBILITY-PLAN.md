@@ -150,4 +150,4 @@ Rough size: P19.0 half a day; P19.1 one to two days; P19.2 one day; P19.3 one to
 ## Parallel owner-authorised tracks (not part of this phase)
 
 - **Release hardening**: branch protection and an exact-SHA deployment check are still unimplemented; see [release gates](../operations/release-gates.md). This needs explicit owner authorisation and an actually attempted denied-promotion drill, not a settings guess.
-- **Manual accessibility validation**: [the Phase 17 checklist](PHASE-17-ACCESSIBILITY-VALIDATION.md) and the [results form](../../work/phase-17/MANUAL-RESULTS.md) wait for an equipped tester; automation in this phase does not close them.
+- **Manual accessibility validation**: [the Phase 17 checklist](PHASE-17-ACCESSIBILITY-VALIDATION.md), the [tester runbook](PHASE-17-MANUAL-RUNBOOK.md) and the [results record](PHASE-17-MANUAL-RESULTS.md) wait for an equipped tester; automation in this phase does not close them. (An earlier revision of this line pointed into the gitignored `work/` directory, which is not readable from the repository.)
