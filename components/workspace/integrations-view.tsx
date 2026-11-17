@@ -3,7 +3,7 @@ import { Camera, Globe2, History, MapPin, TriangleAlert } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { CapabilityBadge, PageIntro, ProviderBadge, SectionCard } from "@/components/product-ui"
-import { GoogleDisconnectButton, InstagramHandleForm } from "@/components/workspace/integrations-client"
+import { GoogleDisconnectButton, InstagramDisconnectButton, InstagramHandleForm } from "@/components/workspace/integrations-client"
 import { copy, type PrototypeLocale } from "@/lib/copy"
 import type { Capability } from "@/lib/domain"
 import { limitationLabel } from "@/lib/funnel/report-labels"
@@ -16,9 +16,11 @@ import { fill } from "@/lib/copy-ui"
  * capabilities; every card shows the real scope and recovery path. The Google
  * connect link starts the OAuth flow for this workspace (Phase 2 route); an
  * expired, revoked or errored connection carries a "requires re-authorisation"
- * note. The Instagram card confirms the public handle inline (Phase 6).
+ * note. The Instagram card confirms the public handle inline (Phase 6) and, once
+ * the flag is on, connects a professional account (P20.1) for the future
+ * explicit publishing and insight features. Nothing on this page publishes.
  */
-export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone, model, googleConfigured = true }: { locale: PrototypeLocale; workspaceSlug: string; workspaceId: string; timezone: string; model: IntegrationsModel; googleConfigured?: boolean }) {
+export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone, model, googleConfigured = true, instagramConfigured = false, instagramOutcome = null }: { locale: PrototypeLocale; workspaceSlug: string; workspaceId: string; timezone: string; model: IntegrationsModel; googleConfigured?: boolean; instagramConfigured?: boolean; instagramOutcome?: string | null }) {
   const pc = copy[locale].workspaceBusiness.integrations
   const base = `/${locale}/owner/${workspaceSlug}`
   const googleOk = model.google.status === "active"
@@ -35,6 +37,16 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
   const googleStatus = pc.googleStatus[model.google.status]
   const igState = model.instagram.state === "unknown" ? "unavailable" : model.instagram.state
   const webState = model.website.state === "unknown" ? "unavailable" : model.website.state
+  // P20.1: the Meta Graph connection is separate from the public handle above.
+  const instagramConnection = model.instagram.connection
+  const instagramConnected = instagramConnection.status === "active" && instagramConnection.accountRef !== null
+  const instagramNeedsReauth = instagramConnection.status === "expired" || instagramConnection.status === "revoked" || instagramConnection.status === "error"
+  const instagramAccount = instagramConnection.accountRef?.username ?? null
+  const instagramStatus = instagramConnected && instagramAccount ? fill(pc.instagramConnectedAs, { account: instagramAccount }) : model.instagram.handle ? `@${model.instagram.handle}` : pc.noHandleProvided
+  const instagramConnectLabel = instagramConnected || instagramNeedsReauth ? pc.instagramReconnect : pc.instagramConnectAccount
+  // The callback's outcome code is content-free; only these two friendly
+  // messages exist, and anything else is the generic failure. No provider text.
+  const instagramOutcomeNote = instagramOutcome === "ok" ? null : instagramOutcome === "declined" ? pc.instagramConnectCancelled : instagramOutcome ? pc.instagramConnectFailed : null
   const cards = [
     {
       key: "google",
@@ -56,13 +68,14 @@ export function IntegrationsView({ locale, workspaceSlug, workspaceId, timezone,
       key: "instagram",
       icon: Camera,
       name: pc.instagramPublicEvidence,
-      status: model.instagram.handle ? `@${model.instagram.handle}` : pc.noHandleProvided,
+      status: instagramStatus,
       capability: "Beta" as Capability,
-      lastSync: model.website.observedAt ? formatDateTime(model.website.observedAt, locale, timezone) : "—",
+      lastSync: instagramConnection.updatedAt ? formatDateTime(instagramConnection.updatedAt, locale, timezone) : model.website.observedAt ? formatDateTime(model.website.observedAt, locale, timezone) : "—",
       scope: pc.publicEvidenceNoPublishing,
-      // Item 18: this was loaded and never shown, so an owner had no way to
-      // learn why Instagram was not measured -- only that it was not.
-      action: <>{model.instagram.state !== "measured" && model.instagram.limitationCode && <p className="limitation-note" role="status"><TriangleAlert /> {limitationLabel(locale, model.instagram.limitationCode)}</p>}<InstagramHandleForm locale={locale} workspaceId={workspaceId} handle={model.instagram.handle} /></>,
+      // The account connection, the public handle confirmation and the scan
+      // limitation all sit on this one card because they are one integration
+      // surface; each note names which of the three it is about.
+      action: <>{instagramOutcomeNote && <p className="limitation-note" role="status"><TriangleAlert /> {instagramOutcomeNote}</p>}{instagramConnected && <p className="limitation-note">{pc.instagramConnectionScope}</p>}{instagramNeedsReauth && instagramConfigured && <p className="limitation-note" role="status"><TriangleAlert /> {reauthNote}</p>}{!instagramConfigured && <p className="limitation-note" role="status"><TriangleAlert /> {pc.instagramUnavailableNote}</p>}{model.instagram.state !== "measured" && model.instagram.limitationCode && <p className="limitation-note" role="status"><TriangleAlert /> {limitationLabel(locale, model.instagram.limitationCode)}</p>}{instagramConfigured ? <Button asChild variant={instagramConnected ? "outline" : "default"}><a href={`/api/oauth/instagram/start?workspace=${encodeURIComponent(workspaceSlug)}&locale=${locale}`}>{instagramConnectLabel}</a></Button> : <Button variant="outline" disabled>{instagramConnectLabel}</Button>}{instagramConnected && <InstagramDisconnectButton locale={locale} workspaceId={workspaceId} />}<InstagramHandleForm locale={locale} workspaceId={workspaceId} handle={model.instagram.handle} /></>,
       badge: <ProviderBadge state={igState} locale={locale} />,
     },
     {

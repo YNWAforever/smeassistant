@@ -316,6 +316,21 @@ export function disconnectGoogleConnection(workspaceId: string, locale?: string)
   });
 }
 
+/**
+ * Withdraws the workspace's Instagram (Meta Graph) connection. Same contract
+ * as the Google disconnect: `disconnected: false` means there was nothing
+ * usable to withdraw, which is still the end state the owner asked for.
+ */
+export type DisconnectInstagramResult = { ok: true; disconnected: boolean };
+
+export function disconnectInstagramConnection(workspaceId: string, locale?: string): Promise<ClientResult<DisconnectInstagramResult>> {
+  return request(`/api/workspaces/${encodeURIComponent(workspaceId)}/instagram-connection`, {
+    method: "DELETE",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(locale ? { locale } : {}),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // P4.1: confirmed offers and promotion drafts (design 3.1). Same never-throw
 // result shape. The routes answer 404 until OFFER_PROMOTIONS_ENABLED is on, so

@@ -38,6 +38,8 @@ export type WorkspaceBusinessCopy = {
     noHandleProvided: string; publicEvidenceNoPublishing: string; publicWebsite: string; ofChecksPassed: string; notEvaluated: string;
     publicPagesOnly: string; connectionScopeAndProvider: string; integrations: string; evidenceReadsDraftGeneration: string; viewRecoveryLog: string;
     lastSync: string; scope: string; capability: string; reauthNote: string; googleUnavailableNote: string;
+    instagramConnectAccount: string; instagramReconnect: string; instagramConnectedAs: string; instagramUnavailableNote: string;
+    instagramConnectionScope: string; instagramConnectCancelled: string; instagramConnectFailed: string;
     googleStatus: {
       active: string; expired: string; revoked: string; error: string; not_connected: string;
     }
@@ -186,6 +188,13 @@ export const workspaceBusinessEn: WorkspaceBusinessCopy = {
     capability: "Capability",
     reauthNote: "Requires re-authorisation before this connection can be used again. Scans are unaffected: evidence comes from public sources, not from this connection.",
     googleUnavailableNote: "Connecting Google is not available yet. Contact Fimmick to turn it on. Scans are unaffected.",
+    instagramConnectAccount: "Connect Instagram account",
+    instagramReconnect: "Reconnect Instagram",
+    instagramConnectedAs: "Connected as @{account}",
+    instagramUnavailableNote: "Connecting an Instagram account is not available yet. The public handle evidence below is unaffected.",
+    instagramConnectionScope: "Authorises the professional account for the future explicit publishing and insight features. Nothing is posted automatically.",
+    instagramConnectCancelled: "Instagram connection was cancelled.",
+    instagramConnectFailed: "The Instagram connection could not be completed. Try again, or contact Fimmick if it persists.",
     googleStatus: { active: "Connected", expired: "Connection expired", revoked: "Access revoked", error: "Connection error", not_connected: "Not connected" },
   },
   notifications: {
@@ -375,6 +384,13 @@ export const workspaceBusinessZhHK: WorkspaceBusinessCopy = {
     capability: "能力",
     reauthNote: "需要重新授權後，這個連接先可以再次使用。掃描不受影響：證據來自公開來源，而唔係這個連接。",
     googleUnavailableNote: "Google 連接暫未開放，請聯絡 Fimmick 開通。掃描不受影響。",
+    instagramConnectAccount: "連接 Instagram 帳號",
+    instagramReconnect: "重新連接 Instagram",
+    instagramConnectedAs: "已連接 @{account}",
+    instagramUnavailableNote: "Instagram 帳號連接暫未開放。以下公開帳號證據不受影響。",
+    instagramConnectionScope: "授權專業帳號供日後明確發佈及查看洞察功能使用；不會自動發佈任何內容。",
+    instagramConnectCancelled: "已取消 Instagram 連接。",
+    instagramConnectFailed: "未能完成 Instagram 連接。請再試一次；如持續出現，請聯絡 Fimmick。",
     googleStatus: { active: "已連接", expired: "連接已過期", revoked: "權限已撤銷", error: "連接錯誤", not_connected: "尚未連接" },
   },
   notifications: { consentLedAlerts: "你揀先會收", onlyUsefulOperationalSignals: "揀你想收邊啲更新。Kinnso 入面嘅通知喺下面。", inApp: "應用內", unread: "{unread} 則未讀" },
@@ -559,6 +575,13 @@ export const workspaceBusinessZhTW: WorkspaceBusinessCopy = {
     capability: "能力",
     reauthNote: "需要重新授權後，這個連接才能再次使用。掃描不受影響：證據來自公開來源，而非這個連接。",
     googleUnavailableNote: "Google 連接暫未開放，請聯絡 Fimmick 開通。掃描不受影響。",
+    instagramConnectAccount: "連接 Instagram 帳號",
+    instagramReconnect: "重新連接 Instagram",
+    instagramConnectedAs: "已連接 @{account}",
+    instagramUnavailableNote: "Instagram 帳號連接尚未開放。以下公開帳號證據不受影響。",
+    instagramConnectionScope: "授權專業帳號供日後明確發布與洞察功能使用；不會自動發布任何內容。",
+    instagramConnectCancelled: "已取消 Instagram 連接。",
+    instagramConnectFailed: "無法完成 Instagram 連接。請再試一次；若持續發生，請聯絡 Fimmick。",
     googleStatus: { active: "已連接", expired: "連接已過期", revoked: "權限已撤銷", error: "連接錯誤", not_connected: "尚未連接" },
   },
   notifications: { consentLedAlerts: "你選了才會收到", onlyUsefulOperationalSignals: "選擇你想收到哪些更新。Kinnso 內的通知在下方。", inApp: "應用內", unread: "{unread} 則未讀" },

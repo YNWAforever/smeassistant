@@ -15,6 +15,7 @@ import { getBrand, type BrandProfile } from "@/lib/workspace/brand";
 import { deriveFaqQuestions } from "@/lib/workspace/faq-questions";
 import { applicationRepository } from "@/lib/repositories/applications";
 import { workspaceReadRepository } from "@/lib/repositories/workspace-read";
+import { parseInstagramAccountRef } from "@/lib/repositories/instagram-connection";
 import { actionListRepository, type ActionListScope } from "@/lib/repositories/action-list";
 import { actionListFingerprint, actionPageSize, decodeActionCursor, encodeActionCursor } from "@/lib/workspace/action-list-cursor";
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace";
@@ -340,7 +341,22 @@ export interface AuditEventRow {
 
 export interface IntegrationsModel {
   google: { status: "active" | "expired" | "revoked" | "error" | "not_connected"; expiresAt: string | null; updatedAt: string | null };
-  instagram: { handle: string | null; state: SnapshotRecord["moduleStates"]["instagram"]["status"] | "unknown"; limitationCode: string | null };
+  instagram: {
+    handle: string | null;
+    state: SnapshotRecord["moduleStates"]["instagram"]["status"] | "unknown";
+    limitationCode: string | null;
+    /**
+     * The Meta Graph connection (P20.1). Separate from the public handle above:
+     * the handle powers scan-time public evidence, while this connection is the
+     * owner-authorised professional account reserved for later explicit
+     * publishing and insights. `not_connected` covers "never connected".
+     */
+    connection: {
+      status: "active" | "expired" | "revoked" | "error" | "not_connected";
+      accountRef: { id: string; username: string } | null;
+      updatedAt: string | null;
+    };
+  };
   website: { state: SnapshotRecord["moduleStates"]["website"]["status"] | "unknown"; checksPassed: number | null; checksEvaluated: number | null; observedAt: string | null };
 }
 
@@ -649,6 +665,10 @@ function toStoredDiff(diff: ScanDiffRow | null): StoredDiff | null {
 
 export async function getIntegrations(ctx: WorkspaceContext, latest?: SnapshotRecord | null): Promise<IntegrationsModel> {
   const row = await read("connections", () => workspaceReadRepository().latestConnection(ctx.workspace.id));
+  // Separate read: the Meta Graph connection is an owner-authorised account
+  // credential, not scan evidence, and must not disappear when a scan snapshot
+  // is missing.
+  const instagramRow = await read("instagram_connection", () => workspaceReadRepository().latestInstagramConnection(ctx.workspace.id));
   let snapshot = latest ?? null;
   if (snapshot === undefined || snapshot === null) {
     const primary = ctx.locations.find((l) => l.isPrimary) ?? ctx.locations[0];
@@ -660,6 +680,11 @@ export async function getIntegrations(ctx: WorkspaceContext, latest?: SnapshotRe
       handle: ctx.workspace.instagramHandle,
       state: snapshot?.moduleStates.instagram.status ?? "unknown",
       limitationCode: snapshot?.moduleStates.instagram.limitationCode ?? null,
+      connection: {
+        status: instagramRow?.status ?? "not_connected",
+        accountRef: parseInstagramAccountRef(instagramRow?.account_ref ?? null),
+        updatedAt: instagramRow?.updated_at ?? null,
+      },
     },
     website: {
       state: snapshot?.moduleStates.website.status ?? "unknown",

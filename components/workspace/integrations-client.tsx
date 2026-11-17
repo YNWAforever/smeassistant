@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { PrototypeLocale } from "@/lib/copy"
-import { confirmInstagramHandle, disconnectGoogleConnection } from "@/lib/workspace/client"
+import { confirmInstagramHandle, disconnectGoogleConnection, disconnectInstagramConnection } from "@/lib/workspace/client"
 
 /**
  * Inline Instagram handle confirmation on the integrations page (Phase 6
@@ -98,6 +98,48 @@ export function GoogleDisconnectButton({ locale, workspaceId }: { locale: Protot
   )
 }
 
+/**
+ * Withdraws the Instagram (Meta Graph) connection installed by P20.1. Owner
+ * only, enforced by the route and by the page, which loads at `minRole:
+ * "owner"`. The dialog says exactly what disconnecting does: the stored
+ * credential is deleted, the connection shows as revoked, and the public
+ * handle evidence -- which never depended on this credential -- is untouched.
+ */
+export function InstagramDisconnectButton({ locale, workspaceId }: { locale: PrototypeLocale; workspaceId: string }) {
+  const router = useRouter()
+  const t = COPY[locale]
+  const [busy, setBusy] = useState(false)
+
+  async function disconnect() {
+    if (busy) return
+    setBusy(true)
+    const result = await disconnectInstagramConnection(workspaceId, locale)
+    setBusy(false)
+    if (!result.ok) {
+      toast.error(result.error === "offline" || result.error === "network" ? t.network : result.status === 403 ? t.forbidden : t.instagramDisconnectFailed)
+      return
+    }
+    // `disconnected: false` means there was nothing usable left to withdraw,
+    // which is the end state the owner asked for.
+    toast.success(result.data.disconnected ? t.instagramDisconnected : t.instagramAlreadyDisconnected)
+    router.refresh()
+  }
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild><Button variant="outline" disabled={busy}>{busy ? <LoaderCircle className="animate-spin" /> : <Unplug />} {t.disconnect}</Button></AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t.instagramDisconnectTitle}</AlertDialogTitle>
+          <AlertDialogDescription>{t.instagramDisconnectNote}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <p className="limitation-note">{t.instagramAccountNote} <a href="https://www.instagram.com/accounts/manage_access/" target="_blank" rel="noreferrer">{t.instagramAccountLink}</a></p>
+        <AlertDialogFooter><AlertDialogCancel>{t.cancel}</AlertDialogCancel><AlertDialogAction onClick={() => void disconnect()}>{t.disconnect}</AlertDialogAction></AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
 const COPY = {
   en: {
     label: "Public Instagram handle", note: "We only look at public posts. We never post for you.",
@@ -113,6 +155,13 @@ const COPY = {
     disconnected: "Google Business Profile disconnected.",
     alreadyDisconnected: "That connection was already disconnected.",
     disconnectFailed: "The connection could not be disconnected.",
+    instagramDisconnectTitle: "Disconnect Instagram account?",
+    instagramDisconnectNote: "The stored Instagram credential is deleted and the connection shows as revoked. Nothing is ever posted automatically. Your public handle and past scans are unaffected, and you can reconnect at any time.",
+    instagramAccountNote: "This removes the credential we hold. To remove Kinnso OS's access from your Instagram account as well:",
+    instagramAccountLink: "Instagram app permissions",
+    instagramDisconnected: "Instagram account disconnected.",
+    instagramAlreadyDisconnected: "That Instagram connection was already disconnected.",
+    instagramDisconnectFailed: "The Instagram connection could not be disconnected.",
     confirm: "Confirm handle", update: "Update handle", saved: "Instagram handle confirmed:",
     invalid: "That does not look like an Instagram handle.", forbidden: "Only the owner can change integrations.",
     network: "The server could not be reached; try again shortly.", failed: "The handle could not be saved.",
@@ -127,6 +176,13 @@ const COPY = {
     disconnected: "已解除 Google 商家檔案連接。",
     alreadyDisconnected: "該連接已經解除。",
     disconnectFailed: "未能解除連接。",
+    instagramDisconnectTitle: "解除 Instagram 帳號連接？",
+    instagramDisconnectNote: "已儲存的 Instagram 憑證會被刪除，連接會顯示為已撤銷。不會自動發佈任何內容。你的公開帳號及過往掃描不受影響，你可以隨時重新連接。",
+    instagramAccountNote: "這只會刪除我們持有的憑證。如要同時在你的 Instagram 帳戶移除 Kinnso OS 的存取權：",
+    instagramAccountLink: "Instagram 應用程式權限",
+    instagramDisconnected: "已解除 Instagram 帳號連接。",
+    instagramAlreadyDisconnected: "該 Instagram 連接已經解除。",
+    instagramDisconnectFailed: "未能解除 Instagram 連接。",
     confirm: "確認帳號", update: "更新帳號", saved: "已確認 Instagram 帳號：",
     invalid: "這看來不是有效的 Instagram 帳號。", forbidden: "只有店主可以更改連接設定。",
     network: "無法連接伺服器，請稍後再試。", failed: "未能儲存帳號。",
@@ -141,6 +197,13 @@ const COPY = {
     disconnected: "已解除 Google 商家檔案連接。",
     alreadyDisconnected: "該連接已經解除。",
     disconnectFailed: "無法解除連接。",
+    instagramDisconnectTitle: "解除 Instagram 帳號連接？",
+    instagramDisconnectNote: "已儲存的 Instagram 憑證會被刪除，連接會顯示為已撤銷。不會自動發布任何內容。你的公開帳號與過往掃描不受影響，你可以隨時重新連接。",
+    instagramAccountNote: "這只會刪除我們保存的憑證。若要同時在你的 Instagram 帳戶移除 Kinnso OS 的存取權：",
+    instagramAccountLink: "Instagram 應用程式權限",
+    instagramDisconnected: "已解除 Instagram 帳號連接。",
+    instagramAlreadyDisconnected: "該 Instagram 連接已經解除。",
+    instagramDisconnectFailed: "無法解除 Instagram 連接。",
     confirm: "確認帳號", update: "更新帳號", saved: "已確認 Instagram 帳號：",
     invalid: "這看起來不是有效的 Instagram 帳號。", forbidden: "只有店家負責人可以更改連接設定。",
     network: "無法連線至伺服器，請稍後再試。", failed: "無法儲存帳號。",

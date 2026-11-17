@@ -1,6 +1,6 @@
 # Phase 20 — Instagram publishing and insights (proposed scope)
 
-Status: **proposed, not started.** This document scopes an owner-requested capability. No Meta app exists, no credentials were added, no migration was written, no code was changed and no hosted action was taken. Direct publishing stays disabled under guardrail 6 ("Never auto-publish") until an explicit owner authorization and a verified connector exist; this scope alone authorizes nothing.
+Status: **P20.1 implemented behind flags; live verification Not tested.** The account connection (OAuth start/callback, long-lived token storage, owner-only disconnect, Business → Integrations UI, flags, unconfigured-environment behaviour) is implemented behind `INSTAGRAM_OAUTH_ENABLED`, which ships unset. No Meta app, credentials or App Review approvals exist yet, so no live consent, publish or insight call has been executed and every live acceptance item remains **Not tested**. Direct publishing stays disabled under guardrail 6 ("Never auto-publish") until P20.2 ships behind its own flag and the owner explicitly authorizes a publish.
 
 Baseline: application code `eaa1e13a` on `main` (2026-11-17). Requested by the owner on 2026-11-18: post to a connected Instagram account and read that account's insights from the product.
 
@@ -37,10 +37,10 @@ These are outside the repository and must be completed by the owner; each produc
 | P2 | That account linked to a Facebook Page the owner controls | Meta Business Suite | Page id + link confirmation | Instagram Graph API |
 | P3 | Meta **developer app** of the Business type | developers.facebook.com | App id, app mode | OAuth |
 | P4 | Add **Instagram Graph API** product; allow redirect URI `<APP_ORIGIN>/api/oauth/instagram/callback` (preview + production) | Meta app dashboard | Registered URI list | OAuth callback |
-| P5 | Request permissions: `instagram_basic`, `instagram_content_publish`, `instagram_manage_insights` (advanced access / App Review, with screen recording) | Meta app dashboard | Approval status per permission, review date | Publish, insights |
+| P5 | Request permissions: `instagram_basic`, `instagram_content_publish`, `instagram_manage_insights`, plus `pages_show_list` and `pages_read_engagement` (advanced access / App Review, with screen recording). The two page permissions are what let the long-lived user token enumerate the Facebook Page that owns the professional account; without them `/me/accounts` cannot resolve an account at all. | Meta app dashboard | Approval status per permission, review date | Publish, insights, connection |
 | P6 | Business verification for the app's business | Meta Business Suite | Verification status | Advanced access |
 | P7 | Long-lived token policy confirmed (60-day token, refresh window) | Meta docs + app settings | Documented policy | Token refresh |
-| P8 | Hosted secrets set for preview and production: `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_OAUTH_REDIRECT_URI` | Vercel project settings | Presence only, never values | OAuth |
+| P8 | Hosted secrets set for preview and production: `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_OAUTH_REDIRECT_URI`, and the flag `INSTAGRAM_OAUTH_ENABLED` (exactly `"true"`; unset = unavailable) | Vercel project settings | Presence only, never values | OAuth |
 | P9 | Feature flags set deliberately: `INSTAGRAM_PUBLISH_ENABLED`, `INSTAGRAM_INSIGHTS_ENABLED` (exactly `"true"`; default unset = unavailable) | Vercel settings | Flag state per environment | All live calls |
 | P10 | Pin the Graph API version (for example `v23.0`) and record it | Repo config + docs | Version constant | All calls |
 
@@ -50,10 +50,10 @@ Until P1–P7 exist, the implementation can be built and tested against an injec
 
 ### 4.1 OAuth and connection lifecycle
 
-- `GET /api/oauth/instagram/start` — owner-only; signs a `state` value derived from `OAUTH_TOKEN_ENCRYPTION_KEY` with a domain-separated key (same pattern as [`lib/oauth/google-connection.ts`](../../../lib/oauth/google-connection.ts)); redirects to Meta consent with the P5 scopes.
-- `GET /api/oauth/instagram/callback` — verifies state, exchanges the code, converts to a long-lived token, fetches the IG user id and username, stores ciphertext in `oauth_connections` (`provider='instagram'`, `account_ref=<ig user id>`, `scopes`, `expires_at`, `status='active'`), audits `integration.updated`.
-- Refresh: when fewer than 10 days remain, refresh in place before use; on refresh failure mark `status='expired'`, surface a reconnect action, never retry publish silently.
-- `DELETE /api/workspaces/[workspaceId]/instagram/connection` — owner-only; revokes the token at Meta best-effort, deletes or revokes the row, marks dependent insights unavailable, audits the disconnect.
+- `GET /api/oauth/instagram/start` — owner-only; `404 not_enabled` while `INSTAGRAM_OAUTH_ENABLED` is not exactly `"true"`, `503 unavailable` when the flag is on but the app id/secret/redirect or encryption key is missing. Signs a `state` value derived from `OAUTH_TOKEN_ENCRYPTION_KEY` with a domain-separated key (same pattern as [`lib/oauth/google-connection.ts`](../../../lib/oauth/google-connection.ts)); redirects to Meta consent with the P5 scopes. `?workspace=<slug>` is only a selector: the membership lookup is filtered by the session user and the role must be `owner`.
+- `GET /api/oauth/instagram/callback` — verifies state, re-checks the session/owner membership, exchanges the code, converts the short-lived token to a long-lived one, verifies every requested permission was granted (`/me/permissions`), resolves the professional account through `/me/accounts` (`instagram_business_account`), and stores ciphertext in `oauth_connections` (`provider='instagram'`, `account_ref={"id":"<ig user id>","username":"<handle>"}`, `scopes`, `expires_at`, `status='active'`). Audits `integration.updated`. Every outcome redirects to the integrations page with a content-free `?instagram=<code>` (`ok`, `declined`, `invalid`, `invalid_state`, `unauthenticated`, `forbidden`, `unavailable`, `no_instagram_account`, `missing_permissions`, `storage_failed`); no provider text or token is ever placed in the redirect.
+- Refresh: `refreshInstagramToken` re-exchanges the long-lived token and `needsInstagramRefresh` uses a 7-day skew. Both are implemented and tested in P20.1 but have no caller until P20.2/P20.3 use the token; a refresh failure must mark `status='expired'` and surface the reconnect action (never retry publish silently).
+- `DELETE /api/workspaces/[workspaceId]/instagram-connection` — owner-only; revokes the stored credential (`status='revoked'`, ciphertext cleared), does not call Meta's deauthorize endpoint (the dialog points the owner at Instagram's own app-permissions page), and audits the disconnect. Idempotent: `disconnected: false` means there was nothing usable left to withdraw.
 - Unconfigured environment (no app id/secret/encryption key) returns `503 unavailable` on every route; no partial flows.
 
 ### 4.2 Publishing
@@ -84,7 +84,7 @@ Instagram publishing requires a publicly fetchable image URL. The plan uses the 
 
 ## 5. Data and schema changes
 
-- No change to `oauth_connections`; `'instagram'` is already permitted and its reservation comment can be updated when implemented.
+- No change to `oauth_connections`; `'instagram'` is already permitted. P20.1 uses the existing row shape with `account_ref` holding JSON `{"id","username"}` (free text, no other reader) so the later phases keep the IG user id and the UI shows the handle.
 - New `instagram_insights` table per 4.4 (one additive migration, hand-applied after `db:verify`, following the repository migration rulebook).
 - `deliveries.payload` holds the container/media ids and caption snapshot; `provider_receipt` (existing, `0014_publish_reply.sql`) holds the Meta response.
 - New rate-limit bucket keys: `instagram_publish`, `instagram_insights_pull`.
@@ -110,6 +110,8 @@ Each sub-phase is its own reviewed PR with targeted tests, typecheck, lint, docs
 | P20.3 Insights | Pull route, storage, UI, unavailable reasons for account and per-media metrics | Fixture suite incl. missing-permission and expired-token cases; live pull only after P5/P7 |
 | P20.4 Hardening | Token refresh edge cases, disconnect cleanup, rate-limit refusal UX, audit coverage, runbook | Targeted suites; review of failure paths |
 | P20.5 Acceptance and release | Owner-run live acceptance record, docs update (integration runbook, DEPLOY env section, this plan → report), release verification | Recorded account type, API version, permission list, timestamps, receipt ids; anything not executed stays **Not tested** |
+
+**P20.1 implementation record (behind `INSTAGRAM_OAUTH_ENABLED`, default off).** Modules: [`lib/oauth/instagram-connection.ts`](../../../lib/oauth/instagram-connection.ts) (flag/config, state signing, consent URL, code → long-lived exchange, permission check, account resolution, refresh), [`lib/repositories/instagram-connection.ts`](../../../lib/repositories/instagram-connection.ts) (read/replace/refresh/expire/revoke on `oauth_connections`, no schema change), routes under `app/api/oauth/instagram/` and `app/api/workspaces/[workspaceId]/instagram-connection/`. The card sits in Business → Integrations beside the existing public-handle form, which is unchanged and still powers scan-time public evidence. The Graph version is pinned by `INSTAGRAM_API_VERSION` (default `v23.0`). Tests inject a fake Meta transport; CI needs no Meta credentials and every live item stays **Not tested**.
 
 ## 8. Verification and acceptance
 
