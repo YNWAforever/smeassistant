@@ -140,7 +140,7 @@ function homeBrief(overrides: Partial<HomeBrief> = {}): HomeBrief {
     ledger: { resolved: [], regressed: [], decayed: [] },
     integrations: {
       google: { status: "active", expiresAt: null, updatedAt: null },
-      instagram: { handle: "kammanhouse", state: "measured", limitationCode: null },
+      instagram: { handle: "kammanhouse", state: "measured", limitationCode: null, connection: { status: "not_connected", accountRef: null, updatedAt: null } },
       website: { state: "measured", checksPassed: 9, checksEvaluated: 12, observedAt: "2026-08-25T01:42:00Z" },
     },
     evidence: [],

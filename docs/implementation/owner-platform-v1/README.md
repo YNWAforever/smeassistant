@@ -35,6 +35,6 @@ One phase means a complete owner outcome with several reviewable changes—not o
 Original source findings are distinguished from new recommendations throughout. The source documents' “ten offline gates” wording is explicitly reconciled against their nine named offline command entries; no missing gate or passing result has been fabricated.
 
 
-## Phase 20 (proposed)
+## Phase 20 (P20.1 implemented behind flags)
 
-Instagram publishing and insights through the Meta Graph API sits outside the four delivery phases above. It is scope-only: [PHASE-20-INSTAGRAM-GRAPH-PLAN.md](PHASE-20-INSTAGRAM-GRAPH-PLAN.md) records the prerequisites, architecture, honesty rules and open decisions. No Meta app, credentials, migration or code exists, and direct publishing stays disabled until a separately authorized phase implements and verifies it.
+Instagram publishing and insights through the Meta Graph API sits outside the four delivery phases above. It is scope-only: [PHASE-20-INSTAGRAM-GRAPH-PLAN.md](PHASE-20-INSTAGRAM-GRAPH-PLAN.md) records the prerequisites, architecture, honesty rules and open decisions. No Meta app, credentials or permissions exist yet, so no live consent, publish or insight call has been executed; every live acceptance item stays **Not tested**. The P20.1 account connection ships behind `INSTAGRAM_OAUTH_ENABLED` (unset by default), and direct publishing stays disabled until P20.2 is separately authorized and verified.

@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   completed: [] as Row[],
   schedule: null as Row | null,
   connections: [] as Row[],
+  instagramConnection: null as Row | null,
   runs: [] as Row[],
   brand: { workspaceId: "ws-1", voice: "warm", approvedClaims: [] as string[], prohibitedTerms: [] as string[], languages: ["zh-HK"] as string[], facts: {} as Record<string, string>, updatedAt: null as string | null },
   asset: null as Row | null,
@@ -26,7 +27,7 @@ const evidenceMock = vi.hoisted(() => ({ loadAuthorizedEvidence: vi.fn(async () 
 vi.mock("@/lib/evidence/load-authorized", () => ({ loadAuthorizedEvidence: evidenceMock.loadAuthorizedEvidence }));
 const repository = vi.hoisted(() => ({
   snapshots: vi.fn(), diff: vi.fn(), actions: vi.fn(), runs: vi.fn(), versions: vi.fn(),
-  latestConnection: vi.fn(), measurements: vi.fn(), draftVersions: vi.fn(),
+  latestConnection: vi.fn(), latestInstagramConnection: vi.fn(), measurements: vi.fn(), draftVersions: vi.fn(),
   completedActions: vi.fn(), schedules: vi.fn(), aeoSnapshots: vi.fn(),
   activity: vi.fn(), notifications: vi.fn(), notificationPreferences: vi.fn(),
   deliveries: vi.fn(), homeReviewCandidates: vi.fn(), homeCopyFollowUp: vi.fn(async () => null),
@@ -134,6 +135,7 @@ beforeEach(() => {
   repository.runs.mockImplementation(async () => state.runs);
   repository.versions.mockImplementation(async () => state.versions);
   repository.latestConnection.mockImplementation(async () => state.connections[0] ?? null);
+  repository.latestInstagramConnection.mockImplementation(async () => state.instagramConnection);
   repository.measurements.mockImplementation(async () => state.measurements);
   repository.draftVersions.mockImplementation(async () => state.versions);
   repository.completedActions.mockImplementation(async () => state.completed);
@@ -440,7 +442,7 @@ describe("page repository boundaries", () => {
     const empty = { ...ctx, workspace: { ...ctx.workspace, market: "tw" as const }, locations: [], membership: { ...ctx.membership, role: "viewer" as const } };
     expect(await getIntegrations(empty)).toEqual({
       google: { status: "not_connected", expiresAt: null, updatedAt: null },
-      instagram: { handle: null, state: "unknown", limitationCode: null },
+      instagram: { handle: null, state: "unknown", limitationCode: null, connection: { status: "not_connected", accountRef: null, updatedAt: null } },
       website: { state: "unknown", checksPassed: null, checksEvaluated: null, observedAt: null },
     });
     expect(repository.snapshots).not.toHaveBeenCalled();

@@ -183,6 +183,16 @@ export function workspaceReadRepository(client?: Pick<Pool, "query">) {
         "SELECT status, expires_at::text, updated_at::text, connected_at::text AS created_at FROM oauth_connections WHERE workspace_id=$1 AND provider='google_gbp' ORDER BY (status='active') DESC, connected_at DESC LIMIT 1", [workspaceId]);
       return row ?? null;
     },
+    /**
+     * The workspace's Instagram (Meta Graph) connection row, if any. Same
+     * active-row-first ordering as latestConnection: the page shows the status
+     * and only offers Disconnect while a usable credential exists.
+     */
+    async latestInstagramConnection(workspaceId: string): Promise<{ status: IntegrationsModel["instagram"]["connection"]["status"]; account_ref: string | null; updated_at: string | null } | null> {
+      const [row] = await rows<{ status: IntegrationsModel["instagram"]["connection"]["status"]; account_ref: string | null; updated_at: string | null }>(
+        "SELECT status, account_ref, updated_at::text FROM oauth_connections WHERE workspace_id=$1 AND provider='instagram' ORDER BY (status='active') DESC, connected_at DESC LIMIT 1", [workspaceId]);
+      return row ?? null;
+    },
     // Scoped on the AFTER SNAPSHOT's location rather than the action's:
     // measurements are written for workspace-wide actions too (their
     // location_id is NULL), so keying on a.location_id would drop them from
