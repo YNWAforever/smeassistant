@@ -20,6 +20,7 @@ No execution, repository modification, deployment or hosted test has occurred in
 | [`phase-prompts/02-COMPLETE-OWNER-WORKSPACE.md`](phase-prompts/02-COMPLETE-OWNER-WORKSPACE.md) | Three complete workflows, simpler daily UX and real assisted assignment. |
 | [`phase-prompts/03-RECURRING-COMMERCIAL-SERVICE.md`](phase-prompts/03-RECURRING-COMMERCIAL-SERVICE.md) | Durable execution, re-scan measurement, billing and operations. |
 | [`phase-prompts/04-REUSABLE-GROWTH-PLATFORM.md`](phase-prompts/04-REUSABLE-GROWTH-PLATFORM.md) | Offers, promotion copy, work packs and contextual assistant; gated optional publishing/preview. |
+| [`PHASE-20-INSTAGRAM-GRAPH-PLAN.md`](PHASE-20-INSTAGRAM-GRAPH-PLAN.md) | Proposed, separately authorized scope for Instagram publishing and insights through the Meta Graph API. Not started: no Meta app, credentials, migration or code exists; direct publishing remains excluded from incidental work. |
 | [`IMPLEMENTATION-TRACEABILITY.md`](IMPLEMENTATION-TRACEABILITY.md) | Every supplied finding and backlog item mapped to its phase and closure proof. |
 | [`BUSINESS-AND-HOSTED-DECISIONS.md`](BUSINESS-AND-HOSTED-DECISIONS.md) | Decisions and permissions that cannot be silently guessed; safe coding defaults. |
 | [`RELEASE-EVIDENCE-TEMPLATE.md`](RELEASE-EVIDENCE-TEMPLATE.md) | Candidate-specific commands, statuses, outcomes, authorization and rollback evidence. |
@@ -32,3 +33,8 @@ No execution, repository modification, deployment or hosted test has occurred in
 One phase means a complete owner outcome with several reviewable changes—not one giant commit. Preserve scanning/evidence, Neon, server-side permissions and SQL exact-version approval/export. Do not add direct publishing, another scheduler, another authentication system or a separate agent marketplace as incidental work.
 
 Original source findings are distinguished from new recommendations throughout. The source documents' “ten offline gates” wording is explicitly reconciled against their nine named offline command entries; no missing gate or passing result has been fabricated.
+
+
+## Phase 20 (proposed)
+
+Instagram publishing and insights through the Meta Graph API sits outside the four delivery phases above. It is scope-only: [PHASE-20-INSTAGRAM-GRAPH-PLAN.md](PHASE-20-INSTAGRAM-GRAPH-PLAN.md) records the prerequisites, architecture, honesty rules and open decisions. No Meta app, credentials, migration or code exists, and direct publishing stays disabled until a separately authorized phase implements and verifies it.
