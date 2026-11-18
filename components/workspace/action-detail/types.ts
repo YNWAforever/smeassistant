@@ -1,5 +1,5 @@
 import type { PrototypeLocale } from "@/lib/copy"
-import type { PublishPanel } from "@/lib/publishing/page-state"
+import type { InstagramPublishPanel, PublishPanel } from "@/lib/publishing/page-state"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import type { ActionDetail, AuditEventRow } from "@/lib/workspace/queries-pages"
 import type { OwnerCheckContext } from "@/lib/workspace/owner-review-check"
@@ -30,6 +30,8 @@ export interface ActionDetailClientProps {
   initialVersionId?: string | null
   /** P4.6: the Google publish card's data (review-response only); null hides it. The server stays the authority. */
   publishPanel?: PublishPanel | null
+  /** P20.2c: the Instagram publish card's data (feed-post templates only); null hides it. The server stays the authority. */
+  instagramPublishPanel?: InstagramPublishPanel | null
   ownerCheck?: OwnerCheckContext
   ownerCheckIdentity?: string
   /** Arrived from a saved Studio draft: show the edit/approve handoff banner. */

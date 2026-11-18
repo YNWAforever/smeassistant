@@ -21,7 +21,7 @@ import type { ActionDetailClientProps, Busy } from "@/components/workspace/actio
  * Versions arrive from the server; the editor re-points itself after a refresh
  * without losing unsaved local text (see the render-phase adjustments below).
  */
-function useEditorState({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null, ownerCheck = EMPTY_OWNER_CHECK, ownerCheckIdentity, embedded = false, studioHref = null }: ActionDetailClientProps) {
+function useEditorState({ locale, workspaceSlug, workspaceId, timezone, role, inScope, location, detail, auditRows, locations, approvedAssets, offer = null, latestVersionOfferRevision = null, offersEnabled = false, initialVersionId = null, publishPanel = null, instagramPublishPanel = null, ownerCheck = EMPTY_OWNER_CHECK, ownerCheckIdentity, embedded = false, studioHref = null }: ActionDetailClientProps) {
   const ac = copy[locale].action
   const router = useRouter()
   const base = `/${locale}/owner/${workspaceSlug}`
@@ -239,7 +239,7 @@ function useEditorState({ locale, workspaceSlug, workspaceId, timezone, role, in
     faqQuestionByKey, guardrailBadge, guardrailFlags, hydrated, inputs, inputValues, inScope, isApprovedCurrent,
     lastRunError, locale, location, locationName, measurements, mutationPending, neededKeys, needsRunReconciliation, offer,
     offersCopy, offersEnabled, offerStale, offline, ownerCheck, ownerCheckIdentity, pendingSelect, provenance,
-    publishPanel, relatedAudit, reviewEvidence, role, router, runs, saveBeforeGenerationMessage, saveFailed,
+    publishPanel, instagramPublishPanel, relatedAudit, reviewEvidence, role, router, runs, saveBeforeGenerationMessage, saveFailed,
     scanInputCopy, selectedReviews, selectedVersion, selectVersion, setAllowanceBlocked, setAltText, setBusy, setComment,
     setComparing, setConflict, setContent, setFactsNeeded, setInputValues, setLastRunError, setNeedsRunReconciliation,
     setOfferRefusal, setPendingSelect, setSaveFailed, setSelectedReviews, setVersionId, showInputForm,

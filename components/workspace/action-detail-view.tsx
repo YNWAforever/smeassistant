@@ -4,7 +4,7 @@ import type { PrototypeLocale } from "@/lib/copy"
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace"
 import type { OfferCardData } from "@/components/workspace/action-detail-client"
 import type { ActionDetail, AuditEventRow } from "@/lib/workspace/queries-pages"
-import type { PublishPanel } from "@/lib/publishing/page-state"
+import type { InstagramPublishPanel, PublishPanel } from "@/lib/publishing/page-state"
 import type { OwnerCheckContext } from "@/lib/workspace/owner-review-check"
 
 export interface ActionDetailViewProps {
@@ -25,6 +25,8 @@ export interface ActionDetailViewProps {
   initialVersionId?: string | null
   /** P4.6: the Google publish card's data; null hides it (any other template, or a failed read). */
   publishPanel?: PublishPanel | null
+  /** P20.2c: the Instagram publish card's data; null hides it (any other template, or a failed read). */
+  instagramPublishPanel?: InstagramPublishPanel | null
   ownerCheck?: OwnerCheckContext
   ownerCheckIdentity?: string
   embedded?: boolean

@@ -2,8 +2,11 @@ import "server-only";
 
 import { GBP_SCOPE_REQUIRED } from "@/lib/oauth/google-connection";
 import { publishEligibility, type EligibilityReason } from "@/lib/publishing/eligibility";
-import { gbpReplyPublishEnabled } from "@/lib/publishing/flag";
+import { gbpReplyPublishEnabled, instagramPublishEnabled } from "@/lib/publishing/flag";
+import { INSTAGRAM_PUBLISH_SCOPES } from "@/lib/publishing/instagram-connection";
+import { INSTAGRAM_PUBLISHABLE_TEMPLATES } from "@/lib/publishing/instagram-eligibility";
 import { publishingRepository, type PublishState } from "@/lib/repositories/publishing";
+import { instagramConnectionRepository, parseInstagramAccountRef } from "@/lib/repositories/instagram-connection";
 import type { WorkspaceRole } from "@/lib/workspace/authorize-workspace";
 
 /**
@@ -114,6 +117,102 @@ export async function loadPublishPanel(input: {
     };
   } catch {
     console.error("[owner/actions] publish panel unavailable", { category: "gbp_publish_panel_unavailable" });
+    return null;
+  }
+}
+
+export type InstagramPublishPanelDelivery = {
+  id: string;
+  versionId: string;
+  state: PublishState;
+  reason: string | null;
+  verifiedAt: string | null;
+  createdAt: string;
+};
+
+export type InstagramPublishPanel = {
+  enabled: boolean;
+  connectionActive: boolean;
+  templateAllowed: boolean;
+  /** The role/scope half of `canPublish`; false makes a blocked reason read-only copy. */
+  mayAct: boolean;
+  canPublish: boolean;
+  deliveries: InstagramPublishPanelDelivery[];
+};
+
+/**
+ * P20.2c: what the action detail page's Instagram publish card needs. Plain
+ * data only, mirroring `loadPublishPanel` for the second channel:
+ *
+ * - null for any template that is not a feed post (`social-post`,
+ *   `offer-instagram-post`), unless an Instagram delivery already exists for
+ *   one of this action's versions (a receipt stays visible across a template
+ *   change and can still be reconciled);
+ * - null when the flag is off and no delivery exists, so the card never appears
+ *   on a database without migration 0023;
+ * - `connectionActive` needs an active Instagram connection that names an
+ *   account and carries both publish scopes; it drives the capability copy. No
+ *   token, account id or username reaches the panel.
+ *
+ * The card additionally requires the selected version to be approved
+ * (`approved` prop); the route re-checks everything, including the image URL
+ * the owner types later, so this panel cannot make a version publishable.
+ */
+export async function loadInstagramPublishPanel(input: {
+  workspaceId: string;
+  templateKey: string;
+  role: WorkspaceRole;
+  inScope: boolean;
+  versions: Array<{ id: string }>;
+  enabled?: boolean;
+}): Promise<InstagramPublishPanel | null> {
+  const enabled = input.enabled ?? instagramPublishEnabled();
+  const templateAllowed = INSTAGRAM_PUBLISHABLE_TEMPLATES.includes(input.templateKey);
+  // Nothing to show and nothing to read: another template on a database without 0023.
+  if (!templateAllowed && !enabled) return null;
+
+  try {
+    const repository = publishingRepository();
+    const rows = await repository.publishDeliveryIds(
+      input.workspaceId,
+      input.versions.map((version) => version.id),
+    );
+    const found = await Promise.all(rows.map((row) => repository.getDelivery(row.id)));
+    const deliveries: InstagramPublishPanelDelivery[] = [];
+    for (const delivery of found) {
+      if (!delivery || delivery.workspaceId !== input.workspaceId || delivery.channel !== "instagram") continue;
+      deliveries.push({
+        id: delivery.id,
+        versionId: delivery.versionId,
+        state: delivery.state,
+        reason: delivery.failureReason,
+        verifiedAt: delivery.verifiedAt,
+        createdAt: delivery.createdAt,
+      });
+    }
+
+    let connectionActive = false;
+    if (enabled) {
+      const connection = await instagramConnectionRepository().activeConnection(input.workspaceId);
+      connectionActive = connection !== null
+        && parseInstagramAccountRef(connection.accountRef) !== null
+        && INSTAGRAM_PUBLISH_SCOPES.every((scope) => connection.scopes.includes(scope));
+    }
+
+    if (!templateAllowed && deliveries.length === 0) return null;
+    if (!enabled && deliveries.length === 0) return null;
+
+    const mayAct = input.role !== "viewer" && (input.role === "owner" || input.inScope);
+    return {
+      enabled,
+      connectionActive,
+      templateAllowed,
+      mayAct,
+      canPublish: enabled && templateAllowed && connectionActive && mayAct,
+      deliveries,
+    };
+  } catch {
+    console.error("[owner/actions] instagram publish panel unavailable", { category: "instagram_publish_panel_unavailable" });
     return null;
   }
 }
