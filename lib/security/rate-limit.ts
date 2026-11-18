@@ -45,6 +45,9 @@ export type RateLimitScope =
   | "gbp_publish_global"
   | "gbp_targets"
   | "gbp_reconcile"
+  | "instagram_publish"
+  | "instagram_publish_global"
+  | "instagram_reconcile"
   | "invitation_resend";
 
 export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
@@ -183,6 +186,17 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   gbp_targets: { limit: 60, windowSeconds: 60 * 60 },
   // gbp_reconcile: re-reading one unknown-outcome delivery from Google, 30 a day per delivery id.
   gbp_reconcile: { limit: 30, windowSeconds: 24 * 60 * 60 },
+  // Instagram feed publishing (P20.2b), consumed through
+  // lib/publishing/instagram-limits.ts with no request fingerprint and
+  // fail-closed. Deliberately below Meta's own 25 posts/24 h per account so our
+  // guard refuses first, and below gbp_publish because a feed post is public
+  // and hard to retract.
+  // instagram_publish: publish, 10 a day per workspace id.
+  instagram_publish: { limit: 10, windowSeconds: 24 * 60 * 60 },
+  // instagram_publish_global: every publish, 100 a day across all workspaces (key "all").
+  instagram_publish_global: { limit: 100, windowSeconds: 24 * 60 * 60 },
+  // instagram_reconcile: re-reading one unknown-outcome delivery from Instagram, 30 a day per delivery id.
+  instagram_reconcile: { limit: 30, windowSeconds: 24 * 60 * 60 },
   // POST /api/workspaces/[id]/members/[memberId]/resend: 3 a day per invited
   // member id from any network (enforceRecipientRateLimit: no fingerprint in
   // the inner key), fail-closed.

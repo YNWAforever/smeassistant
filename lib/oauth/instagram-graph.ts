@@ -187,6 +187,42 @@ export async function publishMediaContainer(
 
 export type InstagramMedia = { id: string; permalink: string | null; timestamp: string | null };
 
+/**
+ * Reads a recently published media item. Also used by reconcile to find the
+ * item a publish may have created: `caption` is only returned by the list
+ * endpoint, so `listRecentMedia` carries it.
+ */
+export type InstagramRecentMedia = InstagramMedia & { caption: string | null };
+
+/** Step 4b: lists the account's recent media, newest first. */
+export async function listRecentMedia(
+  accessToken: string,
+  igUserId: string,
+  deps: InstagramGraphDeps & { limit?: number } = {},
+): Promise<InstagramRecentMedia[]> {
+  const url = new URL(`${graphBase()}/${encodeURIComponent(igUserId)}/media`);
+  url.searchParams.set("fields", "id,permalink,timestamp,caption");
+  url.searchParams.set("limit", String(deps.limit ?? 20));
+  url.searchParams.set("access_token", accessToken);
+  const result = await graphJson(fetchFor(deps), url.toString(), {}, deps.timeoutMs);
+  if (!result.ok) throw classify(result);
+  const data = result.body?.data;
+  if (!Array.isArray(data)) return [];
+  const media: InstagramRecentMedia[] = [];
+  for (const item of data) {
+    if (!item || typeof item !== "object") continue;
+    const value = item as Record<string, unknown>;
+    if (typeof value.id !== "string") continue;
+    media.push({
+      id: value.id,
+      permalink: typeof value.permalink === "string" ? value.permalink : null,
+      timestamp: typeof value.timestamp === "string" ? value.timestamp : null,
+      caption: typeof value.caption === "string" ? value.caption : null,
+    });
+  }
+  return media;
+}
+
 /** Step 4: reads a published media back; used to settle an uncertain publish. */
 export async function getPublishedMedia(
   accessToken: string,
