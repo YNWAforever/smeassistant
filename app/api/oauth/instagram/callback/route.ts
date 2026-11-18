@@ -5,6 +5,7 @@ import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/locale";
 import { exchangeInstagramCode, verifyInstagramState } from "@/lib/oauth/instagram-connection";
 import { recordClaimAuditEvent } from "@/lib/repositories/claims";
 import { instagramConnectionRepository } from "@/lib/repositories/instagram-connection";
+import { instagramInsightsRepository } from "@/lib/repositories/instagram-insights";
 import { membershipRepository } from "@/lib/repositories/membership";
 import { encryptToken } from "@/lib/security/token-crypto";
 
@@ -95,6 +96,16 @@ export async function GET(req: Request) {
       return back(origin, locale, workspaceSlug, "storage_failed");
     }
 
+    // A new authorization may name a different account: drop any observations
+    // from the previous credential so the Results page never mixes two
+    // accounts' numbers. Best-effort; the connection is already active.
+    let insightsReset = 0;
+    try {
+      insightsReset = await instagramInsightsRepository().deleteWorkspace(workspace.id);
+    } catch {
+      console.error("Instagram insights reset failed", { category: "instagram_insights_reset_failed" });
+    }
+
     // Best-effort audit trail (guardrail 10). The connection is already active;
     // a failed log write must not surface as a failed connection.
     try {
@@ -105,7 +116,7 @@ export async function GET(req: Request) {
         event: "integration.updated",
         entity_type: "oauth_connection",
         entity_id: connectionId,
-        payload: { locale, provider: "instagram", status: "connected" },
+        payload: { locale, provider: "instagram", status: "connected", insights_reset: insightsReset },
       });
     } catch {
       console.error("Instagram OAuth audit event not recorded");

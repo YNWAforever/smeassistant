@@ -16,13 +16,19 @@ function setup(overrides: {
     listRecentMedia?: (token: string, ig: string, options: unknown) => Promise<Array<{ id: string; permalink: string | null; timestamp: string | null; caption: string | null }>>;
   };
   token?: "ok" | "connection_missing" | "connection_expired" | "unauthorized";
+  retention?: "ok" | "throw";
 }) {
   const inserted: InsertRow[][] = [];
+  const deleteOlderThan = vi.fn(async () => {
+    if (overrides.retention === "throw") throw new Error("prune failed");
+    return 2;
+  });
   const repository = {
     insertMany: vi.fn(async (_workspaceId: string, rows: InsertRow[]) => {
       inserted.push(rows);
       return rows.length;
     }),
+    deleteOlderThan,
   };
   const deps: PullInstagramInsightsDeps = {
     repository,
@@ -39,7 +45,7 @@ function setup(overrides: {
       return fn("token", ACCOUNT);
     }) as unknown as PullInstagramInsightsDeps["withToken"],
   };
-  return { deps, inserted };
+  return { deps, inserted, deleteOlderThan };
 }
 
 describe("pullInstagramInsights", () => {
@@ -85,6 +91,15 @@ describe("pullInstagramInsights", () => {
     const rows = inserted.flat();
     expect(rows.filter((row) => row.scope === "account")).toHaveLength(3);
     expect(rows.filter((row) => row.scope === "account").every((row) => row.value === null && row.unavailableReason === "missing_permission")).toBe(true);
+  });
+
+  it("prunes observations older than the decided 12 months after storing, without failing the pull", async () => {
+    const { deps, deleteOlderThan } = setup({});
+    await expect(pullInstagramInsights({ workspaceId: WORKSPACE }, deps)).resolves.toMatchObject({ ok: true });
+    expect(deleteOlderThan).toHaveBeenCalledWith(WORKSPACE, "2025-11-18T12:00:00.000Z");
+
+    const failing = setup({ retention: "throw" });
+    await expect(pullInstagramInsights({ workspaceId: WORKSPACE }, failing.deps)).resolves.toMatchObject({ ok: true });
   });
 
   it("lets an unauthorized error escape so the token helper can refresh or expire the row", async () => {
