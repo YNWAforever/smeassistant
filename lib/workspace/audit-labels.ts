@@ -37,6 +37,7 @@ export const AUDIT_EVENT_LABELS: Record<string, { en: string; zh: string; zhTW?:
   "report.recovery_requested": { en: "Report link requested", zh: "已要求報告連結" },
   "report.recovery_redeemed": { en: "Report link used", zh: "已使用報告連結" },
   "integration.updated": { en: "Integration updated", zh: "連接已更新" },
+  "insights.pulled": { en: "Instagram insights pulled", zh: "已取得 Instagram 成效", zhTW: "已取得 Instagram 成效" },
   "brand.updated": { en: "Brand profile updated", zh: "品牌資料已更新" },
   "asset.uploaded": { en: "Asset uploaded", zh: "相片已上載", zhTW: "照片已上傳" },
   "asset.rights_confirmed": { en: "Asset rights confirmed", zh: "相片使用權已確認", zhTW: "照片使用權已確認" },

@@ -9,8 +9,10 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { LocationSelect } from "@/components/workspace/location-select"
+import { InstagramInsightsCard } from "@/components/workspace/instagram-insights-card"
 import { ScanHistoryBars } from "@/components/visual/scan-history-bars"
 import { copy, type PrototypeLocale } from "@/lib/copy"
+import type { InstagramInsightsPanel } from "@/lib/publishing/instagram-insights-state"
 import { comparisonReasonText, findingLabel, formatDay, metricLabel, scorePercent, signed, withLocation } from "@/lib/workspace/format"
 import type { InsightsModel } from "@/lib/workspace/queries-pages"
 import { fill } from "@/lib/copy-ui"
@@ -18,9 +20,14 @@ import { fill } from "@/lib/copy-ui"
 export interface InsightsViewProps {
   locale: PrototypeLocale
   workspaceSlug: string
+  workspaceId?: string
   timezone: string
   locations: Array<{ slug: string; name: string }>
   model: InsightsModel
+  /** The Instagram insights panel data (P20.3); null while the feature flag is off. */
+  instagramInsightsPanel?: InstagramInsightsPanel | null
+  /** Whether this member may pull insights (owner/manager). */
+  instagramInsightsCanPull?: boolean
   /** The rescan control for this location (RescanButton), built by the page; omitted when there is none. */
   rescanAllowed?: boolean
   rescan?: ReactNode
@@ -75,7 +82,7 @@ export function insightsLeadSentence(model: InsightsModel, locale: PrototypeLoca
   return fill(pc.missingBecause, { reason: comparisonReasonText(reason, locale) })
 }
 
-export function InsightsView({ locale, workspaceSlug, timezone, locations, model, rescan, rescanAllowed = false, studioHref }: InsightsViewProps) {
+export function InsightsView({ locale, workspaceSlug, workspaceId = "", timezone, locations, model, instagramInsightsPanel = null, instagramInsightsCanPull = false, rescan, rescanAllowed = false, studioHref }: InsightsViewProps) {
   const pc = copy[locale].workspaceHome.insights
   const base = `/${locale}/owner/${workspaceSlug}`
   const isAll = model.locationSlug === "all"
@@ -88,6 +95,16 @@ export function InsightsView({ locale, workspaceSlug, timezone, locations, model
     <div className="insights-page">
       <PageIntro title={pc.leadTitle} description={isAll || head ? sentence : undefined} actions={<><LocationSelect locale={locale} value={model.locationSlug} locations={locations} className="location-select" ariaLabel={pc.chooseInsightsLocation} />{studioHref && <Link className="owner-studio-link" href={studioHref}>{copy[locale].workspaceHome.home.continueInStudio}<ArrowRight /></Link>}</>} />
       {rescan}
+      {instagramInsightsPanel && (
+        <InstagramInsightsCard
+          locale={locale}
+          workspaceId={workspaceId}
+          workspaceSlug={workspaceSlug}
+          timezone={timezone}
+          panel={instagramInsightsPanel}
+          canPull={instagramInsightsCanPull}
+        />
+      )}
       {isAll ? (
         <>
         <div className="location-proof-grid">

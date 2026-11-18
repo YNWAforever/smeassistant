@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   InstagramGraphError,
   createMediaContainer,
+  getAccountInsights,
   getMediaContainerStatus,
+  getMediaInsights,
   getPublishedMedia,
   publishMediaContainer,
   type InstagramGraphTransport,
@@ -157,5 +159,61 @@ describe("getPublishedMedia", () => {
       permalink: "https://www.instagram.com/p/abc/",
       timestamp: "2026-11-18T00:00:00+0000",
     });
+  });
+});
+
+describe("getAccountInsights", () => {
+  it("reads daily values with their windows from the account insights edge", async () => {
+    const { transport: t, calls } = transport(() =>
+      json({
+        data: [
+          { name: "impressions", period: "day", values: [{ value: 120, end_time: "2026-11-17T08:00:00+0000" }] },
+          { name: "reach", period: "day", values: [{ value: 80, end_time: "2026-11-17T08:00:00+0000" }] },
+        ],
+      }),
+    );
+
+    await expect(
+      getAccountInsights(TOKEN, IG_USER, { metrics: ["impressions", "reach"], since: 100, until: 200 }, { transport: t }),
+    ).resolves.toEqual([
+      { metric: "impressions", period: "day", endTime: "2026-11-17T08:00:00+0000", value: 120 },
+      { metric: "reach", period: "day", endTime: "2026-11-17T08:00:00+0000", value: 80 },
+    ]);
+    expect(calls[0].url.pathname.endsWith(`/${IG_USER}/insights`)).toBe(true);
+    expect(calls[0].url.searchParams.get("metric")).toBe("impressions,reach");
+    expect(calls[0].url.searchParams.get("period")).toBe("day");
+    expect(calls[0].url.searchParams.get("since")).toBe("100");
+    expect(calls[0].url.searchParams.get("until")).toBe("200");
+    expect(calls[0].url.searchParams.get("access_token")).toBe(TOKEN);
+  });
+
+  it("keeps a null-point metric as a null value instead of inventing zero", async () => {
+    const { transport: t } = transport(() =>
+      json({ data: [{ name: "impressions", period: "day", values: [{ value: null, end_time: "2026-11-17T08:00:00+0000" }] }] }),
+    );
+    await expect(getAccountInsights(TOKEN, IG_USER, { metrics: ["impressions"] }, { transport: t })).resolves.toEqual([
+      { metric: "impressions", period: "day", endTime: "2026-11-17T08:00:00+0000", value: null },
+    ]);
+  });
+
+  it("surfaces a missing insights permission as a classified Graph error", async () => {
+    const { transport: t } = transport(() => json({ error: { message: "no permission", type: "OAuthException", code: 10 } }, 403));
+    await expect(getAccountInsights(TOKEN, IG_USER, { metrics: ["impressions"] }, { transport: t })).rejects.toMatchObject({
+      code: "forbidden",
+    });
+  });
+});
+
+describe("getMediaInsights", () => {
+  it("reads lifetime values for one media item", async () => {
+    const { transport: t, calls } = transport(() =>
+      json({ data: [{ name: "likes", period: "lifetime", values: [{ value: 9 }] }] }),
+    );
+    await expect(getMediaInsights(TOKEN, "media-1", ["likes"], { transport: t })).resolves.toEqual([
+      { metric: "likes", period: "lifetime", endTime: null, value: 9 },
+    ]);
+    expect(calls[0].url.pathname.endsWith("/media-1/insights")).toBe(true);
+    expect(calls[0].url.searchParams.get("metric")).toBe("likes");
+    expect(calls[0].url.searchParams.has("period")).toBe(false);
   });
 });
