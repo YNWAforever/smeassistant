@@ -153,6 +153,8 @@ const delivery = (over: Partial<PublishDelivery> = {}): PublishDelivery => ({
   versionNo: 2,
   body: BODY,
   state: "publishing",
+  channel: "google_business",
+  payload: null,
   targetRef: REVIEW_NAME,
   counted: false,
   failureReason: null,

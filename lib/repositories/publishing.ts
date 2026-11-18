@@ -76,10 +76,13 @@ export class PublishError extends Error {
 export type PublishFailureReason =
   | "already_replied"
   | "connection_expired"
+  | "connection_missing"
   | "provider_forbidden"
   | "review_not_found"
   | "provider_rate_limited"
   | "provider_unavailable"
+  | "provider_invalid_request"
+  | "media_url_unreachable"
   | "not_applied";
 
 export type PublishSubject = {
@@ -107,6 +110,8 @@ export type PublishDelivery = {
   versionNo: number;
   body: string;
   state: PublishState;
+  channel: string;
+  payload: Record<string, unknown> | null;
   targetRef: string;
   counted: boolean;
   failureReason: string | null;
@@ -122,7 +127,10 @@ export type GbpConnectionRow = {
   expiresAt: string | null;
 };
 
-export type PublishReceipt = { review_name: string; reply_update_time: string | null };
+/** What `finish` stores on a published delivery; a channel-specific identifier set only. */
+export type GbpPublishReceipt = { review_name: string; reply_update_time: string | null };
+export type InstagramPublishReceipt = { media_id: string; permalink: string | null; published_at: string | null };
+export type PublishReceipt = GbpPublishReceipt | InstagramPublishReceipt;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -204,6 +212,32 @@ export function publishingRepository(client?: Executor) {
           input.targetRef,
           input.idempotencyKey,
         ]),
+      );
+      if ((result.kind !== "begun" && result.kind !== "existing") || typeof result.delivery_id !== "string") {
+        throw new Error("unexpected_publish_result");
+      }
+      return { kind: result.kind, deliveryId: result.delivery_id, state: publishState(result.state) };
+    },
+
+    /**
+     * Starts an Instagram feed publish (P20.2b). Same contract as `begin`:
+     * `{ kind, deliveryId, state }` and the same P0001/23505 mappings. The
+     * caption and image URL are snapshotted into the delivery payload because
+     * reconcile matches the caption it finds on the account back to them.
+     */
+    async beginInstagram(input: {
+      versionId: string;
+      actorId: string;
+      targetRef: string;
+      idempotencyKey: string;
+      imageUrl: string;
+      caption: string;
+    }): Promise<{ kind: "begun" | "existing"; deliveryId: string; state: PublishState }> {
+      const result = await call(() =>
+        fn(
+          "SELECT public.begin_publish_instagram($1::uuid, $2::uuid, $3::text, $4::text, $5::text, $6::text) AS result",
+          [input.versionId, input.actorId, input.targetRef, input.idempotencyKey, input.imageUrl, input.caption],
+        ),
       );
       if ((result.kind !== "begun" && result.kind !== "existing") || typeof result.delivery_id !== "string") {
         throw new Error("unexpected_publish_result");
@@ -343,6 +377,8 @@ export function publishingRepository(client?: Executor) {
           version_no: number;
           body: string;
           state: string;
+          channel: string;
+          payload: unknown;
           target_ref: string;
           counted: boolean;
           failure_reason: string | null;
@@ -350,7 +386,7 @@ export function publishingRepository(client?: Executor) {
           created_at: Date;
         }>(
           `SELECT d.id, d.workspace_id, d.version_id, v.action_id, a.location_id, a.template_key, v.version_no, v.body,
-                  d.state, d.target_ref, d.counted, d.failure_reason, d.verified_at, d.created_at
+                  d.state, d.channel, d.payload, d.target_ref, d.counted, d.failure_reason, d.verified_at, d.created_at
              FROM deliveries d
              JOIN output_versions v ON v.id = d.version_id
              JOIN actions a ON a.id = v.action_id
@@ -369,6 +405,8 @@ export function publishingRepository(client?: Executor) {
         versionNo: row.version_no,
         body: row.body,
         state: publishState(row.state),
+        channel: row.channel,
+        payload: row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? (row.payload as Record<string, unknown>) : null,
         targetRef: row.target_ref,
         counted: row.counted,
         failureReason: row.failure_reason,
