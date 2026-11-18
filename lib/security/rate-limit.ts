@@ -48,6 +48,7 @@ export type RateLimitScope =
   | "instagram_publish"
   | "instagram_publish_global"
   | "instagram_reconcile"
+  | "instagram_insights_pull"
   | "invitation_resend";
 
 export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
@@ -197,6 +198,9 @@ export const RATE_LIMITS: Record<RateLimitScope, { limit: number; windowSeconds:
   instagram_publish_global: { limit: 100, windowSeconds: 24 * 60 * 60 },
   // instagram_reconcile: re-reading one unknown-outcome delivery from Instagram, 30 a day per delivery id.
   instagram_reconcile: { limit: 30, windowSeconds: 24 * 60 * 60 },
+  // instagram_insights_pull: one on-demand insights pull, 6 a day per workspace (each
+  // pull makes at most 1 account read + 1 media list + 5 media reads).
+  instagram_insights_pull: { limit: 6, windowSeconds: 24 * 60 * 60 },
   // POST /api/workspaces/[id]/members/[memberId]/resend: 3 a day per invited
   // member id from any network (enforceRecipientRateLimit: no fingerprint in
   // the inner key), fail-closed.

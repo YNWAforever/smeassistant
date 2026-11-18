@@ -22,6 +22,7 @@ export type DatabaseRows = {
   "conversation_search_briefs": typeof schema.conversationSearchBriefs.$inferSelect;
   "deliveries": typeof schema.deliveries.$inferSelect;
   "erasure_events": typeof schema.erasureEvents.$inferSelect;
+  "instagram_insights": typeof schema.instagramInsights.$inferSelect;
   "leads": typeof schema.leads.$inferSelect;
   "locations": typeof schema.locations.$inferSelect;
   "mail_outbox": typeof schema.mailOutbox.$inferSelect;
@@ -75,6 +76,7 @@ export type DatabaseInserts = {
   "conversation_search_briefs": typeof schema.conversationSearchBriefs.$inferInsert;
   "deliveries": typeof schema.deliveries.$inferInsert;
   "erasure_events": typeof schema.erasureEvents.$inferInsert;
+  "instagram_insights": typeof schema.instagramInsights.$inferInsert;
   "leads": typeof schema.leads.$inferInsert;
   "locations": typeof schema.locations.$inferInsert;
   "mail_outbox": typeof schema.mailOutbox.$inferInsert;

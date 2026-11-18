@@ -17,3 +17,13 @@ export function gbpReplyPublishEnabled(env: Record<string, string | undefined> =
 export function instagramPublishEnabled(env: Record<string, string | undefined> = process.env): boolean {
   return env.INSTAGRAM_PUBLISH_ENABLED === "true";
 }
+
+/**
+ * Reading the connected account's Instagram insights (P20.3) is off by
+ * default and is a separate flag from publishing: reading platform metrics
+ * never implies permission to post, and posting never implies permission to
+ * read insights. Only the exact string "true" turns it on.
+ */
+export function instagramInsightsEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return env.INSTAGRAM_INSIGHTS_ENABLED === "true";
+}

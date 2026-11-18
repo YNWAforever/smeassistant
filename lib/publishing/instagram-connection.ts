@@ -49,10 +49,15 @@ export type InstagramAccessTokenDeps = {
   repository?: ConnectionRepository;
   refresh?: typeof refreshInstagramToken;
   now?: () => number;
+  /** Scopes `fn` needs; defaults to the publish pair. Insights pass their own pair. */
+  requiredScopes?: readonly string[];
 };
 
 /** Permissions a feed publish needs; both are requested at connect time. */
 export const INSTAGRAM_PUBLISH_SCOPES = ["instagram_basic", "instagram_content_publish"] as const;
+
+/** Permissions an insights pull needs; `instagram_manage_insights` is requested at connect time. */
+export const INSTAGRAM_INSIGHTS_SCOPES = ["instagram_basic", "instagram_manage_insights"] as const;
 
 /** Unseals a stored token; any failure becomes a token-free `token_unreadable`. */
 function unseal(sealed: string): string {
@@ -74,7 +79,8 @@ export async function withInstagramAccessToken<T>(
 
   const connection = await repository.activeConnection(workspaceId);
   const account = parseInstagramAccountRef(connection?.accountRef ?? null);
-  if (!connection || !account || !INSTAGRAM_PUBLISH_SCOPES.every((scope) => connection.scopes.includes(scope))) {
+  const requiredScopes = deps.requiredScopes ?? INSTAGRAM_PUBLISH_SCOPES;
+  if (!connection || !account || !requiredScopes.every((scope) => connection.scopes.includes(scope))) {
     throw new InstagramConnectionError("connection_missing");
   }
 

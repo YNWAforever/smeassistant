@@ -17,12 +17,13 @@ import {
  *   `instagram_publish_global` ("all"); a refused workspace bucket does not
  *   spend the global one.
  * - `reconcile` consumes `instagram_reconcile` keyed by the delivery id.
+ * - `insights` consumes `instagram_insights_pull` keyed by the workspace (P20.3).
  *
  * These are our own guards in front of Meta's 25-posts-per-24h account limit;
  * they are not a substitute for it, and no claim is made that a publish can
  * exceed or exactly track the provider's own counting.
  */
-export type InstagramLimitKind = "publish" | "reconcile";
+export type InstagramLimitKind = "publish" | "reconcile" | "insights";
 
 export type InstagramLimitDecision =
   | { allowed: true }
@@ -58,6 +59,8 @@ function bucketsFor(kind: InstagramLimitKind, ids: { workspaceId: string; delive
       return [["instagram_publish", requireId(ids.workspaceId)], ["instagram_publish_global", "all"]];
     case "reconcile":
       return [["instagram_reconcile", requireId(ids.deliveryId)]];
+    case "insights":
+      return [["instagram_insights_pull", requireId(ids.workspaceId)]];
   }
 }
 

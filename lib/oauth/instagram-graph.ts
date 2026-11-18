@@ -241,3 +241,92 @@ export async function getPublishedMedia(
     timestamp: typeof result.body?.timestamp === "string" ? result.body.timestamp : null,
   };
 }
+
+/** One platform-reported value over a window. `value` is null when Meta returned no number. */
+export type InstagramInsightPoint = {
+  metric: string;
+  period: string | null;
+  endTime: string | null;
+  value: number | null;
+};
+
+function insightNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) return Number(value);
+  return null;
+}
+
+/**
+ * Parses `/insights` payloads for both edges. Account metrics come back as
+ * `values: [{value, end_time}]` (one point per day); media metrics usually come
+ * back as a single `values: [{value}]` or a bare `value`. Anything malformed is
+ * skipped rather than guessed; the caller records a missing metric as
+ * unavailable.
+ */
+function parseInsightPoints(body: Record<string, unknown> | null): InstagramInsightPoint[] {
+  const data = body?.data;
+  if (!Array.isArray(data)) return [];
+  const points: InstagramInsightPoint[] = [];
+  for (const item of data) {
+    if (!item || typeof item !== "object") continue;
+    const entry = item as Record<string, unknown>;
+    if (typeof entry.name !== "string" || !entry.name) continue;
+    const period = typeof entry.period === "string" ? entry.period : null;
+    if (Array.isArray(entry.values)) {
+      for (const raw of entry.values) {
+        if (!raw || typeof raw !== "object") continue;
+        const point = raw as Record<string, unknown>;
+        points.push({
+          metric: entry.name,
+          period,
+          endTime: typeof point.end_time === "string" ? point.end_time : null,
+          value: insightNumber(point.value),
+        });
+      }
+    } else if (insightNumber(entry.value) !== null) {
+      points.push({ metric: entry.name, period, endTime: null, value: insightNumber(entry.value) });
+    }
+  }
+  return points;
+}
+
+/**
+ * Reads account-level insights for the connected professional account. The
+ * caller owns the metric list and the window; this function only shapes Meta's
+ * answer. Requires `instagram_manage_insights` on the token.
+ */
+export async function getAccountInsights(
+  accessToken: string,
+  igUserId: string,
+  input: { metrics: readonly string[]; period?: "day" | "week"; since?: number; until?: number },
+  deps: InstagramGraphDeps = {},
+): Promise<InstagramInsightPoint[]> {
+  const url = new URL(`${graphBase()}/${encodeURIComponent(igUserId)}/insights`);
+  url.searchParams.set("metric", input.metrics.join(","));
+  url.searchParams.set("period", input.period ?? "day");
+  if (input.since !== undefined) url.searchParams.set("since", String(input.since));
+  if (input.until !== undefined) url.searchParams.set("until", String(input.until));
+  url.searchParams.set("access_token", accessToken);
+  const result = await graphJson(fetchFor(deps), url.toString(), {}, deps.timeoutMs);
+  if (!result.ok) throw classify(result);
+  return parseInsightPoints(result.body);
+}
+
+/**
+ * Reads per-media insights for one published media item. Requires
+ * `instagram_manage_insights`; a media id the account cannot see is
+ * `not_found`, which the caller records as unavailable for that item.
+ */
+export async function getMediaInsights(
+  accessToken: string,
+  mediaId: string,
+  metrics: readonly string[],
+  deps: InstagramGraphDeps = {},
+): Promise<InstagramInsightPoint[]> {
+  const url = new URL(`${graphBase()}/${encodeURIComponent(mediaId)}/insights`);
+  url.searchParams.set("metric", metrics.join(","));
+  url.searchParams.set("access_token", accessToken);
+  const result = await graphJson(fetchFor(deps), url.toString(), {}, deps.timeoutMs);
+  if (!result.ok) throw classify(result);
+  return parseInsightPoints(result.body);
+}

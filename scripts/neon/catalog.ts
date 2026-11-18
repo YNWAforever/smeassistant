@@ -27,12 +27,18 @@ export const additionalIndexes = [
   { tablename: "studio_conversations", indexname: "studio_conversations_owner_recent_idx", indexdef: "CREATE INDEX studio_conversations_owner_recent_idx ON public.studio_conversations USING btree (workspace_id, created_by, last_message_at DESC, id DESC)" },
   { tablename: "studio_conversation_members", indexname: "studio_conversation_members_user_idx", indexdef: "CREATE INDEX studio_conversation_members_user_idx ON public.studio_conversation_members USING btree (workspace_id, user_id, created_at DESC)" },
   { tablename: "studio_messages", indexname: "studio_messages_conversation_seq_idx", indexdef: "CREATE INDEX studio_messages_conversation_seq_idx ON public.studio_messages USING btree (conversation_id, seq)" },
+  { tablename: "instagram_insights", indexname: "instagram_insights_latest_idx", indexdef: "CREATE INDEX instagram_insights_latest_idx ON public.instagram_insights USING btree (workspace_id, observed_at DESC, id DESC)" },
 ];
 // Tables added by 0021/0022 (Conversation Studio). They have no independently
 // captured legacy counterpart, so verifyCatalog excludes them from the legacy
 // deepEqual and asserts their exact catalog below; each carries one
 // server_application policy, so the policy count is offset by three.
 export const additionalTables = ["studio_conversations", "studio_messages", "studio_conversation_members"] as const;
+// Tables added after the legacy capture that carry one server_application policy
+// but no exact column/constraint mirror here (0023 added a function only; 0024
+// added instagram_insights). They are excluded from the legacy deepEqual, their
+// RLS presence is asserted, and the policy count is offset by one per table.
+export const insightTables = ["instagram_insights"] as const;
 export type ExpectedColumn = { table_name: string; column_name: string; data_type: string; udt_name: string; is_nullable: string; column_default: string | null };
 export type ExpectedConstraint = { table_name: string; name: string; type: string; definition: string };
 export type ExpectedIndex = { tablename: string; indexname: string; indexdef: string };
@@ -168,7 +174,7 @@ export async function verifyCatalog(pool: Pool) {
   for (const [name, query] of Object.entries(catalogQueries)) actual[name] = (await pool.query(query)).rows;
   const identity = new Set(["app_users", "auth_identities"]);
   const business = (rows: Row[]) => rows.filter(row => !identity.has(String(row.table_name ?? row.tablename ?? row.name)));
-  const legacyBusiness = (rows: Row[]) => business(rows).filter(row => !["brand_revisions","conversation_document_versions","conversation_research_accounts","conversation_research_ledger","conversation_search_briefs","studio_conversations","studio_messages","studio_conversation_members"].includes(String(row.table_name ?? row.tablename ?? row.name)));
+  const legacyBusiness = (rows: Row[]) => business(rows).filter(row => !["brand_revisions","conversation_document_versions","conversation_research_accounts","conversation_research_ledger","conversation_search_briefs","studio_conversations","studio_messages","studio_conversation_members","instagram_insights"].includes(String(row.table_name ?? row.tablename ?? row.name)));
   assert.deepEqual(legacyBusiness(actual.tables), legacy.tables, "retained business tables and RLS");
   assert.deepEqual(actual.tables.find(row=>row.name==='brand_revisions'),{name:'brand_revisions',rls:true},'immutable brand table and RLS');
   // Dropped legacy columns leave ordinal gaps; compare surviving order, not physical attnum.
@@ -177,6 +183,7 @@ export async function verifyCatalog(pool: Pool) {
   assert.deepEqual(actual.tables.find(row=>row.name==='conversation_document_versions'),{name:'conversation_document_versions',rls:true},'document versions table and RLS');
   for(const name of ['conversation_research_accounts','conversation_research_ledger','conversation_search_briefs']) assert.deepEqual(actual.tables.find(row=>row.name===name),{name,rls:true},`${name} table and RLS`);
   for (const name of additionalTables) assert.deepEqual(actual.tables.find(row => row.name === name), {name, rls:true}, `${name} table and RLS`);
+  for (const name of insightTables) assert.deepEqual(actual.tables.find(row => row.name === name), {name, rls:true}, `${name} table and RLS`);
   const documentGrants=await pool.query("SELECT privilege_type FROM information_schema.role_table_grants WHERE grantee='sme_app_runtime' AND table_schema='public' AND table_name='conversation_document_versions' ORDER BY privilege_type");
   assert.deepEqual(documentGrants.rows,[{privilege_type:'INSERT'},{privilege_type:'SELECT'}],'runtime document versions remain append-only');
   const gscConstraint=actual.constraints.find(row=>row.name==='oauth_connections_provider_check');
@@ -215,8 +222,8 @@ export async function verifyCatalog(pool: Pool) {
   for (const name of changedFunctions) assert.ok(actual.functions.some(row => row.name === name), `changed function ${name} present`);
   assert.deepEqual(actual.enums, legacy.enums, "enum catalog");
   const policy = (await pool.query("SELECT tablename,roles::text[] AS roles,cmd,qual,with_check FROM pg_policies WHERE schemaname='public' ORDER BY tablename")).rows;
-  assert.equal(policy.length, legacy.tables.length + 18);
-  for (const row of policy.filter(row=>row.tablename!=='brand_revisions' && row.tablename!=='conversation_document_versions' && row.tablename!=='conversation_research_accounts' && row.tablename!=='conversation_research_ledger' && row.tablename!=='conversation_search_briefs' && !isStudioTable(row.tablename))) assert.deepEqual({...row, tablename:undefined}, {tablename:undefined,roles:["sme_app_runtime"],cmd:"ALL",qual:"true",with_check:"true"});
+  assert.equal(policy.length, legacy.tables.length + 19);
+  for (const row of policy.filter(row=>row.tablename!=='brand_revisions' && row.tablename!=='conversation_document_versions' && row.tablename!=='conversation_research_accounts' && row.tablename!=='conversation_research_ledger' && row.tablename!=='conversation_search_briefs' && row.tablename!=='instagram_insights' && !isStudioTable(row.tablename))) assert.deepEqual({...row, tablename:undefined}, {tablename:undefined,roles:["sme_app_runtime"],cmd:"ALL",qual:"true",with_check:"true"});
   assert.deepEqual(policy.filter(row=>row.tablename==='brand_revisions').sort((a,b)=>String(a.cmd).localeCompare(String(b.cmd))),[
    {tablename:'brand_revisions',roles:['sme_app_runtime'],cmd:'INSERT',qual:null,with_check:'true'},
    {tablename:'brand_revisions',roles:['sme_app_runtime'],cmd:'SELECT',qual:'true',with_check:null}],'append-only revision policies');

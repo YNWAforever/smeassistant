@@ -6,6 +6,9 @@
  * {placeholders} are filled with lib/copy-ui.ts `fill`.
  */
 
+/** Metrics the Instagram insights panel knows how to label; unknown metrics stay hidden. */
+export type InstagramInsightMetricKey = "impressions" | "reach" | "profile_views" | "likes" | "comments" | "shares" | "saved";
+
 export type WorkspaceHomeCopy = {
   home: {
     continueInStudio: string;
@@ -50,6 +53,15 @@ export type WorkspaceHomeCopy = {
     /** The visible per-scan chart: how much each scan could check, never the score. */
     historyTitle: string; historyNote: string;
     locationReady: string; locationWaiting: string;
+  }
+  instagramInsights: {
+    title: string; intro: string; accountSection: string; mediaSection: string;
+    empty: string; pull: string; pulling: string; pullAgain: string;
+    observedAt: string; windowEnd: string; unavailable: string; metric: string; value: string; observed: string;
+    unavailableReasons: { missing_permission: string; not_supported: string; provider_error: string; no_data: string };
+    notConnected: string; connect: string; viewerNotice: string; rateLimited: string; pullFailed: string;
+    mediaItem: string;
+    metrics: Record<InstagramInsightMetricKey, { label: string; definition: string }>;
   }
   calendar: {
     plannedWorkAndMonitoring: string; calendar: string; everyItemHasA: string; monitoringCadence: string; rescanCadence: string;
@@ -236,6 +248,43 @@ export const workspaceHomeEn: WorkspaceHomeCopy = {
     allLead: "Each shop stays separate. Open one to see whether it got better.",
     locationReady: "Can compare with last time",
     locationWaiting: "No earlier visit to compare",
+  },
+  instagramInsights: {
+    title: "Instagram insights",
+    intro: "Platform-reported observations from the connected Instagram account. Each value carries its window, definition and observed time; a metric Instagram did not return shows as Unavailable, never zero.",
+    accountSection: "Account · last 7 days",
+    mediaSection: "Recent media",
+    empty: "No observations stored yet. Pull insights to read the connected account now.",
+    pull: "Pull insights",
+    pulling: "Pulling…",
+    pullAgain: "Pull again",
+    observedAt: "Observed {time}",
+    windowEnd: "Window ends {time}",
+    unavailable: "Unavailable",
+    metric: "Metric",
+    value: "Value",
+    observed: "Observed",
+    unavailableReasons: {
+      missing_permission: "Instagram has not granted the insights permission",
+      not_supported: "Instagram does not report this metric for this account or item",
+      provider_error: "Instagram could not answer just now",
+      no_data: "Instagram returned no value for this window",
+    },
+    notConnected: "This workspace's Instagram account is not connected with insights access.",
+    connect: "Open integrations",
+    viewerNotice: "Only the owner or a manager can pull insights.",
+    rateLimited: "Too many pulls today. Try again later.",
+    pullFailed: "Insights could not be pulled just now. Try again.",
+    mediaItem: "Media {id}",
+    metrics: {
+      impressions: { label: "Impressions", definition: "Times the content was displayed" },
+      reach: { label: "Reach", definition: "Accounts that saw the content" },
+      profile_views: { label: "Profile views", definition: "Visits to the profile" },
+      likes: { label: "Likes", definition: "Likes recorded by Instagram" },
+      comments: { label: "Comments", definition: "Comments recorded by Instagram" },
+      shares: { label: "Shares", definition: "Shares recorded by Instagram" },
+      saved: { label: "Saves", definition: "Saves recorded by Instagram" },
+    },
   },
   calendar: {
     plannedWorkAndMonitoring: "Planned work and monitoring",
@@ -433,6 +482,43 @@ export const workspaceHomeZhHK: WorkspaceHomeCopy = {
     locationReady: "可以同之前比",
     locationWaiting: "未有上次可以比",
   },
+  instagramInsights: {
+    title: "Instagram 成效",
+    intro: "呢啲係已連接 Instagram 帳戶回報嘅平台觀察。每個數值都會連埋時間範圍、定義同觀察時間；Instagram 冇回覆嘅指標會顯示為「無法取得」，唔會當零。",
+    accountSection: "帳戶 · 過去 7 日",
+    mediaSection: "最近帖文",
+    empty: "仲未儲存任何觀察。撳「取得成效」即刻讀取已連接帳戶。",
+    pull: "取得成效",
+    pulling: "取得緊…",
+    pullAgain: "再取得一次",
+    observedAt: "觀察時間 {time}",
+    windowEnd: "時間範圍結束 {time}",
+    unavailable: "無法取得",
+    metric: "指標",
+    value: "數值",
+    observed: "觀察時間",
+    unavailableReasons: {
+      missing_permission: "Instagram 未授權讀取成效權限",
+      not_supported: "Instagram 唔會為呢個帳戶或項目提供呢個指標",
+      provider_error: "Instagram 暫時未能回覆",
+      no_data: "Instagram 喺呢段時間冇回覆數值",
+    },
+    notConnected: "呢個工作空間嘅 Instagram 帳戶未連接，或者未獲授權讀取成效。",
+    connect: "開啟整合設定",
+    viewerNotice: "只有擁有人或經理可以取得成效。",
+    rateLimited: "今日取得次數太多，請遲啲再試。",
+    pullFailed: "而家未能取得成效，請再試一次。",
+    mediaItem: "帖文 {id}",
+    metrics: {
+      impressions: { label: "曝光次數", definition: "內容被顯示嘅次數" },
+      reach: { label: "觸及人數", definition: "睇到內容嘅帳戶數目" },
+      profile_views: { label: "個人檔案瀏覽", definition: "瀏覽個人檔案嘅次數" },
+      likes: { label: "讚好", definition: "Instagram 記錄嘅讚好" },
+      comments: { label: "留言", definition: "Instagram 記錄嘅留言" },
+      shares: { label: "分享", definition: "Instagram 記錄嘅分享" },
+      saved: { label: "收藏", definition: "Instagram 記錄嘅收藏" },
+    },
+  },
   calendar: {
     plannedWorkAndMonitoring: "已規劃工作及監察",
     calendar: "日曆",
@@ -628,6 +714,43 @@ export const workspaceHomeZhTW: WorkspaceHomeCopy = {
     allLead: "每間店分開看，不會做成一個總分。選一間店，才知道有沒有比較好。",
     locationReady: "可以跟上一次比",
     locationWaiting: "還沒有上一次可以比",
+  },
+  instagramInsights: {
+    title: "Instagram 成效",
+    intro: "這些是已連接 Instagram 帳戶回報的平台觀察。每個數值都附有時間範圍、定義和觀察時間；Instagram 沒有回覆的指標會顯示為「無法取得」，不會當作零。",
+    accountSection: "帳戶 · 過去 7 天",
+    mediaSection: "最近貼文",
+    empty: "尚未儲存任何觀察。按「取得成效」即可讀取已連接帳戶。",
+    pull: "取得成效",
+    pulling: "取得中…",
+    pullAgain: "再取得一次",
+    observedAt: "觀察時間 {time}",
+    windowEnd: "時間範圍結束 {time}",
+    unavailable: "無法取得",
+    metric: "指標",
+    value: "數值",
+    observed: "觀察時間",
+    unavailableReasons: {
+      missing_permission: "Instagram 未授權讀取成效權限",
+      not_supported: "Instagram 不會為此帳戶或項目提供這個指標",
+      provider_error: "Instagram 暫時未能回覆",
+      no_data: "Instagram 在此期間沒有回覆數值",
+    },
+    notConnected: "此工作空間的 Instagram 帳戶未連接，或未獲授權讀取成效。",
+    connect: "開啟整合設定",
+    viewerNotice: "只有擁有人或經理可以取得成效。",
+    rateLimited: "今天取得次數過多，請稍後再試。",
+    pullFailed: "現在未能取得成效，請再試一次。",
+    mediaItem: "貼文 {id}",
+    metrics: {
+      impressions: { label: "曝光次數", definition: "內容被顯示的次數" },
+      reach: { label: "觸及人數", definition: "看到內容的帳戶數目" },
+      profile_views: { label: "個人檔案瀏覽", definition: "瀏覽個人檔案的次數" },
+      likes: { label: "讚好", definition: "Instagram 記錄的讚好" },
+      comments: { label: "留言", definition: "Instagram 記錄的留言" },
+      shares: { label: "分享", definition: "Instagram 記錄的分享" },
+      saved: { label: "收藏", definition: "Instagram 記錄的收藏" },
+    },
   },
   calendar: {
     plannedWorkAndMonitoring: "已規劃工作及監控",

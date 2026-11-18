@@ -54,11 +54,11 @@ describe.runIf(process.env.NEON_INTEGRATION === "1")("rollout/apply-0022.sql on 
     )).rows[0];
     expect(policy.n).toBe(1);
     // The normal runner now sees the full history and applies the next migration only.
-    expect(await applyMigrations(pool)).toEqual(["0023_instagram_publish.sql"]);
+    expect(await applyMigrations(pool)).toEqual(["0023_instagram_publish.sql","0024_instagram_insights.sql"]);
   });
 
   it("refuses a second execution because the journal is no longer 1-21", async () => {
     await expect(pool.query(statement)).rejects.toThrow(/journal is not exactly 0001-0021/);
-    expect((await pool.query<{ n: number }>("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(23);
+    expect((await pool.query<{ n: number }>("SELECT count(*)::int AS n FROM neon_migrations.journal")).rows[0].n).toBe(24);
   });
 });
