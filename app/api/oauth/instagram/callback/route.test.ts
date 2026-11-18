@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   workspace: vi.fn(),
   accepted: vi.fn(),
   replaceConnection: vi.fn(),
+  deleteInsights: vi.fn(),
   recordClaimAuditEvent: vi.fn(),
   encryptToken: vi.fn((plaintext: string) => `enc:${plaintext}`),
   verifyInstagramState: vi.fn(),
@@ -18,6 +19,7 @@ vi.mock("@/lib/repositories/membership", () => ({ membershipRepository: {
 } }));
 vi.mock("@/lib/repositories/claims", () => ({ recordClaimAuditEvent: mocks.recordClaimAuditEvent }));
 vi.mock("@/lib/repositories/instagram-connection", () => ({ instagramConnectionRepository: () => ({ replaceConnection: mocks.replaceConnection }) }));
+vi.mock("@/lib/repositories/instagram-insights", () => ({ instagramInsightsRepository: () => ({ deleteWorkspace: mocks.deleteInsights }) }));
 vi.mock("@/lib/security/token-crypto", () => ({ encryptToken: mocks.encryptToken }));
 vi.mock("@/lib/oauth/instagram-connection", () => ({
   verifyInstagramState: mocks.verifyInstagramState,
@@ -44,6 +46,7 @@ function tables({ role, slug = "demo-cafe" }: { role: string | null; slug?: stri
   mocks.workspace.mockResolvedValue({ id: "ws-1", slug });
   mocks.accepted.mockResolvedValue(role ? { role } : null);
   mocks.replaceConnection.mockResolvedValue("conn-1");
+  mocks.deleteInsights.mockResolvedValue(0);
   mocks.recordClaimAuditEvent.mockResolvedValue(undefined);
 }
 
@@ -116,6 +119,7 @@ describe("GET /api/oauth/instagram/callback", () => {
 
   it("stores an encrypted long-lived token and audits the connected account", async () => {
     mocks.exchangeInstagramCode.mockResolvedValue({ ok: true, tokens: TOKENS, account: ACCOUNT });
+    mocks.deleteInsights.mockResolvedValue(3);
 
     const url = location(await GET(request("?code=abc&state=good")));
 
@@ -131,11 +135,24 @@ describe("GET /api/oauth/instagram/callback", () => {
       scopes: TOKENS.scopes,
       expiresAt: TOKENS.expiresAt,
     });
+    // A reconnect must not mix the previous account's observations with the new
+    // credential's account.
+    expect(mocks.deleteInsights).toHaveBeenCalledWith("ws-1");
     expect(mocks.recordClaimAuditEvent).toHaveBeenCalledWith(expect.objectContaining({
       workspace_id: "ws-1",
       event: "integration.updated",
-      payload: expect.objectContaining({ provider: "instagram", status: "connected" }),
+      payload: expect.objectContaining({ provider: "instagram", status: "connected", insights_reset: 3 }),
     }));
+  });
+
+  it("still connects when the stale insight cleanup fails", async () => {
+    mocks.exchangeInstagramCode.mockResolvedValue({ ok: true, tokens: TOKENS, account: ACCOUNT });
+    mocks.deleteInsights.mockRejectedValue(new Error("db down"));
+
+    const url = location(await GET(request("?code=abc&state=good")));
+
+    expect(url.searchParams.get("instagram")).toBe("ok");
+    expect(mocks.replaceConnection).toHaveBeenCalled();
   });
 
   it("still reports ok when the audit write fails, because the credential is already stored", async () => {

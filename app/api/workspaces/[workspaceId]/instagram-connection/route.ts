@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { authorizeWorkspaceRequest } from "@/lib/auth";
 import { instagramConnectionRepository } from "@/lib/repositories/instagram-connection";
+import { instagramInsightsRepository } from "@/lib/repositories/instagram-insights";
 import { recordNeonEvent } from "@/lib/workspace/audit";
 
 const WORKSPACE_ID_RE = /^[0-9a-f-]{36}$/i;
@@ -46,6 +47,17 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ works
     return NextResponse.json({ error: "unavailable" }, { status: 500 });
   }
 
+  // The observation rows belong to the withdrawn credential: remove them in the
+  // same request. Idempotent (a second disconnect deletes nothing) and
+  // best-effort: the credential is already revoked, so a failed delete must not
+  // turn the answer into an error; the next pull or disconnect retries it.
+  let insightsDeleted = 0;
+  try {
+    insightsDeleted = await instagramInsightsRepository().deleteWorkspace(workspaceId);
+  } catch {
+    console.error("Instagram insights cleanup failed", { category: "instagram_insights_delete_failed" });
+  }
+
   // The credential is already gone; a failed audit write must not undo that.
   if (disconnected) {
     try {
@@ -53,10 +65,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ works
         workspaceId, actorType: "user", actorId: auth.user.id,
         event: "integration.updated", entityType: "workspace", entityId: workspaceId,
         locale,
-        payload: { integration: "instagram", status: "revoked" },
+        payload: { integration: "instagram", status: "revoked", insights_deleted: insightsDeleted },
       });
     } catch { console.error("Instagram disconnect audit event not recorded"); }
   }
 
-  return NextResponse.json({ ok: true, disconnected });
+  return NextResponse.json({ ok: true, disconnected, insightsDeleted });
 }

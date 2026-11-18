@@ -103,5 +103,28 @@ export function instagramInsightsRepository(pool?: Executor) {
         observedAt: row.observed_at,
       }));
     },
+
+    /**
+     * Deletes every stored observation for one workspace. Used on disconnect and
+     * on a reconnect, so a disconnected account's data does not outlive its
+     * credential and a new account never inherits the old account's numbers.
+     * Returns how many rows were removed.
+     */
+    async deleteWorkspace(workspaceId: string): Promise<number> {
+      const result = await db().query<{ id: string }>(
+        "DELETE FROM public.instagram_insights WHERE workspace_id = $1 RETURNING id",
+        [workspaceId],
+      );
+      return result.rows.length;
+    },
+
+    /** Retention: removes observations older than the cutoff for one workspace. Returns rows removed. */
+    async deleteOlderThan(workspaceId: string, cutoffIso: string): Promise<number> {
+      const result = await db().query<{ id: string }>(
+        "DELETE FROM public.instagram_insights WHERE workspace_id = $1 AND observed_at < $2::timestamptz RETURNING id",
+        [workspaceId, cutoffIso],
+      );
+      return result.rows.length;
+    },
   };
 }

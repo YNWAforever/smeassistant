@@ -181,6 +181,16 @@ describe("InstagramPublishCard", () => {
     expect(body(2).idempotencyKey).not.toBe(body(0).idempotencyKey)
   })
 
+  it("shows the dedicated rate-limit copy when a publish is refused with 429", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 })))
+    mount()
+    await openDialog()
+    await fill(IMAGE)
+    await confirm()
+    await act(async () => { fireEvent.click(dialogButton(text.publishConfirm)) })
+    expect(screen.getByText(text.reasons.rate_limited)).toBeTruthy()
+  })
+
   it("asks for the Instagram connection instead of a publish button when none is active", () => {
     mount({ panel: panel({ connectionActive: false, canPublish: false }) })
     expect(screen.getByText(new RegExp(text.reasons.connection_missing))).toBeTruthy()

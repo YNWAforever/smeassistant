@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   authorizeWorkspaceRequest: vi.fn(),
   disconnect: vi.fn(),
+  deleteInsights: vi.fn(),
   recordNeonEvent: vi.fn(),
 }));
 
@@ -11,6 +12,7 @@ vi.mock("@/lib/auth", () => ({
   getUser: vi.fn(),
 }));
 vi.mock("@/lib/repositories/instagram-connection", () => ({ instagramConnectionRepository: () => ({ disconnect: mocks.disconnect }) }));
+vi.mock("@/lib/repositories/instagram-insights", () => ({ instagramInsightsRepository: () => ({ deleteWorkspace: mocks.deleteInsights }) }));
 vi.mock("@/lib/workspace/audit", () => ({ recordNeonEvent: mocks.recordNeonEvent }));
 
 import { DELETE } from "./route";
@@ -37,6 +39,7 @@ describe("DELETE /api/workspaces/[workspaceId]/instagram-connection", () => {
     vi.clearAllMocks();
     authorised();
     mocks.disconnect.mockResolvedValue(true);
+    mocks.deleteInsights.mockResolvedValue(0);
     mocks.recordNeonEvent.mockResolvedValue(undefined);
   });
 
@@ -53,20 +56,22 @@ describe("DELETE /api/workspaces/[workspaceId]/instagram-connection", () => {
     expect(mocks.disconnect).not.toHaveBeenCalled();
   });
 
-  it("revokes the credential and records the audit event", async () => {
+  it("revokes the credential and records the audit event with the removed insight count", async () => {
+    mocks.deleteInsights.mockResolvedValue(4);
     const response = await DELETE(request({ locale: "zh-HK" }), params());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true, disconnected: true });
+    expect(await response.json()).toEqual({ ok: true, disconnected: true, insightsDeleted: 4 });
     expect(mocks.authorizeWorkspaceRequest).toHaveBeenCalledWith({ id: WORKSPACE_ID }, { minRole: "owner" });
     expect(mocks.disconnect).toHaveBeenCalledWith(WORKSPACE_ID);
+    expect(mocks.deleteInsights).toHaveBeenCalledWith(WORKSPACE_ID);
     expect(mocks.recordNeonEvent).toHaveBeenCalledWith(expect.objectContaining({
       workspaceId: WORKSPACE_ID,
       actorType: "user",
       actorId: "user-1",
       event: "integration.updated",
       locale: "zh-HK",
-      payload: { integration: "instagram", status: "revoked" },
+      payload: { integration: "instagram", status: "revoked", insights_deleted: 4 },
     }));
   });
 
@@ -75,7 +80,7 @@ describe("DELETE /api/workspaces/[workspaceId]/instagram-connection", () => {
     const response = await DELETE(request(), params());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true, disconnected: false });
+    expect(await response.json()).toEqual({ ok: true, disconnected: false, insightsDeleted: 0 });
     expect(mocks.recordNeonEvent).not.toHaveBeenCalled();
   });
 
@@ -84,12 +89,20 @@ describe("DELETE /api/workspaces/[workspaceId]/instagram-connection", () => {
     const response = await DELETE(request(), params());
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "unavailable" });
+    expect(mocks.deleteInsights).not.toHaveBeenCalled();
+  });
+
+  it("keeps the disconnect when the observation cleanup fails", async () => {
+    mocks.deleteInsights.mockRejectedValue(new Error("db down"));
+    const response = await DELETE(request(), params());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true, disconnected: true, insightsDeleted: 0 });
   });
 
   it("keeps the disconnect when the audit write fails", async () => {
     mocks.recordNeonEvent.mockRejectedValue(new Error("audit down"));
     const response = await DELETE(request(), params());
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true, disconnected: true });
+    expect(await response.json()).toEqual({ ok: true, disconnected: true, insightsDeleted: 0 });
   });
 });

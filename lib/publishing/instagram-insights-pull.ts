@@ -34,6 +34,8 @@ export const INSTAGRAM_ACCOUNT_METRICS = ["impressions", "reach", "profile_views
 export const INSTAGRAM_MEDIA_METRICS = ["impressions", "reach", "likes", "comments", "shares", "saved"] as const;
 export const INSTAGRAM_INSIGHT_WINDOW_DAYS = 7;
 export const INSTAGRAM_INSIGHTS_RECENT_MEDIA = 5;
+/** Retention chosen in the plan (§9 decision 6): observations older than a year are removed on the next pull. */
+export const INSTAGRAM_INSIGHTS_RETENTION_DAYS = 365;
 
 export type InstagramInsightsUnavailableReason = "missing_permission" | "not_supported" | "provider_error" | "no_data";
 
@@ -57,7 +59,10 @@ type GraphDeps = {
 };
 
 export type PullInstagramInsightsDeps = {
-  repository?: Pick<ReturnType<typeof instagramInsightsRepository>, "insertMany">;
+  repository?: {
+    insertMany(workspaceId: string, rows: InstagramInsightInsert[]): Promise<number>;
+    deleteOlderThan?(workspaceId: string, cutoffIso: string): Promise<number>;
+  };
   graph?: GraphDeps;
   withToken?: typeof withInstagramAccessToken;
   now?: () => number;
@@ -166,6 +171,15 @@ export async function pullInstagramInsights(
         }
 
         const inserted = await repository.insertMany(input.workspaceId, rows);
+        // Retention (P20.4): no scheduler, so each pull prunes this workspace's
+        // observations older than the decided 12 months. A failed prune never
+        // fails the pull; the stored observations stay readable.
+        try {
+          const cutoff = new Date(now() - INSTAGRAM_INSIGHTS_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+          await repository.deleteOlderThan?.(input.workspaceId, cutoff);
+        } catch {
+          console.error("[instagram-insights] retention prune failed", { category: "instagram_insights_retention_failed" });
+        }
         return {
           ok: true,
           accountRef: account.id,
