@@ -2,11 +2,11 @@ import type { PriorityFactorKey } from "@/lib/workspace/priority";
 import type { TemplateKey } from "@/lib/workspace/templates";
 import type { MetricKey } from "@/lib/workspace/metrics";
 import type { AttributionBasis } from "@/lib/workspace/applications";
-import { ACTION_INPUT_KEYS, type DisplayPhaseKey, type PublishReasonKey } from "@/lib/copy-workspace-keys";
+import { ACTION_INPUT_KEYS, type DisplayPhaseKey, type InstagramPublishReasonKey, type PublishReasonKey } from "@/lib/copy-workspace-keys";
 
 // The key lists live in a data-free module so client code can import them
 // without pulling every locale's workspace dictionary into the browser.
-export { ACTION_INPUT_KEYS, DISPLAY_PHASE_KEYS, PUBLISH_REASON_KEYS, type DisplayPhaseKey, type PublishReasonKey } from "@/lib/copy-workspace-keys";
+export { ACTION_INPUT_KEYS, DISPLAY_PHASE_KEYS, INSTAGRAM_PUBLISH_REASON_KEYS, PUBLISH_REASON_KEYS, type DisplayPhaseKey, type InstagramPublishReasonKey, type PublishReasonKey } from "@/lib/copy-workspace-keys";
 
 /**
  * Workspace copy (`copy[locale].workspace`, CLAUDE.md Phase 3 item 5): labels
@@ -143,6 +143,41 @@ export type PublishCopy = {
   reasons: Record<PublishReasonKey, string>;
 };
 
+/**
+ * P20.2c: publishing one approved version to a connected Instagram
+ * professional account as a single feed image. The owner supplies a public
+ * HTTPS image URL; the caption is the immutable approved body and is not
+ * editable here. Interpolated strings use {n} / {time} placeholders; a raw code
+ * never reaches an owner.
+ */
+export type InstagramPublishCopy = {
+  deliveryIntro: string;
+  publishButton: string;
+  dialogTitle: string;
+  dialogDescription: string;
+  imageUrlLabel: string;
+  imageUrlHint: string;
+  captionLabel: string;
+  /** "{n}" is the used character count. */
+  captionCount: string;
+  confirm: string;
+  publishConfirm: string;
+  publishingNow: string;
+  cancel: string;
+  connectInstagram: string;
+  noPermission: string;
+  publishedTitle: string;
+  /** "{time}" is the verified time in the workspace timezone. */
+  verifiedAt: string;
+  uncertainTitle: string;
+  uncertainBody: string;
+  checkStatus: string;
+  checking: string;
+  failedTitle: string;
+  tryAgain: string;
+  reasons: Record<InstagramPublishReasonKey, string>;
+};
+
 export type WorkspaceCopy = {
   /**
    * P4.2 work packs. `title` is also stored as the evidence detail of an action a
@@ -215,6 +250,8 @@ export type WorkspaceCopy = {
   checklistSteps: Partial<Record<TemplateKey, { where: string; steps: string[] }>>;
   /** P4.6: the Google publish card on the action detail page. */
   publish: PublishCopy;
+  /** P20.2c: the Instagram feed-image publish card (social-post and offer-instagram-post). */
+  instagramPublish: InstagramPublishCopy;
   /**
    * P2.2/item 13: the FAQ export must carry instructions for the owner's
    * website editor, and the website-basics export must read as an approved
@@ -544,6 +581,58 @@ export const workspaceEn: WorkspaceCopy = {
       generic: "The request failed. Try again, or contact Fimmick if it keeps happening.",
     },
   },
+  instagramPublish: {
+    deliveryIntro: "Publish the approved version to Instagram as a single feed image. The image must be a public HTTPS URL; one approved delivery is counted only after Instagram confirms the post.",
+    publishButton: "Publish to Instagram",
+    dialogTitle: "Publish this approved version to Instagram?",
+    dialogDescription: "The caption is the approved version's text and cannot be edited here. Instagram fetches the image from the public HTTPS URL you provide.",
+    imageUrlLabel: "Public image URL (HTTPS)",
+    imageUrlHint: "Anyone with the link can open the image, and it must stay reachable while Instagram processes the post.",
+    captionLabel: "Caption (this approved version)",
+    captionCount: "{n} of 2,200 characters",
+    confirm: "I confirm this exact approved version will be posted publicly on Instagram.",
+    publishConfirm: "Publish to Instagram",
+    publishingNow: "Publishing…",
+    cancel: "Cancel",
+    connectInstagram: "Connect Instagram",
+    noPermission: "Only the owner, or a manager for this location, can publish to Instagram.",
+    publishedTitle: "Published on Instagram",
+    verifiedAt: "Verified on Instagram {time}",
+    uncertainTitle: "Couldn't confirm",
+    uncertainBody: "We couldn't confirm Instagram received it. Nothing will be sent again automatically.",
+    checkStatus: "Check status",
+    checking: "Checking…",
+    failedTitle: "Not published to Instagram",
+    tryAgain: "Try again",
+    reasons: {
+      flag_off: "Publishing to Instagram is not turned on.",
+      not_publishable_template: "Only social post versions can be published to Instagram.",
+      not_approved: "Approve this exact version before publishing it.",
+      invalid_image_url: "Enter a public HTTPS image URL. Private addresses, sign-in links and localhost are not accepted.",
+      empty_caption: "The approved version has no caption text.",
+      caption_too_long: "The caption is longer than Instagram allows (2,200 characters). Shorten it and approve a new version.",
+      connection_missing: "Connect the Instagram professional account that can publish for this workspace.",
+      connection_expired: "The Instagram connection has expired. Reconnect Instagram, then publish again.",
+      version_changed: "A newer version was saved. Review the latest version before publishing.",
+      already_publishing: "This version is already published or being published.",
+      target_busy: "This version's target is already published or in progress.",
+      allowance_exceeded: "This month's approved-delivery allowance is used up.",
+      rate_limited: "Too many requests. Try again later.",
+      provider_forbidden: "Instagram refused the request for this account. Check that the connected account manages it, then try again.",
+      provider_rate_limited: "Instagram is limiting requests right now. Try again later.",
+      provider_unavailable: "Instagram could not be reached and nothing was sent. Try again.",
+      provider_invalid_request: "Instagram rejected the request. Check the image URL and try again.",
+      media_url_unreachable: "Instagram could not fetch the image. Make sure the URL is public and reachable, then try again.",
+      idempotency_key_conflict: "This request could not be matched. Close the dialog and try again.",
+      not_enabled: "Publishing to Instagram is not available right now.",
+      not_applied: "Instagram shows no post for this delivery, so nothing was posted. You can publish again.",
+      too_soon: "Instagram may still be processing it. Check again in a few seconds.",
+      unavailable: "The service is unavailable right now. Try again shortly.",
+      network: "The server could not be reached. Try again; the same request is never posted twice.",
+      forbidden: "You don't have permission for this. Ask the owner.",
+      generic: "The request failed. Try again, or contact Fimmick if it keeps happening.",
+    },
+  },
   websiteExport: {
     heading: "How to apply this",
     criteriaHeading: "Checklist",
@@ -832,6 +921,58 @@ export const workspaceZhHK: WorkspaceCopy = {
       generic: "操作失敗，請再試一次；如持續出現，請聯絡 Fimmick。",
     },
   },
+  instagramPublish: {
+    deliveryIntro: "將已核准版本以單張貼文圖片發佈到 Instagram。圖片必須係公開 HTTPS 網址；Instagram 確認貼文後，先會計算一次已核准交付。",
+    publishButton: "貼去 Instagram",
+    dialogTitle: "要將呢個已核准版本發佈到 Instagram 嗎？",
+    dialogDescription: "說明文字用已核准版本嘅內容，喺呢度唔可以修改。Instagram 會從你提供嘅公開 HTTPS 網址擷取圖片。",
+    imageUrlLabel: "公開圖片網址（HTTPS）",
+    imageUrlHint: "任何人有條連結都睇到張圖，Instagram 處理貼文期間網址要保持可讀取。",
+    captionLabel: "說明文字（呢個已核准版本）",
+    captionCount: "已用 {n} / 2,200 字",
+    confirm: "我確認呢個已核准版本會公開貼到 Instagram。",
+    publishConfirm: "發佈",
+    publishingNow: "正在發佈…",
+    cancel: "取消",
+    connectInstagram: "連接 Instagram",
+    noPermission: "只有店主，或負責呢個地點嘅經理，先可以發佈到 Instagram。",
+    publishedTitle: "已發佈到 Instagram",
+    verifiedAt: "已於 {time} 喺 Instagram 核實",
+    uncertainTitle: "未能確認",
+    uncertainBody: "我哋未能確認 Instagram 有冇收到，系統唔會自動再發送。",
+    checkStatus: "查核狀態",
+    checking: "查核中…",
+    failedTitle: "未發佈到 Instagram",
+    tryAgain: "再試一次",
+    reasons: {
+      flag_off: "發佈到 Instagram 功能未開啟。",
+      not_publishable_template: "只有社交貼文版本可以發佈到 Instagram。",
+      not_approved: "發佈前請先核准呢個版本。",
+      invalid_image_url: "請輸入公開 HTTPS 圖片網址。私人地址、需要登入嘅連結同 localhost 都唔接受。",
+      empty_caption: "已核准版本冇說明文字。",
+      caption_too_long: "說明文字超過 Instagram 上限（2,200 字）。請縮短並核准新版本。",
+      connection_missing: "請連接可以為呢個工作區發佈嘅 Instagram 專業帳戶。",
+      connection_expired: "Instagram 連接已過期。請重新連接 Instagram 後再發佈。",
+      version_changed: "已儲存更新版本。發佈前請先查看最新版本。",
+      already_publishing: "呢個版本已經發佈或正在發佈中。",
+      target_busy: "呢個版本嘅目標已經發佈或正在處理中。",
+      allowance_exceeded: "本月可用交付次數已用完。",
+      rate_limited: "請求過於頻繁，請稍後再試。",
+      provider_forbidden: "Instagram 拒絕咗呢個帳戶嘅請求。請確認已連接帳戶有管理權限後再試。",
+      provider_rate_limited: "Instagram 目前限制請求，請稍後再試。",
+      provider_unavailable: "無法連接 Instagram，未有發送任何內容。請再試一次。",
+      provider_invalid_request: "Instagram 拒絕咗呢個請求。請檢查圖片網址後再試。",
+      media_url_unreachable: "Instagram 擷取唔到圖片。請確認網址公開同可讀取後再試。",
+      idempotency_key_conflict: "未能配對此請求。請關閉對話框後再試。",
+      not_enabled: "目前未能使用發佈到 Instagram 功能。",
+      not_applied: "Instagram 上見唔到呢次交付嘅貼文，即係未有發佈。你可以再發佈一次。",
+      too_soon: "Instagram 可能仍在處理中，請數秒後再查核。",
+      unavailable: "服務暫時未能使用，請稍後再試。",
+      network: "無法連接伺服器。請再試一次；同一請求不會重複發佈。",
+      forbidden: "你冇權限做呢樣嘢，請問店主。",
+      generic: "操作失敗，請再試一次；如持續出現，請聯絡 Fimmick。",
+    },
+  },
   websiteExport: {
     heading: "如何套用",
     criteriaHeading: "檢查清單",
@@ -1057,6 +1198,58 @@ export const workspaceZhTW: WorkspaceCopy = {
       unavailable: "服務暫時無法使用，請稍後再試。",
       too_soon: "Google 可能仍在處理中，請幾秒後再確認。",
       rate_limited: "請求過於頻繁，請稍後再試。",
+      network: "無法連線至伺服器。請再試一次；同一個請求不會重複發布。",
+      forbidden: "您沒有權限執行這項操作，請詢問店家。",
+      generic: "操作失敗，請再試一次；如果持續發生，請聯絡 Fimmick。",
+    },
+  },
+  instagramPublish: {
+    deliveryIntro: "將已核准版本以單張貼文圖片發布到 Instagram。圖片必須是公開 HTTPS 網址；Instagram 確認貼文後，才會計算一次已核准交付。",
+    publishButton: "發布到 Instagram",
+    dialogTitle: "要將這個已核准版本發布到 Instagram 嗎？",
+    dialogDescription: "說明文字使用已核准版本的內容，在這裡不能修改。Instagram 會從您提供的公開 HTTPS 網址擷取圖片。",
+    imageUrlLabel: "公開圖片網址（HTTPS）",
+    imageUrlHint: "任何人有連結都看得到圖片，Instagram 處理貼文期間網址必須保持可讀取。",
+    captionLabel: "說明文字（這個已核准版本）",
+    captionCount: "已用 {n} / 2,200 字",
+    confirm: "我確認這個已核准版本會公開發布到 Instagram。",
+    publishConfirm: "發布",
+    publishingNow: "正在發布…",
+    cancel: "取消",
+    connectInstagram: "連接 Instagram",
+    noPermission: "只有店主，或負責這個據點的經理，才能發布到 Instagram。",
+    publishedTitle: "已發布到 Instagram",
+    verifiedAt: "已於 {time} 在 Instagram 核實",
+    uncertainTitle: "無法確認",
+    uncertainBody: "我們無法確認 Instagram 是否收到，系統不會自動再次傳送。",
+    checkStatus: "查核狀態",
+    checking: "查核中…",
+    failedTitle: "未發布到 Instagram",
+    tryAgain: "再試一次",
+    reasons: {
+      flag_off: "發布到 Instagram 功能尚未開啟。",
+      not_publishable_template: "只有社群貼文版本可以發布到 Instagram。",
+      not_approved: "發布前請先核准這個版本。",
+      invalid_image_url: "請輸入公開 HTTPS 圖片網址。私人位址、需要登入的連結和 localhost 都不接受。",
+      empty_caption: "已核准版本沒有說明文字。",
+      caption_too_long: "說明文字超過 Instagram 上限（2,200 字）。請縮短並核准新版本。",
+      connection_missing: "請連接可以為這個工作區發布的 Instagram 專業帳號。",
+      connection_expired: "Instagram 連接已過期。請重新連接 Instagram 後再發布。",
+      version_changed: "已儲存更新版本。發布前請先查看最新版本。",
+      already_publishing: "這個版本已經發布或正在發布中。",
+      target_busy: "這個版本的目標已經發布或正在處理中。",
+      allowance_exceeded: "本月可用交付次數已用完。",
+      rate_limited: "請求過於頻繁，請稍後再試。",
+      provider_forbidden: "Instagram 拒絕了這個帳號的請求。請確認已連接帳號有管理權限後再試。",
+      provider_rate_limited: "Instagram 目前限制請求，請稍後再試。",
+      provider_unavailable: "無法連接 Instagram，沒有傳送任何內容。請再試一次。",
+      provider_invalid_request: "Instagram 拒絕了這個請求。請檢查圖片網址後再試。",
+      media_url_unreachable: "Instagram 擷取不到圖片。請確認網址公開且可讀取後再試。",
+      idempotency_key_conflict: "無法比對這個請求。請關閉對話框後再試一次。",
+      not_enabled: "目前無法使用發布到 Instagram 功能。",
+      not_applied: "Instagram 上看不到這次交付的貼文，也就是沒有發布。您可以再發布一次。",
+      too_soon: "Instagram 可能仍在處理中，請幾秒後再確認。",
+      unavailable: "服務暫時無法使用，請稍後再試。",
       network: "無法連線至伺服器。請再試一次；同一個請求不會重複發布。",
       forbidden: "您沒有權限執行這項操作，請詢問店家。",
       generic: "操作失敗，請再試一次；如果持續發生，請聯絡 Fimmick。",

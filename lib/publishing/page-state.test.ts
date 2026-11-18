@@ -8,8 +8,15 @@ const repo = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/repositories/publishing", () => ({ publishingRepository: () => repo }));
 
+// Only the connection reader is replaced; the account-ref parser stays real.
+const igRepo = vi.hoisted(() => ({ activeConnection: vi.fn() }));
+vi.mock("@/lib/repositories/instagram-connection", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/repositories/instagram-connection")>();
+  return { ...actual, instagramConnectionRepository: () => igRepo };
+});
+
 import { GBP_SCOPE_REQUIRED } from "@/lib/oauth/google-connection";
-import { loadPublishPanel } from "./page-state";
+import { loadInstagramPublishPanel, loadPublishPanel } from "./page-state";
 
 const WORKSPACE = "11111111-1111-4111-8111-111111111111";
 const V2 = "22222222-2222-4222-8222-222222222222";
@@ -145,6 +152,119 @@ describe("loadPublishPanel", () => {
     expect(await loadPublishPanel(input())).toBeNull();
     expect(log).toHaveBeenCalledTimes(1);
     expect(log.mock.calls[0][1]).toEqual({ category: "gbp_publish_panel_unavailable" });
+    expect(JSON.stringify(log.mock.calls)).not.toContain("secret");
+  });
+});
+
+const IG_CONNECTION = {
+  id: "c-ig",
+  accountRef: JSON.stringify({ id: "17841400000000000", username: "kammanhouse" }),
+  scopes: ["instagram_basic", "instagram_content_publish"],
+};
+
+function igInput(overrides: Partial<Parameters<typeof loadInstagramPublishPanel>[0]> = {}): Parameters<typeof loadInstagramPublishPanel>[0] {
+  return {
+    workspaceId: WORKSPACE,
+    templateKey: "social-post",
+    role: "owner",
+    inScope: true,
+    versions: [{ id: V2 }, { id: V1 }],
+    enabled: true,
+    ...overrides,
+  };
+}
+
+function deliveryRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: D1,
+    workspaceId: WORKSPACE,
+    versionId: V2,
+    actionId: "a-1",
+    locationId: "l-1",
+    templateKey: "social-post",
+    versionNo: 2,
+    body: "Fresh milk tea at Kam Man House.",
+    state: "failed",
+    channel: "instagram",
+    payload: null,
+    targetRef: "instagram:17841400000000000",
+    counted: false,
+    failureReason: "media_url_unreachable",
+    verifiedAt: null,
+    createdAt: "2026-10-04T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
+describe("loadInstagramPublishPanel", () => {
+  beforeEach(() => {
+    repo.publishDeliveryIds.mockReset().mockResolvedValue([]);
+    repo.getDelivery.mockReset();
+    repo.activeGbpConnection.mockReset();
+    igRepo.activeConnection.mockReset().mockResolvedValue(IG_CONNECTION);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it("null for another template while the flag is off, and no reads", async () => {
+    expect(await loadInstagramPublishPanel(igInput({ templateKey: "review-response", enabled: false }))).toBeNull();
+    expect(repo.publishDeliveryIds).not.toHaveBeenCalled();
+    expect(repo.getDelivery).not.toHaveBeenCalled();
+    expect(igRepo.activeConnection).not.toHaveBeenCalled();
+  });
+
+  it("flag off reads no connection and returns deliveries only when instagram rows exist", async () => {
+    expect(await loadInstagramPublishPanel(igInput({ enabled: false }))).toBeNull();
+    expect(repo.publishDeliveryIds).toHaveBeenCalledWith(WORKSPACE, [V2, V1]);
+    expect(repo.getDelivery).not.toHaveBeenCalled();
+    expect(igRepo.activeConnection).not.toHaveBeenCalled();
+
+    repo.publishDeliveryIds.mockResolvedValue([{ id: D1, versionId: V2, state: "failed", createdAt: "2026-10-04T10:00:00.000Z" }]);
+    repo.getDelivery.mockResolvedValue(deliveryRow());
+    const withRows = await loadInstagramPublishPanel(igInput({ enabled: false }));
+    expect(withRows?.deliveries).toEqual([
+      { id: D1, versionId: V2, state: "failed", reason: "media_url_unreachable", verifiedAt: null, createdAt: "2026-10-04T10:00:00.000Z" },
+    ]);
+    expect(igRepo.activeConnection).not.toHaveBeenCalled();
+    // Nothing secret or account-identifying reaches the panel.
+    expect(JSON.stringify(withRows)).not.toMatch(/sealed|17841400000000000|kammanhouse|Fresh milk tea/);
+  });
+
+  it("keeps only instagram deliveries of this workspace", async () => {
+    repo.publishDeliveryIds.mockResolvedValue([
+      { id: D1, versionId: V2, state: "published", createdAt: "2026-10-04T10:00:00.000Z" },
+      { id: "d-gbp", versionId: V1, state: "published", createdAt: "2026-10-03T10:00:00.000Z" },
+      { id: "d-other", versionId: V1, state: "failed", createdAt: "2026-10-02T10:00:00.000Z" },
+    ]);
+    repo.getDelivery
+      .mockResolvedValueOnce(deliveryRow({ state: "published", verifiedAt: "2026-10-04T10:02:00.000Z", failureReason: null }))
+      .mockResolvedValueOnce(deliveryRow({ id: "d-gbp", channel: "google_business" }))
+      .mockResolvedValueOnce(deliveryRow({ id: "d-other", workspaceId: "99999999-9999-4999-8999-999999999999" }));
+    const panel = await loadInstagramPublishPanel(igInput());
+    expect(panel?.deliveries.map((row) => row.id)).toEqual([D1]);
+  });
+
+  it("canPublish needs the flag, template, publish scopes and role; mayAct mirrors scope", async () => {
+    expect(await loadInstagramPublishPanel(igInput())).toMatchObject({
+      enabled: true, connectionActive: true, templateAllowed: true, mayAct: true, canPublish: true,
+    });
+    expect(await loadInstagramPublishPanel(igInput({ role: "manager", inScope: true }))).toMatchObject({ mayAct: true, canPublish: true });
+    expect(await loadInstagramPublishPanel(igInput({ role: "manager", inScope: false }))).toMatchObject({ mayAct: false, canPublish: false });
+    expect(await loadInstagramPublishPanel(igInput({ role: "viewer", inScope: true }))).toMatchObject({ mayAct: false, canPublish: false });
+    expect(await loadInstagramPublishPanel(igInput({ enabled: false }))).toBeNull();
+    // A connection without both publish scopes is no connection.
+    igRepo.activeConnection.mockResolvedValue({ ...IG_CONNECTION, scopes: ["instagram_basic"] });
+    expect(await loadInstagramPublishPanel(igInput())).toMatchObject({ connectionActive: false, canPublish: false });
+    // A connection that names no account is no connection either.
+    igRepo.activeConnection.mockResolvedValue({ ...IG_CONNECTION, accountRef: "not-json" });
+    expect(await loadInstagramPublishPanel(igInput())).toMatchObject({ connectionActive: false, canPublish: false });
+  });
+
+  it("a read failure hides the card and logs only a category", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    repo.publishDeliveryIds.mockRejectedValue(new Error("connection refused: postgres://user:secret@host"));
+    expect(await loadInstagramPublishPanel(igInput())).toBeNull();
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls[0][1]).toEqual({ category: "instagram_publish_panel_unavailable" });
     expect(JSON.stringify(log.mock.calls)).not.toContain("secret");
   });
 });

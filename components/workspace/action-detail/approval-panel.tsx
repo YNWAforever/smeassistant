@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { CapabilityBadge, SectionCard } from "@/components/product-ui"
 import { GbpPublishCard } from "@/components/workspace/gbp-publish-card"
+import { InstagramPublishCard } from "@/components/workspace/instagram-publish-card"
 import { fill } from "@/lib/copy-ui"
 import { resolveText } from "@/lib/domain"
 import { formatDateTime, priorityLabel } from "@/lib/workspace/format"
@@ -36,9 +37,11 @@ export function StepPrimary({ ed }: { ed: ActionEditor }) {
 }
 
 export function ApprovalPanel({ ed }: { ed: ActionEditor }) {
-  const { ac, canApprove, dirty, selectedVersion, setEditingVersionId, publishPanel, locale, allowanceBlocked, base } = ed
+  const { ac, canApprove, dirty, selectedVersion, setEditingVersionId, publishPanel, instagramPublishPanel, locale, allowanceBlocked, base } = ed
   const step = editorStep(ed)
   if (ed.checklistSteps || step === 0) return null
+  const connectedGoogle = publishPanel?.enabled && publishPanel.connectionActive
+  const connectedInstagram = instagramPublishPanel?.enabled && instagramPublishPanel.connectionActive
   return <div className="approval-panel"><SectionCard className={step === 2 ? "delivery-card" : undefined}>
     {step === 1 ? <>
       <StepPrimary ed={ed} />
@@ -46,9 +49,11 @@ export function ApprovalPanel({ ed }: { ed: ActionEditor }) {
         if (selectedVersion) setEditingVersionId(selectedVersion.id)
       }}>{ac.approval.requestChanges}</Button>
     </> : <>
-      <p>{publishPanel?.enabled && publishPanel.connectionActive
+      <p>{connectedGoogle
         ? locale === "zh-HK" ? "複製唔會自動貼上；要貼去 Google，請再確認發佈。" : "Copying does not post anything. Confirm publishing separately to post to Google."
-        : ac.delivery.noConnector}</p>
+        : connectedInstagram
+          ? copy[locale].workspace.instagramPublish.deliveryIntro
+          : ac.delivery.noConnector}</p>
       {allowanceBlocked && <div role="alert"><strong>{ac.delivery.allowanceTitle}</strong><p>{ac.delivery.allowanceBody}</p><Link href={`${base}/settings/plan`}>{ac.delivery.billing}</Link></div>}
       <StepPrimary ed={ed} />
       <PublishControls ed={ed} />
@@ -73,8 +78,11 @@ export function VersionDetails({ ed }: { ed: ActionEditor }) {
 
 /** Existing publish receipts/reconciliation survive moving back to an older version. */
 function PublishControls({ ed }: { ed: ActionEditor }) {
-  const { publishPanel, selectedVersion, locale, effectiveRole, role, workspaceSlug, timezone, router } = ed
+  const { publishPanel, instagramPublishPanel, selectedVersion, locale, effectiveRole, role, workspaceSlug, timezone, router } = ed
   return (
-    <>{publishPanel && selectedVersion && (publishPanel.enabled && publishPanel.connectionActive || publishPanel.deliveries.some((row) => row.versionId === selectedVersion.id)) && <GbpPublishCard locale={locale} versionId={selectedVersion.id} versionNo={selectedVersion.version_no} body={selectedVersion.body} approved={ed.isApprovedCurrent} panel={effectiveRole === role ? publishPanel : { ...publishPanel, mayAct: publishPanel.mayAct && effectiveRole !== "viewer", canPublish: publishPanel.canPublish && effectiveRole !== "viewer", canDelete: false }} workspaceSlug={workspaceSlug} timezone={timezone} onChanged={() => router.refresh()} />}</>
+    <>
+      {publishPanel && selectedVersion && (publishPanel.enabled && publishPanel.connectionActive || publishPanel.deliveries.some((row) => row.versionId === selectedVersion.id)) && <GbpPublishCard locale={locale} versionId={selectedVersion.id} versionNo={selectedVersion.version_no} body={selectedVersion.body} approved={ed.isApprovedCurrent} panel={effectiveRole === role ? publishPanel : { ...publishPanel, mayAct: publishPanel.mayAct && effectiveRole !== "viewer", canPublish: publishPanel.canPublish && effectiveRole !== "viewer", canDelete: false }} workspaceSlug={workspaceSlug} timezone={timezone} onChanged={() => router.refresh()} />}
+      {instagramPublishPanel && selectedVersion && (instagramPublishPanel.enabled || instagramPublishPanel.deliveries.some((row) => row.versionId === selectedVersion.id)) && <InstagramPublishCard locale={locale} versionId={selectedVersion.id} versionNo={selectedVersion.version_no} body={selectedVersion.body} approved={ed.isApprovedCurrent} panel={effectiveRole === role ? instagramPublishPanel : { ...instagramPublishPanel, mayAct: instagramPublishPanel.mayAct && effectiveRole !== "viewer", canPublish: instagramPublishPanel.canPublish && effectiveRole !== "viewer" }} workspaceSlug={workspaceSlug} timezone={timezone} onChanged={() => router.refresh()} />}
+    </>
   )
 }

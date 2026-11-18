@@ -1,4 +1,4 @@
-import { loadPublishPanel } from "@/lib/publishing/page-state";
+import { loadInstagramPublishPanel, loadPublishPanel } from "@/lib/publishing/page-state";
 import { offerRepository } from "@/lib/repositories/offers";
 import { assetLocationScope, assetUsableByAction, listAssets } from "@/lib/workspace/assets";
 import { formatOfferPrice } from "@/lib/workspace/offer-format";
@@ -39,7 +39,7 @@ export async function loadActionDetailProps(page: OwnerPageContext, actionId: st
   // P4.6: the Google publish card. Null for any other template, or when a read
   // fails (the card hides; the page never fails because of it). With the flag
   // off it reads no connection and names no 0014 column unless publish rows exist.
-  const [activity, verificationActivity, assets, publishPanel, ownerCheck] = await Promise.all([
+  const [activity, verificationActivity, assets, publishPanel, instagramPublishPanel, ownerCheck] = await Promise.all([
     getActivity(page.ctx, { limit: 200 }),
     // A durable result must not disappear behind unrelated workspace events.
     // Scope this read before LIMIT; the normal history remains bounded.
@@ -52,6 +52,16 @@ export async function loadActionDetailProps(page: OwnerPageContext, actionId: st
       role: page.membership.role,
       inScope,
       versions: detail.versions.map((v) => ({ id: v.id, approval_state: v.approval_state, body: v.body })),
+    }),
+    // P20.2c: the Instagram publish card. Null for any template that is not a
+    // feed post (and for a database without 0023 while the flag is off), or
+    // when a read fails; the page never fails because of it.
+    loadInstagramPublishPanel({
+      workspaceId: page.ctx.workspace.id,
+      templateKey: detail.action.templateKey,
+      role: page.membership.role,
+      inScope,
+      versions: detail.versions.map((v) => ({ id: v.id })),
     }),
     detail.action.templateKey === "review-response" && detail.versions.length
       ? ownerReviewCheckRepository().load({ workspaceId: page.ctx.workspace.id, actionId, locationId: detail.action.location.id }).catch(() => EMPTY_OWNER_CHECK)
@@ -103,6 +113,7 @@ export async function loadActionDetailProps(page: OwnerPageContext, actionId: st
     offersEnabled: offerPromotionsEnabled(),
     initialVersionId,
     publishPanel,
+    instagramPublishPanel,
     ownerCheck,
     studioHref,
     ownerCheckIdentity: [page.ctx.workspace.name, page.ctx.locations.find(l => l.id === detail.action.location.id)?.name,

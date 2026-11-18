@@ -45,6 +45,20 @@ export const PUBLISH_REASON_KEYS = [
 ] as const;
 export type PublishReasonKey = (typeof PUBLISH_REASON_KEYS)[number];
 
+/**
+ * P20.2c: the reason codes the Instagram publish card can show. Same rule as
+ * `PUBLISH_REASON_KEYS`: a raw code never reaches an owner, and the copy is a
+ * separate dictionary because the channel's wording differs from Google's.
+ */
+export const INSTAGRAM_PUBLISH_REASON_KEYS = [
+  "flag_off", "not_publishable_template", "not_approved", "invalid_image_url", "empty_caption", "caption_too_long",
+  "connection_missing", "connection_expired", "version_changed", "already_publishing", "target_busy", "allowance_exceeded",
+  "rate_limited", "provider_forbidden", "provider_rate_limited", "provider_unavailable", "provider_invalid_request",
+  "media_url_unreachable", "idempotency_key_conflict", "not_enabled", "not_applied", "too_soon", "unavailable",
+  "network", "forbidden", "generic",
+] as const;
+export type InstagramPublishReasonKey = (typeof INSTAGRAM_PUBLISH_REASON_KEYS)[number];
+
 export const ACTION_INPUT_KEYS = [
   "brand_voice", "reviews_without_response", "language", "channel", "opening_hours", "categories", "asset_or_text_only", "alt_text",
   "approved_claim", "cta_link", "owner_fact_1", "owner_fact_2", "owner_fact_3", "menu_items", "google_account_owner", "offer_id",
